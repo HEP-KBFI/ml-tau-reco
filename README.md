@@ -1,14 +1,15 @@
 # Setup of the repository
 ```
-#for git-lfs support
-export PATH=/home/software/bin:$PATH
+#for git-lfs support on manivald
+[manivald] export PATH=/home/software/bin:$PATH
 
-git clone https://github.com/HEP-KBFI/ml-tau-reco.git
-cd ml-tau-reco
+[manivald] git clone https://github.com/HEP-KBFI/ml-tau-reco.git
+[manivald] cd ml-tau-reco
 
-git lfs install
-git lfs pull 
+[manivald] git lfs install
+[manivald] git lfs pull 
 ```
+
 # Jupyter notebook
 
 Launch the notebook server on manivald once
