@@ -1,0 +1,4 @@
+testdata/pythia6_ttbar_0001_pandora_0.json.bz2 filter=lfs diff=lfs merge=lfs -text
+testdata/pythia6_ttbar_0001_pandora_1.json.bz2 filter=lfs diff=lfs merge=lfs -text
+testdata/pythia6_ttbar_0001_pandora_2.json.bz2 filter=lfs diff=lfs merge=lfs -text
+testdata/pythia6_ttbar_0001_pandora_3.json.bz2 filter=lfs diff=lfs merge=lfs -text
