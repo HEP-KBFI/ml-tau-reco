@@ -31,3 +31,5 @@ Navigate from your laptop browser to the notebook `https://localhost:XXXX`.
 
 All the necessary packages are installed in `tf-2.9.0.simg` available at `/home/software/singularity`.
 To update this file, see: https://github.com/HEP-KBFI/singularity.
+
+
