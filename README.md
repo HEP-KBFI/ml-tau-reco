@@ -28,9 +28,4 @@ Open an SSH tunnel for the notebook from your laptop to manivald, replacing XXXX
 ```
 [laptop] ssh -N -f -L XXXX:localhost:XXXX MYUSER@manivald.hep.kbfi.ee
 ```
-
 Navigate from your laptop browser to the notebook address that begins with `https://localhost:XXXX`.
-
-# Software dependencies
-
-All the necessary packages are installed in `pytorch.simg:2023-01-24` available at `/home/software/singularity`.
