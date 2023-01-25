@@ -6,6 +6,7 @@ import uproot
 if __name__ == "__main__":
     infile = sys.argv[1]
     outfile = sys.argv[2]
+    print("running:", sys.argv[0], infile, outfile)
 
     fi = uproot.open(infile)
     events = fi["events"]
