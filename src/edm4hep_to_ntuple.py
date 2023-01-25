@@ -5,6 +5,7 @@ import uproot
 import fastjet
 import vector
 
+
 # Remap various PDG-IDs to just photon, electron, muon, tau, charged hadron, neutral hadron
 def map_pdgid_to_candid(pdgid, charge):
     if pdgid == 0:
@@ -46,10 +47,6 @@ if __name__ == "__main__":
 
     arrs = [this_file_arrs]
     arrs = ak.concatenate(arrs)
-
-    import pdb
-
-    pdb.set_trace()
 
     print(arrs)
 
