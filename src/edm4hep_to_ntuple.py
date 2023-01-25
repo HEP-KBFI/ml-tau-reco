@@ -4,6 +4,7 @@ import sys
 import uproot
 import fastjet
 import vector
+import copy
 
 
 # Remap various PDG-IDs to just photon, electron, muon, tau, charged hadron, neutral hadron
@@ -45,12 +46,7 @@ if __name__ == "__main__":
     # index in the MCParticles collection
     this_file_arrs["idx_mc"] = idx_mcparticle
 
-    arrs = [this_file_arrs]
-    arrs = ak.concatenate(arrs)
-
-    print(arrs)
-
-    reco_jet_p4s = np.zeros((100000, 4), dtype=np.float32)
+    arrs = this_file_arrs
 
     # Prepare 4-momentum of reco particles
     mrp = arrs["MergedRecoParticles"]
@@ -61,18 +57,19 @@ if __name__ == "__main__":
 
     # Cluster AK4 jets from PF particles with min pt 2 GeV
     jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
-    cluster = fastjet.ClusterSequence(reco_p4.to_xyzt(), jetdef)
+    constituent_index = []
 
-    constituent_idx = cluster.constituent_index(min_pt=2.0)
-    constituent_idx
+    #workaround for https://github.com/scikit-hep/fastjet/issues/174
+    for iev in range(len(reco_p4.pt)):
+        cluster = fastjet.ClusterSequence(reco_p4[iev], jetdef)
+        ci = cluster.constituent_index(min_pt=2.0)
+        constituent_index.append(ci)
+    constituent_index = ak.from_iter(constituent_index)
 
-    print(constituent_idx.to_list())
-
-    p4_flat = reco_p4[ak.flatten(constituent_idx, axis=-1)]
-    num_ptcls_per_jet = ak.num(constituent_idx, axis=-1)
+    p4_flat = reco_p4[ak.flatten(constituent_index, axis=-1)]
+    num_ptcls_per_jet = ak.num(constituent_index, axis=-1)
     ret = ak.from_iter([ak.unflatten(p4_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))])
-
     ret2 = vector.awk(ak.zip({"x": ret.x, "y": ret.y, "z": ret.z, "t": ret.tau}))
-
     print(ret2)
+
     ak.to_parquet(ak.Record({"reco_pf_p4s": ret2}), outfile)
