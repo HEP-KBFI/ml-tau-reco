@@ -1,10 +1,8 @@
 import awkward as ak
-import numpy as np
 import sys
 import uproot
 import fastjet
 import vector
-import copy
 
 
 # Remap various PDG-IDs to just photon, electron, muon, tau, charged hadron, neutral hadron
@@ -59,7 +57,7 @@ if __name__ == "__main__":
     jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
     constituent_index = []
 
-    #workaround for https://github.com/scikit-hep/fastjet/issues/174
+    # workaround for https://github.com/scikit-hep/fastjet/issues/174
     for iev in range(len(reco_p4.pt)):
         cluster = fastjet.ClusterSequence(reco_p4[iev], jetdef)
         ci = cluster.constituent_index(min_pt=2.0)
