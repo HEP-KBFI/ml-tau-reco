@@ -1,5 +1,5 @@
 """ To run the script in our singularity image:
-            singularity exec -B /local -B /home/laurits /home/software/singularity/pytorch.simg:2023-01-25 python /home/laurits/edm4hep_to_ntuple.py /local/laurits/CLIC_data
+           ./scripts/run-env.sh  src/edm4hep_to_ntuple.py IN OUT TEST
 """
 
 import os
@@ -362,7 +362,7 @@ def process_input_file(arrays: ak.Array):
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
     # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
-    stable_pythia_mask = mc_particles["generatorStatus"] == 1
+    # stable_pythia_mask = mc_particles["generatorStatus"] == 1
     # gen_jets, gen_jet_constituent_indices = cluster_jets(ak.Array(mc_p4[stable_pythia_mask]))
     gen_jets, gen_jet_constituent_indices = cluster_jets(mc_p4)
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
@@ -381,10 +381,14 @@ def process_input_file(arrays: ak.Array):
     return data  # Testina saab kontrollida kas kõik sama shapega
 
 
-def process_all_input_files(input_data_dir: str, tree_path: str, branches: list, output_dir: str) -> None:
+def process_all_input_files(input_data_dir: str, tree_path: str, branches: list, output_dir: str, test: bool) -> None:
     os.makedirs(output_dir, exist_ok=True)
     input_wcp = os.path.join(input_data_dir, "*.root")
-    input_paths = glob.glob(input_wcp)
+    if test:
+        n_files = 1
+    else:
+        n_files = None
+    input_paths = glob.glob(input_wcp)[:n_files]
     for i, path in enumerate(input_paths):
         print(f"[{i}/{len(input_paths)}] Loading contents of {path}")
         start_time = time.time()
@@ -413,6 +417,12 @@ def process_all_input_files(input_data_dir: str, tree_path: str, branches: list,
 
 
 if __name__ == "__main__":
-    output_dir = sys.argv[1]
+    input_dir = sys.argv[1]
+    print(input_dir)
+    output_dir = sys.argv[2]
+    if sys.argv[3] == "test":
+        test = True
+    else:
+        test = False
     print("Outputting ntuples to: ", output_dir)
-    process_all_input_files(INPUT_DATA_DIR, TREE_PATH, BRANCHES, output_dir)
+    process_all_input_files(input_dir, TREE_PATH, BRANCHES, output_dir, test=test)
