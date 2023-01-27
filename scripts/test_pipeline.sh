@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+set -x
 
 cd src
 INFILE_TAU=/local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380/reco_p8_ee_ZH_Htautau_ecm380_1.root
