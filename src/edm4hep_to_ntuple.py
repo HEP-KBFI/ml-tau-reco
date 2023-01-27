@@ -5,8 +5,7 @@
 import os
 import glob
 import sys
-
-# import numba
+import numba
 import uproot
 import vector
 import fastjet
@@ -218,30 +217,31 @@ def get_tau_energies(tau_mask, mc_particles, mc_p4):
 ###############################################################################
 
 
-def deltaR(event_taus, event_gen_jets, combination):
-    dphi2 = (event_taus.phi[combination[0]] - event_gen_jets.phi[combination[1]]) ** 2
-    deta2 = (event_taus.eta[combination[0]] - event_gen_jets.eta[combination[1]]) ** 2
-    return np.sqrt(dphi2 + deta2)
-
-
-def get_best_tau_genJet_combination(event_taus, event_gen_jets, tau_combinations, i):
-    """Gets the best tau-genJet combination for a single tau in the event"""
-    dRs = ak.from_iter([deltaR(event_taus, event_gen_jets, combination) for combination in tau_combinations[i]])
-    return tau_combinations[i][np.argmin(dRs)]
-
-
-def event_tau_best_combinations(mc_taus, gen_jets, event_idx):
-    event_taus = mc_taus[event_idx]
-    event_gen_jets = gen_jets[event_idx]
-    combinations = ak.cartesian([list(range(len(event_taus))), list(range(len(event_gen_jets)))], axis=0)
-    tau_combinations = np.array_split(combinations, len(event_taus))
-    return ak.from_iter(
-        [get_best_tau_genJet_combination(event_taus, event_gen_jets, tau_combinations, j) for j in range(len(event_taus))]
-    )
-
-
 def get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask):
-    return ak.from_iter([event_tau_best_combinations(mc_p4[tau_mask], gen_jets, i) for i in range(len(gen_jets))])
+    mc_tau_vec = ak.zip(
+                {
+                    "pt": mc_p4[tau_mask].pt,
+                    "eta": mc_p4[tau_mask].eta,
+                    "phi": mc_p4[tau_mask].phi,
+                    "energy": mc_p4[tau_mask].energy,
+                }
+            )
+    gen_jets_p4 = ak.zip(
+                {
+                    "pt": gen_jets.pt,
+                    "eta": gen_jets.eta,
+                    "phi": gen_jets.phi,
+                    "energy": gen_jets.energy,
+                }
+            )
+    tau_indices, gen_indices = match_jets(mc_tau_vec, gen_jets_p4, 999.9)
+    pairs = []
+    for tau_idx, gen_idx in zip(tau_indices, gen_indices):
+        pair = []
+        for i in range(len(tau_idx)):
+            pair.append([tau_idx[i], gen_idx[i]])
+        pairs.append(pair)
+    return ak.Array(pairs)
 
 
 ###############################################################################
@@ -250,14 +250,14 @@ def get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask):
 ###############################################################################
 
 
-# @numba.njit
+@numba.njit
 def deltar(eta1, phi1, eta2, phi2):
     deta = np.abs(eta1 - eta2)
     dphi = deltaphi(phi1, phi2)
     return np.sqrt(deta**2 + dphi**2)
 
 
-# @numba.njit
+@numba.njit
 def deltaphi(phi1, phi2):
     return np.fmod(phi1 - phi2 + np.pi, 2 * np.pi) - np.pi
 
@@ -418,7 +418,6 @@ def process_all_input_files(input_data_dir: str, tree_path: str, branches: list,
 
 if __name__ == "__main__":
     input_dir = sys.argv[1]
-    print(input_dir)
     output_dir = sys.argv[2]
     if sys.argv[3] == "test":
         test = True
