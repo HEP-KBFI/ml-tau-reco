@@ -219,21 +219,21 @@ def get_tau_energies(tau_mask, mc_particles, mc_p4):
 
 def get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask):
     mc_tau_vec = ak.zip(
-                {
-                    "pt": mc_p4[tau_mask].pt,
-                    "eta": mc_p4[tau_mask].eta,
-                    "phi": mc_p4[tau_mask].phi,
-                    "energy": mc_p4[tau_mask].energy,
-                }
-            )
+        {
+            "pt": mc_p4[tau_mask].pt,
+            "eta": mc_p4[tau_mask].eta,
+            "phi": mc_p4[tau_mask].phi,
+            "energy": mc_p4[tau_mask].energy,
+        }
+    )
     gen_jets_p4 = ak.zip(
-                {
-                    "pt": gen_jets.pt,
-                    "eta": gen_jets.eta,
-                    "phi": gen_jets.phi,
-                    "energy": gen_jets.energy,
-                }
-            )
+        {
+            "pt": gen_jets.pt,
+            "eta": gen_jets.eta,
+            "phi": gen_jets.phi,
+            "energy": gen_jets.energy,
+        }
+    )
     tau_indices, gen_indices = match_jets(mc_tau_vec, gen_jets_p4, 999.9)
     pairs = []
     for tau_idx, gen_idx in zip(tau_indices, gen_indices):
@@ -359,7 +359,9 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
 
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
+    print("MCParticles", mc_p4)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
+    print("RecoParticles", reco_p4)
     # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
     # stable_pythia_mask = mc_particles["generatorStatus"] == 1
@@ -393,6 +395,7 @@ def process_all_input_files(input_data_dir: str, tree_path: str, branches: list,
         print(f"[{i}/{len(input_paths)}] Loading contents of {path}")
         start_time = time.time()
         arrays = load_single_file_contents(path, tree_path, branches)
+        print("ARRAYS 1", arrays)
         ########################################################################
         ############### Only temporarily apply mask for bad events #############
         tau_mask = (np.abs(arrays["MCParticles"]["MCParticles.PDG"]) == 15) & (
@@ -408,6 +411,7 @@ def process_all_input_files(input_data_dir: str, tree_path: str, branches: list,
         arrays = arrays[event_mask]
         ########################################################################
         ########################################################################
+        print("ARRAYS 2", arrays)
         data = process_input_file(arrays)
         file_name = os.path.basename(path).replace(".root", ".parquet")
         output_ntuple_path = os.path.join(output_dir, file_name)
