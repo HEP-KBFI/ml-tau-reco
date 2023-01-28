@@ -158,6 +158,8 @@ def check_rare_decaymode(pdg_ids):
 
 
 def get_event_decaymodes(j, tau_mask, mc_particles):
+    # Temporary fix because daughter indices is bigger than the nr of mc_particles
+    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[tau_mask][j], axis=0)
     return ak.from_iter(
         [
             get_decaymode(
@@ -165,7 +167,7 @@ def get_event_decaymodes(j, tau_mask, mc_particles):
                     range(mc_particles.daughters_begin[tau_mask][j][i], mc_particles.daughters_end[tau_mask][j][i])
                 ]
             )
-            for i in range(len(mc_particles.daughters_begin[tau_mask][j]))
+            for i in range(len(mc_particles.daughters_begin[tau_mask][j][daughter_mask]))
         ]
     )
 
@@ -190,10 +192,12 @@ def get_tau_vis_energy(mc_p4, mc_particles, tau_mask, i, j):
 
 
 def calculate_tau_visible_energies(j, tau_mask, mc_particles, mc_p4):
+    # Temporary fix because daughter indices is bigger than the nr of mc_particles
+    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[tau_mask][j], axis=0)
     return ak.from_iter(
         [
             get_tau_vis_energy(mc_p4, mc_particles, tau_mask, i, j)
-            for i in range(len(mc_particles.daughters_begin[tau_mask][j]))
+            for i in range(len(mc_particles.daughters_begin[tau_mask][j][daughter_mask]))
         ]
     )
 
@@ -262,7 +266,7 @@ def deltaphi(phi1, phi2):
     return np.fmod(phi1 - phi2 + np.pi, 2 * np.pi) - np.pi
 
 
-# @numba.njit
+@numba.njit
 def match_jets(jets1, jets2, deltaR_cut):
     iev = len(jets1)
     jet_inds_1_ev = []
@@ -314,10 +318,39 @@ def get_jet_constituent_charges(reco_particles, constituent_idx, num_ptcls_per_j
         [ak.unflatten(reco_charge_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
     )
 
+def to_vector(jet):
+    return vector.awk(
+        ak.zip(
+            {
+                "pt": jet.pt,
+                "eta": jet.eta,
+                "phi": jet.phi,
+                "energy": jet.energy,
+            }
+        )
+    )
+
+
+def to_fourvec(jet):
+    return vector.awk(
+        ak.zip(
+            {
+                "mass": jet.tau,
+                "x": jet.x,
+                "y": jet.y,
+                "z": jet.z,
+            }
+        )
+    )
+
 
 def get_matched_gen_jet_p4(reco_jets, gen_jets):
+    reco_jets = to_vector(reco_jets)
+    gen_jets = to_vector(gen_jets)
     reco_indices, gen_indices = match_jets(reco_jets, gen_jets, deltaR_cut=0.3)
-    return ak.from_iter([gen_jets[i][gen_idx] for i, gen_idx in enumerate(gen_indices)])
+    return reco_indices, gen_indices
+    # Muuta et reco jet arv ja gen jet arv oleks sama
+    # return ak.from_iter([gen_jets[i][gen_idx] for i, gen_idx in enumerate(gen_indices)])
 
 
 def get_matched_gen_tau_decaymode(gen_jets, best_combos, tau_decaymodes):
@@ -327,7 +360,11 @@ def get_matched_gen_tau_decaymode(gen_jets, best_combos, tau_decaymodes):
         gen_jet_info_array = []
         for i, gen_jet in enumerate(gen_jets[event_id]):
             if i in best_combos[event_id][:, 1]:
-                gen_jet_info_array.append(tau_decaymodes[event_id][mapping[i]])
+                if len(tau_decaymodes[event_id]) == 0:
+                    value = -1
+                else:
+                    value = tau_decaymodes[event_id][mapping[i]]
+                gen_jet_info_array.append(value)
             else:
                 gen_jet_info_array.append(-1)
         gen_jet_full_info_array.append(gen_jet_info_array)
@@ -341,7 +378,11 @@ def get_matched_gen_tau_vis_energy(gen_jets, best_combos, tau_energies):
         gen_jet_info_array = []
         for i, gen_jet in enumerate(gen_jets[event_id]):
             if i in best_combos[event_id][:, 1]:
-                gen_jet_info_array.append(tau_energies[event_id][mapping[i]])
+                if len(tau_energies[event_id]) == 0:
+                    value = -1
+                else:
+                    value = tau_energies[event_id][mapping[i]]
+                gen_jet_info_array.append(value)
             else:
                 gen_jet_info_array.append(-1)
         gen_jet_full_info_array.append(gen_jet_info_array)
@@ -359,27 +400,31 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
 
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
-    print("MCParticles", mc_p4)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
-    print("RecoParticles", reco_p4)
     # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
     # stable_pythia_mask = mc_particles["generatorStatus"] == 1
     # gen_jets, gen_jet_constituent_indices = cluster_jets(ak.Array(mc_p4[stable_pythia_mask]))
     gen_jets, gen_jet_constituent_indices = cluster_jets(mc_p4)
+    reco_indices, gen_indices  = get_matched_gen_jet_p4(reco_jets, gen_jets)
+    reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
+    reco_jets = to_fourvec(ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)]))
+    gen_jets = to_fourvec(ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)]))
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
     gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
     data = {
-        "event_reco_candidates": ak.from_iter([reco_p4[i] for i in range(len(reco_jets))]),
+        "event_reco_candidates": ak.from_iter([[reco_p4[i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]),
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_charge": get_jet_constituent_charges(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_pdg": get_jet_constituent_pdgs(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_jet_p4s": reco_jets,
-        "gen_jet_p4s": get_matched_gen_jet_p4(reco_jets, gen_jets),
+        "gen_jet_p4s": gen_jets,
         "gen_jet_tau_decaymode": gen_jet_tau_vis_energy,
         "gen_jet_tau_vis_energy": gen_jet_tau_decaymode,
     }
+    print(len(data['event_reco_candidates'][0]))
+    data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
     return data  # Testina saab kontrollida kas kõik sama shapega
 
 
@@ -395,23 +440,6 @@ def process_all_input_files(input_data_dir: str, tree_path: str, branches: list,
         print(f"[{i}/{len(input_paths)}] Loading contents of {path}")
         start_time = time.time()
         arrays = load_single_file_contents(path, tree_path, branches)
-        print("ARRAYS 1", arrays)
-        ########################################################################
-        ############### Only temporarily apply mask for bad events #############
-        tau_mask = (np.abs(arrays["MCParticles"]["MCParticles.PDG"]) == 15) & (
-            arrays["MCParticles"]["MCParticles.generatorStatus"] == 2
-        )
-        event_mask1 = ak.max(arrays["MCParticles"]["MCParticles.daughters_begin"][tau_mask], axis=1) < ak.num(
-            arrays["MCParticles"]["MCParticles.PDG"]
-        )
-        event_mask2 = ak.max(arrays["MCParticles"]["MCParticles.daughters_end"][tau_mask], axis=1) < ak.num(
-            arrays["MCParticles"]["MCParticles.PDG"]
-        )
-        event_mask = event_mask1 * event_mask2
-        arrays = arrays[event_mask]
-        ########################################################################
-        ########################################################################
-        print("ARRAYS 2", arrays)
         data = process_input_file(arrays)
         file_name = os.path.basename(path).replace(".root", ".parquet")
         output_ntuple_path = os.path.join(output_dir, file_name)
