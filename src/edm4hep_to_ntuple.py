@@ -318,6 +318,7 @@ def get_jet_constituent_charges(reco_particles, constituent_idx, num_ptcls_per_j
         [ak.unflatten(reco_charge_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
     )
 
+
 def to_vector(jet):
     return vector.awk(
         ak.zip(
@@ -406,7 +407,7 @@ def process_input_file(arrays: ak.Array):
     # stable_pythia_mask = mc_particles["generatorStatus"] == 1
     # gen_jets, gen_jet_constituent_indices = cluster_jets(ak.Array(mc_p4[stable_pythia_mask]))
     gen_jets, gen_jet_constituent_indices = cluster_jets(mc_p4)
-    reco_indices, gen_indices  = get_matched_gen_jet_p4(reco_jets, gen_jets)
+    reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
     reco_jets = to_fourvec(ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)]))
     gen_jets = to_fourvec(ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)]))
@@ -414,7 +415,9 @@ def process_input_file(arrays: ak.Array):
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
     gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
     data = {
-        "event_reco_candidates": ak.from_iter([[reco_p4[i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]),
+        "event_reco_candidates": ak.from_iter(
+            [[reco_p4[i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+        ),
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_charge": get_jet_constituent_charges(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_pdg": get_jet_constituent_pdgs(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
@@ -423,7 +426,7 @@ def process_input_file(arrays: ak.Array):
         "gen_jet_tau_decaymode": gen_jet_tau_vis_energy,
         "gen_jet_tau_vis_energy": gen_jet_tau_decaymode,
     }
-    print(len(data['event_reco_candidates'][0]))
+    print(len(data["event_reco_candidates"][0]))
     data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
     return data  # Testina saab kontrollida kas kõik sama shapega
 
