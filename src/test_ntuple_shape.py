@@ -4,7 +4,7 @@ import awkward as ak
 
 def test_data_shapes(file_path):
     data = ak.Array((ak.from_parquet(file_path).tolist()))
-    data = data[0] #  Just take first event temporarily
+    data = data[0]  #  Just take first event temporarily
 
 
 def level_one(data):
@@ -35,6 +35,6 @@ def level_two(data):
     assert reco_cand_pdg == reco_cand_charge
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     file_path = sys.argv[1]
     test_ntuple_shape(file_path)

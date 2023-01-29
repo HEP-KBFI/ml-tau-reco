@@ -1,11 +1,11 @@
-'''
+"""
 https://github.com/HEP-KBFI/ml-tau-reco/issues/10
 
 src/metrics.py  \
   --model outputs/hps/signal.parquet:outputs/hps/bkg.parquet:HPS \
   --model outputs/hps_deeptau/signal.parquet:outputs/hps_deeptau/bkg.parquet:HPS-DeepTau \
   ...
-'''
+"""
 # import os
 # import glob
 # import sys
