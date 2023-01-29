@@ -24,3 +24,5 @@ tqdm
 uproot
 vector
 zenodo_get
+hydra
+docopt
