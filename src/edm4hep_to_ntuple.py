@@ -1,25 +1,21 @@
-""" To run the script in our singularity image:
-           ./scripts/run-env.sh  src/edm4hep_to_ntuple.py IN OUT TEST
+"""Script for ntupelizing the EDM4HEP dataformat to ML friendly format. To run the script in our singularity image:
+           ./scripts/run-env.sh  src/edm4hep_to_ntuple.py [args]
+Call with 'python3'
 """
 
 import os
+import time
 import glob
-import sys
 import numba
 import uproot
+import hydra
 import vector
 import fastjet
 import numpy as np
 import awkward as ak
 import multiprocessing
 from itertools import repeat
-import time
-
-
-INPUT_DATA_DIR = "/local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380/"
-TREE_PATH = "events"
-TEST_RUN = True
-BRANCHES = ["MCParticles", "MergedRecoParticles"]
+from omegaconf import DictConfig
 
 
 def save_record_to_file(data: dict, output_path: str) -> None:
@@ -444,25 +440,18 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
     print(f"Finished processing in {end_time-start_time} s.")
 
 
-def process_all_input_files(input_data_dir: str, tree_path: str, branches: list, output_dir: str, test: bool) -> None:
-    os.makedirs(output_dir, exist_ok=True)
-    input_wcp = os.path.join(input_data_dir, "*.root")
-    if test:
+@hydra.main(config_path="../config", config_name="ntupelizer")
+def process_all_input_files(cfg: DictConfig) -> None:
+    os.makedirs(cfg.output_dir, exist_ok=True)
+    input_wcp = os.path.join(cfg.input_dir, "*.root")
+    if cfg.test_run:
         n_files = 1
     else:
         n_files = None
     input_paths = glob.glob(input_wcp)[:n_files]
-    # for i, path in enumerate(input_paths):
     pool = multiprocessing.Pool(processes=8)
-    pool.starmap(process_single_file, zip(input_paths, repeat(tree_path), repeat(branches), repeat(output_dir)))
+    pool.starmap(process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(cfg.output_dir)))
 
 
 if __name__ == "__main__":
-    input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
-    if sys.argv[3] == "test":
-        test = True
-    else:
-        test = False
-    print("Outputting ntuples to: ", output_dir)
-    process_all_input_files(input_dir, TREE_PATH, BRANCHES, output_dir, test=test)
+    process_all_input_files()
