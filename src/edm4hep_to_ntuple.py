@@ -11,6 +11,8 @@ import vector
 import fastjet
 import numpy as np
 import awkward as ak
+import multiprocessing
+from itertools import repeat
 import time
 
 
@@ -426,9 +428,20 @@ def process_input_file(arrays: ak.Array):
         "gen_jet_tau_decaymode": gen_jet_tau_vis_energy,
         "gen_jet_tau_vis_energy": gen_jet_tau_decaymode,
     }
-    print(len(data["event_reco_candidates"][0]))
     data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
     return data  # Testina saab kontrollida kas kõik sama shapega
+
+
+def process_single_file(input_path: str, tree_path: str, branches: list, output_dir: str):
+    # print(f"[{i}/{len(input_paths)}] Loading contents of {path}")
+    start_time = time.time()
+    arrays = load_single_file_contents(input_path, tree_path, branches)
+    data = process_input_file(arrays)
+    file_name = os.path.basename(input_path).replace(".root", ".parquet")
+    output_ntuple_path = os.path.join(output_dir, file_name)
+    save_record_to_file(data, output_ntuple_path)
+    end_time = time.time()
+    print(f"Finished processing in {end_time-start_time} s.")
 
 
 def process_all_input_files(input_data_dir: str, tree_path: str, branches: list, output_dir: str, test: bool) -> None:
@@ -439,16 +452,9 @@ def process_all_input_files(input_data_dir: str, tree_path: str, branches: list,
     else:
         n_files = None
     input_paths = glob.glob(input_wcp)[:n_files]
-    for i, path in enumerate(input_paths):
-        print(f"[{i}/{len(input_paths)}] Loading contents of {path}")
-        start_time = time.time()
-        arrays = load_single_file_contents(path, tree_path, branches)
-        data = process_input_file(arrays)
-        file_name = os.path.basename(path).replace(".root", ".parquet")
-        output_ntuple_path = os.path.join(output_dir, file_name)
-        save_record_to_file(data, output_ntuple_path)
-        end_time = time.time()
-        print(f"Finished processing in {end_time-start_time} s.")
+    # for i, path in enumerate(input_paths):
+    pool = multiprocessing.Pool(processes=8)
+    pool.starmap(process_single_file, zip(input_paths, repeat(tree_path), repeat(branches), repeat(output_dir)))
 
 
 if __name__ == "__main__":

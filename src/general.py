@@ -4,7 +4,7 @@ import awkward as ak
 
 
 def load_all_data(input_dir: str) -> ak.Array:
-    """ Loads all .parquet files from a given directory
+    """Loads all .parquet files from a given directory
 
     Args:
         input_dir : str
@@ -14,7 +14,7 @@ def load_all_data(input_dir: str) -> ak.Array:
         input_data : ak.Array
             The concatenated data from all the loaded files
     """
-    input_files = glob.glob(os.path.join(input_dir, '*.parquet'))
+    input_files = glob.glob(os.path.join(input_dir, "*.parquet"))
     input_data = []
     for file_path in input_files:
         input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
