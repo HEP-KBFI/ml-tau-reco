@@ -93,8 +93,8 @@ if __name__ == "__main__":
     # treat each input file like a batch
     for ibatch in range(len(ds)):
         batch = ds[ibatch]
-        print(ibatch, batch.jet_features.shape, batch.jet_pf_features.shape, batch.pf_to_jet.shape)
+        n_tau = torch.sum(batch.gen_tau_decaymode != -1)
+        print(ibatch, batch.jet_features.shape, batch.jet_pf_features.shape, batch.pf_to_jet.shape, n_tau)
         assert batch.jet_features.shape[0] == batch.gen_tau_decaymode.shape[0]
         assert batch.jet_features.shape[0] == batch.gen_tau_vis_energy.shape[0]
         assert batch.jet_pf_features.shape[0] == batch.pf_to_jet.shape[0]
-        print(batch.jet_features)
