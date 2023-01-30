@@ -5,8 +5,11 @@ from torch_geometric.data import Data, Dataset
 import os.path as osp
 from glob import glob
 
+# BEGIN OF TEMPORARY CODE
 # Temporary: generate an example input file with the correct format
 njet = 1000
+
+# generate a random number of PF candidats per jet
 jet_pfs = []
 for ijet in range(njet):
     ncand = np.random.randint(5, 20)
@@ -19,6 +22,7 @@ for ijet in range(njet):
     jet_pfs.append(pf)
 jet_pfs = ak.from_iter(jet_pfs)
 
+# generate the jet feature arrays
 data = ak.Record(
     {
         "reco_jet_p4s": {
@@ -31,15 +35,17 @@ data = ak.Record(
     }
 )
 
-ak.to_parquet(data, "data/test1.parquet")
-ak.to_parquet(data, "data/test2.parquet")
-ak.to_parquet(data, "data/test3.parquet")
+# save the data 3 times to replicate severael files
+ak.to_parquet(data, "test1.parquet")
+ak.to_parquet(data, "test2.parquet")
+ak.to_parquet(data, "test3.parquet")
+# END OF TEMPORARY CODE
 
 
 class TauJetDataset(Dataset):
     def __init__(self, path):
         # replace this with the actual generated files
-        self.path = "data/"
+        self.path = "./"
 
     @property
     def processed_file_names(self):
