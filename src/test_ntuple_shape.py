@@ -52,7 +52,7 @@ def level_two(data):
 if __name__ == "__main__":
     try:
         arguments = docopt.docopt(__doc__)
-        file_path = arguments['--file_path']
+        file_path = arguments["--file_path"]
         test_data_shapes(file_path)
     except docopt.DocoptExit as e:
         print(e)

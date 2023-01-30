@@ -157,7 +157,7 @@ def check_rare_decaymode(pdg_ids):
 
 def get_event_decaymodes(j, tau_mask, mc_particles):
     # Temporary fix because daughter indices is bigger than the nr of mc_particles
-    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[tau_mask][j], axis=0)
+    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[j], axis=0)
     return ak.from_iter(
         [
             get_decaymode(
@@ -191,7 +191,7 @@ def get_tau_vis_energy(mc_p4, mc_particles, tau_mask, i, j):
 
 def calculate_tau_visible_energies(j, tau_mask, mc_particles, mc_p4):
     # Temporary fix because daughter indices is bigger than the nr of mc_particles
-    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[tau_mask][j], axis=0)
+    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[j], axis=0)
     return ak.from_iter(
         [
             get_tau_vis_energy(mc_p4, mc_particles, tau_mask, i, j)
@@ -348,8 +348,6 @@ def get_matched_gen_jet_p4(reco_jets, gen_jets):
     gen_jets = to_vector(gen_jets)
     reco_indices, gen_indices = match_jets(reco_jets, gen_jets, deltaR_cut=0.3)
     return reco_indices, gen_indices
-    # Muuta et reco jet arv ja gen jet arv oleks sama
-    # return ak.from_iter([gen_jets[i][gen_idx] for i, gen_idx in enumerate(gen_indices)])
 
 
 def get_matched_gen_tau_decaymode(gen_jets, best_combos, tau_decaymodes):
@@ -421,8 +419,8 @@ def process_input_file(arrays: ak.Array):
         "reco_cand_pdg": get_jet_constituent_pdgs(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_jet_p4s": reco_jets,
         "gen_jet_p4s": gen_jets,
-        "gen_jet_tau_decaymode": gen_jet_tau_vis_energy,
-        "gen_jet_tau_vis_energy": gen_jet_tau_decaymode,
+        "gen_jet_tau_decaymode": gen_jet_tau_decaymode,
+        "gen_jet_tau_vis_energy": gen_jet_tau_vis_energy,
     }
     data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
     return data  # Testina saab kontrollida kas kõik sama shapega
