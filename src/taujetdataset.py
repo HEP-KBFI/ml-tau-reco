@@ -35,7 +35,7 @@ class TauJetDataset(Dataset):
         for feat in self.reco_jet_features:
             jet_feature_tensors.append(torch.tensor(jets[feat], dtype=torch.float32))
         jet_features = torch.stack(jet_feature_tensors, axis=-1)
-        return jet_features
+        return jet_features.to(dtype=torch.float32)
 
     def get_pf_features(self, jet_features: torch.Tensor, data: ak.Record) -> (torch.Tensor, torch.Tensor):
         pfs = {}
@@ -55,19 +55,19 @@ class TauJetDataset(Dataset):
         pf_per_jet = ak.num(pfs["pdg"], axis=1)
         pf_to_jet = torch.tensor(np.repeat(np.arange(len(jet_features)), pf_per_jet))
 
-        return pf_features, pf_to_jet
+        return pf_features.to(dtype=torch.float32), pf_to_jet.to(dtype=torch.long)
 
     def __getitem__(self, idx):
         # Load the n-th file
         data = ak.from_parquet(self.processed_file_names[idx])
 
         # collect all jet features
-        jet_features = self.get_jet_features(data).to(dtype=torch.float32)
+        jet_features = self.get_jet_features(data)
 
         # collect all jet PF candidate features
-        pf_features, pf_to_jet = self.get_pf_features(jet_features, data).to(dtype=torch.float32)
+        pf_features, pf_to_jet = self.get_pf_features(jet_features, data)
 
-        gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.float32)
+        gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
         gen_tau_vis_energy = torch.tensor(data["gen_jet_tau_vis_energy"]).to(dtype=torch.float32)
 
         # Data object with:
