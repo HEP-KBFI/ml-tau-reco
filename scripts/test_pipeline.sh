@@ -18,6 +18,9 @@ fi;
 python3 edm4hep_to_ntuple.py $INFILE_TAU ntuple_tau.parquet
 python3 edm4hep_to_ntuple.py $INFILE_QCD ntuple_qcd.parquet
 
+#Load generated dataset in pytorch
+python3 taujetdataset.py
+
 #run HPS -> hps.parquet
 #python3 reco_hps.py
 
