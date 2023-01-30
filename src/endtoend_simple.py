@@ -119,8 +119,8 @@ def count_parameters(model):
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
     ds = TauJetDataset(cfg.input_dir)
-    ds_train = Subset(ds, range(0, 40))
-    ds_val = Subset(ds, range(40, len(ds)))
+    ds_train = Subset(ds, range(0, cfg.ntrain))
+    ds_val = Subset(ds, range(cfg.ntrain, cfg.ntrain + cfg.ntest))
 
     print("Loaded TauJetDataset with {} files".format(len(ds)))
     ds_train_loader = DataLoader(ds_train, batch_size=1)

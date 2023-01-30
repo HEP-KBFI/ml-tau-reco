@@ -41,7 +41,7 @@ cd ..
 python3 src/taujetdataset.py ./src/
 
 #Load train an ultra-simple pytorch model
-python3 src/endtoend_simple.py input_dir=./src/ epochs=2
+python3 src/endtoend_simple.py input_dir=./src/ epochs=2 ntrain=1 ntest=1
 
 #run HPS -> hps.parquet
 #python3 reco_hps.py
