@@ -3,8 +3,10 @@ awkward
 boost_histogram
 click
 comet-ml
+docopt
 fastjet
 fsspec
+hydra-core
 jupyter
 jupyter-book
 matplotlib
