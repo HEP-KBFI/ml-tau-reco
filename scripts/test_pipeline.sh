@@ -4,7 +4,7 @@
 cd src
 INFILE_TAU=/local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380/reco_p8_ee_ZH_Htautau_ecm380_1.root
 if [ ! -f "$INFILE_TAU" ]; then
-    wget --directory-prefix ZH_Htautau -q --no-check-certificate -nc https://jpata.web.cern.ch/jpata/mlpf/clic_edm4hep/reco_p8_ee_tt_ecm365_1.root
+    wget --directory-prefix ZH_Htautau -q --no-check-certificate -nc https://jpata.web.cern.ch/jpata/mlpf/clic_edm4hep/reco_p8_ee_ZH_Htautau_ecm380_1.root 
     INFILE_TAU_DIR=$PWD/ZH_Htautau
     TAU_FILENAME=reco_p8_ee_tt_ecm365_*.parquet
 else

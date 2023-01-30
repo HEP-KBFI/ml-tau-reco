@@ -208,8 +208,72 @@ def get_tau_energies(tau_mask, mc_particles, mc_p4):
 
 ###############################################################################
 ###############################################################################
+###############              GET ALL TAU DAUGHTERS               ##############
 ###############################################################################
 ###############################################################################
+
+
+def find_tau_daughters_all_generations(mc_particles, tau_mask):
+    tau_daughters_all_events = []
+    for event_idx in range(len(mc_particles.daughters_begin)):
+        daughter_mask = mc_particles.daughters_end[tau_mask][event_idx] < ak.num(
+            mc_particles.daughters_begin[event_idx], axis=0
+        )
+        tau_daughter_indices = []
+        for daughter_idx in range(len(mc_particles.daughters_begin[tau_mask][event_idx][daughter_mask])):
+            daughters = list(
+                range(
+                    mc_particles.daughters_begin[tau_mask][event_idx][daughter_mask][daughter_idx],
+                    mc_particles.daughters_end[tau_mask][event_idx][daughter_mask][daughter_idx],
+                )
+            )
+            tau_daughter_indices.extend(daughters)
+        event_tau_daughters_begin = mc_particles.daughters_begin[event_idx]
+        event_tau_daughters_end = mc_particles.daughters_end[event_idx]
+        all_tau_daughter_indices = get_event_tau_daughters(
+            tau_daughter_indices, event_tau_daughters_begin, event_tau_daughters_end, mc_particles, event_idx
+        )
+        tau_daughters_all_events.append(all_tau_daughter_indices)
+    return tau_daughters_all_events
+
+
+def get_event_tau_daughters(
+    tau_daughter_indices, event_tau_daughters_begin, event_tau_daughters_end, mc_particles, event_idx
+):
+    all_tau_daughter_indices = []
+    all_tau_daughter_indices.extend(tau_daughter_indices)
+    while len(tau_daughter_indices) != 0:
+        new_tau_daughter_indices = []
+        for tau_daughter_idx in tau_daughter_indices:
+            daughter_mask = event_tau_daughters_end[tau_daughter_idx] < ak.num(
+                mc_particles.daughters_begin[event_idx], axis=0
+            )
+            if len(mc_particles.daughters_begin[event_idx][tau_daughter_idx][daughter_mask]) > 0:
+                daughters = list(
+                    range(
+                        event_tau_daughters_begin[tau_daughter_idx][daughter_mask][0],
+                        event_tau_daughters_end[tau_daughter_idx][daughter_mask][0],
+                    )
+                )
+                new_tau_daughter_indices.extend(daughters)
+        tau_daughter_indices = new_tau_daughter_indices
+        all_tau_daughter_indices.extend(new_tau_daughter_indices)
+    return all_tau_daughter_indices
+
+
+def get_jet_matched_constituent_gen_energy(arrays, constituent_idx, num_ptcls_per_jet, mc_p4, gen_tau_daughters):
+    maps = []
+    for ridx, midx in zip(arrays["idx_reco"], arrays["idx_mc"]):
+        maps.append(dict(zip(ridx, midx)))
+    flat_indices = ak.flatten(constituent_idx, axis=-1)
+    gen_energies = ak.from_iter(
+        [
+            ak.from_iter([mc_p4[ev_i][map_[i]].energy if i in map_.keys() else -1 for i in ev])
+            for ev_i, (ev, map_) in enumerate(zip(flat_indices, maps))
+        ]
+    )
+    ret = ak.from_iter([ak.unflatten(gen_energies[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))])
+    return ret
 
 
 ###############################################################################
@@ -410,6 +474,7 @@ def process_input_file(arrays: ak.Array):
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
     gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
+    gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask)
     data = {
         "event_reco_candidates": ak.from_iter(
             [[reco_p4[i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
@@ -421,9 +486,12 @@ def process_input_file(arrays: ak.Array):
         "gen_jet_p4s": gen_jets,
         "gen_jet_tau_decaymode": gen_jet_tau_decaymode,
         "gen_jet_tau_vis_energy": gen_jet_tau_vis_energy,
+        "reco_cand_matched_gen_energy": get_jet_matched_constituent_gen_energy(
+            arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters
+        ),
     }
     data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
-    return data  # Testina saab kontrollida kas kõik sama shapega
+    return data
 
 
 def process_single_file(input_path: str, tree_path: str, branches: list, output_dir: str):
