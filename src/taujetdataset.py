@@ -15,7 +15,7 @@ class TauJetDataset(Dataset):
     @property
     def processed_file_names(self):
         raw_list = glob(osp.join(self.path, "*.parquet"))
-        assert(len(raw_list)>0)
+        assert len(raw_list) > 0
         return sorted(raw_list)
 
     def __len__(self):
@@ -63,7 +63,8 @@ class TauJetDataset(Dataset):
 
 if __name__ == "__main__":
     ds = TauJetDataset(sys.argv[1])
+    print("Loaded TauJetDataset with {} files".format(len(ds)))
     # treat each input file like a batch
     for ibatch in range(len(ds)):
         batch = ds[ibatch]
-        print(batch.jet_features.shape, batch.jet_pf_features.shape, batch.pf_to_jet.shape)
+        print(ibatch, batch.jet_features.shape, batch.jet_pf_features.shape, batch.pf_to_jet.shape)

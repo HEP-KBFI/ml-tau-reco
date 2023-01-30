@@ -1,5 +1,6 @@
 #!/bin/bash
-
+set -e
+set -x
 
 cd src
 
@@ -26,7 +27,7 @@ python3 edm4hep_to_ntuple.py input_dir=$INFILE_QCD_DIR output_dir=$PWD test_run=
 
 find . -type f -name "*.parquet"
 
-TAU_FILENAME=reco_p8_ee_tt_ecm365_*.parquet
+TAU_FILENAME=reco_p8_ee_ZH_Htautau_ecm380_*.parquet
 QCD_FILENAME=reco_p8_ee_qcd_ecm380_*.parquet
 
 TAU_FILES=( $TAU_FILENAME )

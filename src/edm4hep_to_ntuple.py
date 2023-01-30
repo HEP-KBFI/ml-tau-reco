@@ -508,6 +508,7 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
 
 @hydra.main(config_path="../config", config_name="ntupelizer")
 def process_all_input_files(cfg: DictConfig) -> None:
+    print("Working directory : {}".format(os.getcwd()))
     os.makedirs(cfg.output_dir, exist_ok=True)
     input_wcp = os.path.join(cfg.input_dir, "*.root")
     if cfg.test_run:
