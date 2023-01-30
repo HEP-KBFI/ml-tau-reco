@@ -45,7 +45,7 @@ ak.to_parquet(data, "test3.parquet")
 class TauJetDataset(Dataset):
     def __init__(self, path):
         # replace this with the actual generated files
-        self.path = "./"
+        self.path = path
 
     @property
     def processed_file_names(self):
@@ -94,7 +94,7 @@ class TauJetDataset(Dataset):
 
 
 if __name__ == "__main__":
-    ds = TauJetDataset()
+    ds = TauJetDataset("./")
     # treat each input file like a batch
     for batch in ds:
         print(batch.jet_features.shape, batch.jet_pf_features.shape, batch.pf_to_jet.shape)
