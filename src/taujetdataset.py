@@ -91,4 +91,4 @@ if __name__ == "__main__":
     ds = TauJetDataset()
     # treat each input file like a batch
     for batch in ds:
-        print(batch.jet_features.shape, batch.jet_pf_features.shape)
+        print(batch.jet_features.shape, batch.jet_pf_features.shape, batch.pf_to_jet.shape)
