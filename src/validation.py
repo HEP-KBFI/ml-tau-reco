@@ -21,7 +21,7 @@ def validate_ntuples(cfg: DictConfig) -> None:
         plot_reco_jet_energy_cm(data, jet_en_cm_path)
         jet_en_cm_path = os.path.join(sample_output_dir, "cand_energy_reco.png")
         plot_reco_vs_gen_cand_energy_cm(data, jet_en_cm_path)
-        plot_reco_cand_properties(data, ['pt', 'px', 'py', 'pz'], sample_output_dir)
+        plot_reco_cand_properties(data, ["pt", "px", "py", "pz"], sample_output_dir)
 
 
 def plot_reco_jet_energy_cm(data, output_path):
@@ -45,7 +45,7 @@ def plot_reco_jet_energy_cm(data, output_path):
         left_bin_edge=np.min([reco_jet_en, gen_jet_en]),
         right_bin_edge=np.max([reco_jet_en, gen_jet_en]),
         y_label="Reconstructed jet energy",
-        x_label="Gen visible tau energy"
+        x_label="Gen visible tau energy",
     )
 
 
@@ -70,7 +70,7 @@ def plot_reco_vs_gen_cand_energy_cm(data, output_path):
         left_bin_edge=np.min([reco_cand_energy, gen_energy]),
         right_bin_edge=np.max([reco_cand_energy, gen_energy]),
         y_label="Reco candidate energy",
-        x_label="Matched gen energy"
+        x_label="Matched gen energy",
     )
 
 
@@ -94,7 +94,7 @@ def plot_reco_cand_properties(data, properties: list, output_dir: str):
             output_path=output_path,
             left_bin_edge=min(entries),
             right_bin_edge=max(entries),
-            title=property_
+            title=property_,
         )
 
 

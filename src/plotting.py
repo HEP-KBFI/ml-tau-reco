@@ -83,14 +83,7 @@ def plot_regression_confusion_matrix(
     ax.set_aspect("equal")
     ax.set_ylabel(f"{y_label}")
     ax.set_xlabel(f"{x_label}")
-    plt.title(
-        title,
-        fontsize=18,
-        loc="center",
-        fontweight="bold",
-        style="italic",
-        family="monospace"
-    )
+    plt.title(title, fontsize=18, loc="center", fontweight="bold", style="italic", family="monospace")
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
 
@@ -105,9 +98,9 @@ def plot_classification_confusion_matrix(
     y_label: str = "Prediction",
     x_label: str = "Truth",
     title: str = "",
-    figsize: tuple = (12, 12)
+    figsize: tuple = (12, 12),
  ) -> None:
-    """ Plots the confusion matrix for the classification task. Confusion
+    """Plots the confusion matrix for the classification task. Confusion
     matrix functions has the categories in the other way in order to have the
     truth on the x axis.
     Args:
@@ -145,17 +138,19 @@ def plot_classification_confusion_matrix(
     plt.yticks(tick_values + 0.2, categories, fontsize=14, rotation=90)
     plt.xlabel(f"{x_label}", fontdict={"size": 14})
     plt.ylabel(f"{y_label}", fontdict={"size": 14})
-    ax.tick_params(axis=u"both", which=u"both", length=0)
+    ax.tick_params(axis="both", which="both", length=0)
     for i in range(len(ybins) - 1):
         for j in range(len(xbins) - 1):
             bin_value = histogram.T[i, j]
             ax.text(
-                xbins[j]+0.5, ybins[i]+0.5,
+                xbins[j]+0.5,
+                ybins[i]+0.5,
                 f"{bin_value:.2f}",
                 color=bin_text_color,
                 ha="center",
                 va="center",
-                fontweight="bold")
+                fontweight="bold",
+            )
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
 
@@ -169,9 +164,9 @@ def plot_histogram(
     figsize: tuple = (12, 12),
     y_label: str = "",
     x_label: str = "",
-    title: str = ""
+    title: str = "",
 ) -> None:
-    """ Plots the confusion matrix for the regression task. Although confusion
+    """Plots the confusion matrix for the regression task. Although confusion
     matrix is in principle meant for classification task, the problem can be
     solved by binning the predictions and truth values.
 
