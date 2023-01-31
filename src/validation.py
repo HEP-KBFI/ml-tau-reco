@@ -1,6 +1,8 @@
 import os
 import hydra
 import vector
+import numpy as np
+import awkward as ak
 import plotting as pl
 from omegaconf import DictConfig
 from general import load_all_data
@@ -87,12 +89,12 @@ def plot_reco_cand_properties(data, properties: list, output_dir: str):
         x = getattr(reco_cand_p4, property_)
         entries = ak.flatten(getattr(reco_cand_p4, property_), axis=-1)
         output_path = os.path.join(output_dir, f"{property_}.png")
-        plot_histogram(
-                entries=entries,
-                output_path=output_path,
-                left_bin_edge=min(entries),
-                right_bin_edge=max(entries),
-                title=property_
+        pl.plot_histogram(
+            entries=entries,
+            output_path=output_path,
+            left_bin_edge=min(entries),
+            right_bin_edge=max(entries),
+            title=property_
         )
 
 
