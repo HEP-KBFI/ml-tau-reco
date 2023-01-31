@@ -9,19 +9,14 @@ src/metrics.py  \
 # import os
 # import glob
 # import sys
-# import uproot
-# import awkward as ak
 # import numpy as np
 # import matplotlib.pyplot as plt
 # from sklearn.metrics import confusion_matrix
 from general import load_all_data
+from plottings import plot_roc
 
 
 def plot_eff_fake(sig_data, bkg_data):
-    pass
-
-
-def plot_roc(sig_data, bkg_data):
     pass
 
 

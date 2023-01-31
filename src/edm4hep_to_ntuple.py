@@ -16,6 +16,7 @@ import awkward as ak
 import multiprocessing
 from itertools import repeat
 from omegaconf import DictConfig
+from general import get_decaymode
 
 
 def save_record_to_file(data: dict, output_path: str) -> None:
@@ -84,80 +85,9 @@ def cluster_jets(particles_p4):
 ###############################################################################
 
 
-def get_decaymode(pdg_ids):
-    """Tau decaymodes are the following:
-    decay_mode_mapping = {
-        0: 'OneProng0PiZero',
-        1: 'OneProng1PiZero',
-        2: 'OneProng2PiZero',
-        3: 'OneProng3PiZero',
-        4: 'OneProngNPiZero',
-        5: 'TwoProng0PiZero',
-        6: 'TwoProng1PiZero',
-        7: 'TwoProng2PiZero',
-        8: 'TwoProng3PiZero',
-        9: 'TwoProngNPiZero',
-        10: 'ThreeProng0PiZero',
-        11: 'ThreeProng1PiZero',
-        12: 'ThreeProng2PiZero',
-        13: 'ThreeProng3PiZero',
-        14: 'ThreeProngNPiZero',
-        15: 'RareDecayMode'
-    }
-    0: [0, 5, 10]
-    1: [1, 6, 11]
-    2: [2, 3, 4, 7, 8, 9, 12, 13, 14, 15]
-    """
-    pdg_ids = np.abs(np.array(pdg_ids))
-    unique, counts = np.unique(pdg_ids, return_counts=True)
-    p_counts = {i: 0 for i in [16, 111, 211, 13, 14, 12, 11, 22]}
-    p_counts.update(dict(zip(unique, counts)))
-    if check_rare_decaymode(pdg_ids):
-        return 15
-    if np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 1 and p_counts[111] == 0:
-        return 0
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 1 and p_counts[111] == 1:
-        return 1
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 1 and p_counts[111] == 2:
-        return 2
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 1 and p_counts[111] == 3:
-        return 3
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 1 and p_counts[111] > 3:
-        return 4
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 2 and p_counts[111] == 0:
-        return 5
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 2 and p_counts[111] == 1:
-        return 6
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 2 and p_counts[111] == 2:
-        return 7
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 2 and p_counts[111] == 3:
-        return 8
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 2 and p_counts[111] > 3:
-        return 9
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 3 and p_counts[111] == 0:
-        return 10
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 3 and p_counts[111] == 1:
-        return 11
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 3 and p_counts[111] == 2:
-        return 12
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 3 and p_counts[111] == 3:
-        return 13
-    elif np.sum(p_counts[211] + p_counts[11] + p_counts[13]) == 3 and p_counts[111] > 3:
-        return 14
-    else:
-        return 15
-
-
-def check_rare_decaymode(pdg_ids):
-    """The common particles in order are tau-neutrino, pi0, pi+, mu,
-    mu-neutrino, electron-neutrino, electron, photon"""
-    common_particles = [16, 111, 211, 13, 14, 12, 11, 22]
-    return sum(np.in1d(pdg_ids, common_particles)) != len(pdg_ids)
-
-
 def get_event_decaymodes(j, tau_mask, mc_particles):
     # Temporary fix because daughter indices is bigger than the nr of mc_particles
-    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[j], axis=0)
+    daughter_mask = mc_particles.daughters_end[tau_mask][j] < ak.num(mc_particles.daughters_begin[j], axis=0)
     return ak.from_iter(
         [
             get_decaymode(
@@ -181,29 +111,23 @@ def get_all_tau_decaymodes(mc_particles, tau_mask):
 ###############################################################################
 
 
-def get_tau_vis_energy(mc_p4, mc_particles, tau_mask, i, j):
-    range_ = range(mc_particles.daughters_begin[tau_mask][j][i], mc_particles.daughters_end[tau_mask][j][i])
-    PDG_ids = np.abs(mc_particles.PDG[j][range_])
-    energies = mc_p4.energy[j][range_]
-    vis_particle_map = (PDG_ids != 12) * (PDG_ids != 14) * (PDG_ids != 16)
-    return ak.sum(energies[vis_particle_map])
-
-
-def calculate_tau_visible_energies(j, tau_mask, mc_particles, mc_p4):
-    # Temporary fix because daughter indices is bigger than the nr of mc_particles
-    daughter_mask = mc_particles.daughters_begin[tau_mask][j] < ak.num(mc_particles.daughters_begin[j], axis=0)
-    return ak.from_iter(
-        [
-            get_tau_vis_energy(mc_p4, mc_particles, tau_mask, i, j)
-            for i in range(len(mc_particles.daughters_begin[tau_mask][j][daughter_mask]))
-        ]
-    )
-
-
 def get_tau_energies(tau_mask, mc_particles, mc_p4):
-    return ak.from_iter(
-        [calculate_tau_visible_energies(j, tau_mask, mc_particles, mc_p4) for j in range(len(mc_particles.PDG[tau_mask]))]
-    )
+    all_events_tau_vis_energies = []
+    for e_idx in range(len(mc_particles.PDG[tau_mask])):
+        daughter_mask = mc_particles.daughters_end[tau_mask][e_idx] < ak.num(mc_particles.daughters_begin[e_idx], axis=0)
+        n_daughters = len(mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask])
+        tau_vis_energies = []
+        for d_idx in range(n_daughters):
+            daughter_indices = range(
+                mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask][d_idx],
+                mc_particles.daughters_end[tau_mask][e_idx][daughter_mask][d_idx],
+            )
+            energies = mc_p4.energy[e_idx][daughter_indices]
+            PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
+            vis_particle_map = (PDG_ids != 12) * (PDG_ids != 14) * (PDG_ids != 16)
+            tau_vis_energies.append(ak.sum(energies[vis_particle_map], axis=0))
+        all_events_tau_vis_energies.append(tau_vis_energies)
+    return all_events_tau_vis_energies
 
 
 ###############################################################################
@@ -283,13 +207,14 @@ def get_jet_matched_constituent_gen_energy(arrays, constituent_idx, num_ptcls_pe
 ###############################################################################
 
 
-def get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask):
+def get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, daughter_mask):
+    # daughter mask addition needed
     mc_tau_vec = ak.zip(
         {
-            "pt": mc_p4[tau_mask].pt,
-            "eta": mc_p4[tau_mask].eta,
-            "phi": mc_p4[tau_mask].phi,
-            "energy": mc_p4[tau_mask].energy,
+            "pt": mc_p4[tau_mask][daughter_mask].pt,
+            "eta": mc_p4[tau_mask][daughter_mask].eta,
+            "phi": mc_p4[tau_mask][daughter_mask].phi,
+            "energy": mc_p4[tau_mask][daughter_mask].energy,
         }
     )
     gen_jets_p4 = ak.zip(
@@ -420,12 +345,15 @@ def get_matched_gen_tau_decaymode(gen_jets, best_combos, tau_decaymodes):
         mapping = {i[1]: i[0] for i in best_combos[event_id]}
         gen_jet_info_array = []
         for i, gen_jet in enumerate(gen_jets[event_id]):
-            if i in best_combos[event_id][:, 1]:
-                if len(tau_decaymodes[event_id]) == 0:
-                    value = -1
+            if len(best_combos[event_id]) > 0:
+                if i in best_combos[event_id][:, 1]:
+                    if len(tau_decaymodes[event_id]) == 0:
+                        value = -1
+                    else:
+                        value = tau_decaymodes[event_id][mapping[i]]
+                    gen_jet_info_array.append(value)
                 else:
-                    value = tau_decaymodes[event_id][mapping[i]]
-                gen_jet_info_array.append(value)
+                    gen_jet_info_array.append(-1)
             else:
                 gen_jet_info_array.append(-1)
         gen_jet_full_info_array.append(gen_jet_info_array)
@@ -438,12 +366,15 @@ def get_matched_gen_tau_vis_energy(gen_jets, best_combos, tau_energies):
         mapping = {i[1]: i[0] for i in best_combos[event_id]}
         gen_jet_info_array = []
         for i, gen_jet in enumerate(gen_jets[event_id]):
-            if i in best_combos[event_id][:, 1]:
-                if len(tau_energies[event_id]) == 0:
-                    value = -1
+            if len(best_combos[event_id]) > 0:
+                if i in best_combos[event_id][:, 1]:
+                    if len(tau_energies[event_id]) == 0:
+                        value = -1
+                    else:
+                        value = tau_energies[event_id][mapping[i]]
+                    gen_jet_info_array.append(value)
                 else:
-                    value = tau_energies[event_id][mapping[i]]
-                gen_jet_info_array.append(value)
+                    gen_jet_info_array.append(-1)
             else:
                 gen_jet_info_array.append(-1)
         gen_jet_full_info_array.append(gen_jet_info_array)
@@ -451,7 +382,8 @@ def get_matched_gen_tau_vis_energy(gen_jets, best_combos, tau_energies):
 
 
 def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
-    best_combos = get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask)
+    daughter_mask = mc_particles.daughters_end[tau_mask] < ak.num(mc_particles.daughters_begin, axis=-1)
+    best_combos = get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, daughter_mask)
     tau_energies = get_tau_energies(tau_mask, mc_particles, mc_p4)
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask)
     tau_gen_jet_vis_energies = get_matched_gen_tau_vis_energy(gen_jets, best_combos, tau_energies)
@@ -465,7 +397,8 @@ def process_input_file(arrays: ak.Array):
     # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
     # stable_pythia_mask = mc_particles["generatorStatus"] == 1
-    # gen_jets, gen_jet_constituent_indices = cluster_jets(ak.Array(mc_p4[stable_pythia_mask]))
+    # mc_particles = ak.Array({field: ak.Array(mc_particles[field][stable_pythia_mask]) for field in mc_particles.fields})
+    # mc_p4 = ak.mask(mc_p4, stable_pythia_mask)
     gen_jets, gen_jet_constituent_indices = cluster_jets(mc_p4)
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
