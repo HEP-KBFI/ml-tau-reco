@@ -1,3 +1,8 @@
+# Installation
+
+git clone git@github.com:HEP-KBFI/ml-tau-reco.git
+
+(as we run everything using a common singularity image no further software installation is needed)
 
 # Housekeeping
 
@@ -29,3 +34,19 @@ Open an SSH tunnel for the notebook from your laptop to manivald, replacing XXXX
 [laptop] ssh -N -f -L XXXX:localhost:XXXX MYUSER@manivald.hep.kbfi.ee
 ```
 Navigate from your laptop browser to the notebook address that begins with `https://localhost:XXXX`.
+
+# Producing the general Ntuples
+
+TODO
+
+# Running your tauBuilder
+
+To run your tauBuilder code on the general Ntuples and produce tauBuilder tuples for the metric evaluation adapt ```src/runTauBuilder.py``` and run:
+```
+[manivald] ./scripts/run-env.sh src/runTauBuilder.py -n NFILES -i NTUPLEINPUTDIR -o OUTPUTTUPLEDIR -b YOURBUILDERCLASS
+```
+to run on all available ntuples run with ``` -n -1 ```
+
+# Running the metric checks on the tauBuilder tuples
+
+TODO
