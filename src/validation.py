@@ -96,21 +96,5 @@ def plot_reco_cand_properties(data, properties: list, output_dir: str):
         )
 
 
-def plot_reco_jet_energy_cm(data, output_path):
-    gen_dm = data.gen_jet_tau_decaymode
-    reco_dm = data.reco_jet_tau_decaymode
-    gen_dm = (gen_dm[gen_dm != -1]).to_numpy()
-    reco_dm = (reco_dm[gen_dm != -1]).to_numpy()
-    pl.plot_classification_confusion_matrix(
-        y_true=gen_dm,
-        y_pred=reco_dm,
-        output_path=output_path,
-        left_bin_edge=np.min([reco_dm, gen_dm]),
-        right_bin_edge=np.max([reco_dm, gen_dm]),
-        y_label="Reconstructed jet energy",
-        x_label="Gen visible tau energy"
-    )
-
-
 if __name__ == "__main__":
     validate_ntuples()

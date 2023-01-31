@@ -55,13 +55,7 @@ def calculate_p4(p_type: str, arrs: ak.Array):
     return particles, particle_p4
 
 
-def get_stable_mc_particles(mc_particles, mc_p4):
-    stable_pythia_mask = mc_particles["generatorStatus"] == 1
-    stable_mc_p4 = mc_p4[stable_pythia_mask]
-    return stable_mc_p4
-
-
-def cluster_jets(particles_p4):
+def cluster_reco_jets(particles_p4):
     jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
     # This workaround here is also only temporary due to incorrect object
     # initialization, see: https://github.com/scikit-hep/fastjet/issues/174
@@ -76,6 +70,13 @@ def cluster_jets(particles_p4):
     jets = ak.from_iter(jets)
     jets = vector.awk(ak.zip({"mass": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
     return jets, constituent_index
+
+
+def cluster_gen_jets(particles_p4):
+    jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
+    cluster = fastjet.ClusterSequence(particles_p4, jetdef)
+    jets = vector.awk(cluster.inclusive_jets(min_pt=2.0))
+    return jets
 
 
 ###############################################################################
@@ -320,16 +321,7 @@ def to_vector(jet):
 
 
 def to_fourvec(jet):
-    return vector.awk(
-        ak.zip(
-            {
-                "mass": jet.tau,
-                "x": jet.x,
-                "y": jet.y,
-                "z": jet.z,
-            }
-        )
-    )
+    return vector.awk(ak.zip({"mass": jet.tau, "x": jet.x, "y": jet.y, "z": jet.z}))
 
 
 def get_matched_gen_jet_p4(reco_jets, gen_jets):
@@ -391,19 +383,39 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
     return tau_gen_jet_vis_energies, tau_gen_jet_decaymodes
 
 
+def get_stable_mc_particles(mc_particles, mc_p4):
+    stable_pythia_mask = mc_particles["generatorStatus"] == 1
+    stable_mc_particles = ak.Array(
+        {field: ak.Array(mc_particles[field][stable_pythia_mask]) for field in mc_particles.fields}
+    )
+    stable_mc_p4 = ak.mask(mc_p4, stable_pythia_mask)
+    stable_mc_p4 = vector.awk(
+        ak.zip(
+            {
+                "mass": stable_mc_p4["tau"],
+                "x": stable_mc_p4["x"],
+                "y": stable_mc_p4["y"],
+                "z": stable_mc_p4["z"],
+            }
+        )
+    )
+    return stable_mc_p4, stable_mc_particles
+
+
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
     # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
-    reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
-    # stable_pythia_mask = mc_particles["generatorStatus"] == 1
-    # mc_particles = ak.Array({field: ak.Array(mc_particles[field][stable_pythia_mask]) for field in mc_particles.fields})
-    # mc_p4 = ak.mask(mc_p4, stable_pythia_mask)
-    gen_jets, gen_jet_constituent_indices = cluster_jets(mc_p4)
+    reco_jets, reco_jet_constituent_indices = cluster_reco_jets(reco_p4)
+    stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
+    # gen_jets = cluster_gen_jets(stable_mc_p4)
+    gen_jets = cluster_gen_jets(mc_p4)
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
-    reco_jets = to_fourvec(ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)]))
-    gen_jets = to_fourvec(ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)]))
+    reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
+    reco_jets = vector.awk(ak.zip({"mass": reco_jets.tau, "x": reco_jets.x, "y": reco_jets.y, "z": reco_jets.z}))
+    gen_jets = ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)])
+    gen_jets = vector.awk(ak.zip({"mass": gen_jets.t, "x": gen_jets.x, "y": gen_jets.y, "z": gen_jets.z}))
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
     gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
