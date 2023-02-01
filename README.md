@@ -23,6 +23,18 @@ To ensure no formatting issues from people using different editors, run the foll
 
 The repository is set up to test the basic functionality of the code in a [Github action](https://github.com/HEP-KBFI/ml-tau-reco/actions/workflows/test.yml), configured in [test.yml](.github/workflows/test.yml) which launches [scripts/test_pipeline.sh](scripts/test_pipeline.sh).
 
+# Contributing
+
+In order to push code, put your new code in a new branch and push it:
+```
+git checkout main
+git pull origin
+git checkout -b my_new_feature_branch
+git commit ...
+git push origin my_new_feature_branch
+```
+Then open a PR on github for your new branch. Basic tests should pass and your code should run in the tests to ensure it's usable by others.
+
 # Jupyter notebook
 
 Launch the notebook server on manivald once
