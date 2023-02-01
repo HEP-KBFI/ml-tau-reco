@@ -2,6 +2,7 @@ import numpy as np
 import awkward as ak
 from abc import ABC, abstractmethod
 
+
 class BasicTauBuilder(ABC):
     def __init__(self, config=dict()):
         self._builderConfig = config
