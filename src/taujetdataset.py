@@ -8,8 +8,8 @@ from glob import glob
 
 
 class TauJetDataset(Dataset):
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, filelist=[]):
+        self.filelist = filelist
 
         # The order of features in the jet feature tensor
         self.reco_jet_features = ["x", "y", "z", "tau"]
@@ -19,9 +19,7 @@ class TauJetDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        raw_list = glob(osp.join(self.path, "*.parquet"))
-        assert len(raw_list) > 0
-        return sorted(raw_list)
+        return self.filelist
 
     def __len__(self):
         return len(self.processed_file_names)
@@ -57,10 +55,7 @@ class TauJetDataset(Dataset):
 
         return pf_features.to(dtype=torch.float32), pf_to_jet.to(dtype=torch.long)
 
-    def __getitem__(self, idx):
-        # Load the n-th file
-        data = ak.from_parquet(self.processed_file_names[idx])
-
+    def process_file_data(self, data):
         # collect all jet features
         jet_features = self.get_jet_features(data)
 
@@ -75,19 +70,25 @@ class TauJetDataset(Dataset):
         #   - jet PF candidates (jet_pf_features, pf_to_jet)
         #   - generator level target (gen_tau_decaymode, gen_tau_vis_energy)
 
-        data = Data(
+        ret_data = Data(
             jet_features=jet_features,  # (Njet x Nfeat_jet) of jet features
             jet_pf_features=pf_features,  # (Ncand x Nfeat_cand) of PF features
             pf_to_jet=pf_to_jet,  # (Ncand x 1) index of PF candidate to jet
             gen_tau_decaymode=gen_tau_decaymode,  # (Njet x 1) of gen tau decay mode or -1
             gen_tau_vis_energy=gen_tau_vis_energy,  # (Njet x 1) of gen tau visible energy or -1
         )
+        return ret_data
 
-        return data
+    def __getitem__(self, idx):
+        # Load the n-th file
+        data = ak.from_parquet(self.processed_file_names[idx])
+        ret_data = self.process_file_data(data)
+        return ret_data
 
 
 if __name__ == "__main__":
-    ds = TauJetDataset(sys.argv[1])
+    filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
+    ds = TauJetDataset(filelist)
     print("Loaded TauJetDataset with {} files".format(len(ds)))
 
     # treat each input file like a batch

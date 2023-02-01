@@ -2,7 +2,8 @@
 set -e
 set -x
 
-mkdir ntuple
+mkdir -p ntuple
+mkdir -p data
 cd ntuple
 
 #Download test files if they don't exist
@@ -43,15 +44,19 @@ ls
 #Load the dataset in pytorch
 python3 src/taujetdataset.py ./ntuple/
 
-#Load train an ultra-simple pytorch model
-python3 src/endtoend_simple.py input_dir=./ntuple/ epochs=2 ntrain=1 ntest=1
+#Train an ultra-simple pytorch model
+python3 src/endtoend_simple.py input_dir_QCD=./ntuple/ input_dir_ZH_Htautau=./ntuple/ epochs=2 ntrain=1 nval=1
 
 #run oracle -> oracle.parquet
-mkdir oracle
+mkdir -p oracle
 python3 src/runBuilder.py  -n 1 -b oracle -i ntuple/ -o oracle
-cd oracle
+
+#run simple DNN reco
+mkdir -p simplednn
+python3 src/runBuilder.py  -n 1 -b simplednn -i ntuple/ -o simplednn
+
+#list all files
 find . -type f -name "*.parquet"
-cd ..
 
 #run HPS -> hps.parquet
 #python3 reco_hps.py
