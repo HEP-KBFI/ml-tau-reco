@@ -1,6 +1,8 @@
 # Installation
 
+```
 git clone git@github.com:HEP-KBFI/ml-tau-reco.git
+```
 
 (as we run everything using a common singularity image no further software installation is needed)
 
