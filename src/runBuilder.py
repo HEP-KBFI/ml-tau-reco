@@ -1,11 +1,14 @@
+#!/usr/bin/python3
+
 from oracleTauBuilder import OracleTauBuilder
+from hpsTauBuilder import HPSTauBuilder
 import argparse
 import os
 import glob
 import awkward as ak
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--builder", "-b", type=str, choices=["oracle"], default="oracle")
+parser.add_argument("--builder", "-b", type=str, choices=["oracle","hps"], default="oracle")
 parser.add_argument("--input", "-i", type=str, default="/local/laurits/CLIC_data/")
 parser.add_argument("--output", "-o", type=str, default="/local/tolange/CLIC_oracle/")
 parser.add_argument("--nFiles", "-n", type=int, default=1)
@@ -15,6 +18,9 @@ builder = None
 
 if args.builder == "oracle":
     builder = OracleTauBuilder()
+    builder.printConfig()
+elif args.builder == "hps":
+    builder = HPSTauBuilder()
     builder.printConfig()
 else:
     raise ValueError("This builder is not implemented: %s" % (args.builder))
