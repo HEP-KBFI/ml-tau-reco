@@ -3,6 +3,7 @@ set -e
 set -x
 
 mkdir ntuple
+mkdir data
 cd ntuple
 
 #Download test files if they don't exist
@@ -49,9 +50,8 @@ python3 src/endtoend_simple.py input_dir=./ntuple/ epochs=2 ntrain=1 ntest=1
 #run oracle -> oracle.parquet
 mkdir oracle
 python3 src/runBuilder.py  -n 1 -b oracle -i ntuple/ -o oracle
-cd oracle
+python3 src/runBuilder.py  -n 1 -b simplednn -i ntuple/ -o simplednn
 find . -type f -name "*.parquet"
-cd ..
 
 #run HPS -> hps.parquet
 #python3 reco_hps.py

@@ -1,5 +1,8 @@
 import os
 import hydra
+import vector
+import awkward as ak
+import numpy as np
 import torch
 import torch_geometric
 import torch.nn as nn
@@ -7,8 +10,8 @@ from torch_geometric.loader import DataLoader
 from taujetdataset import TauJetDataset
 
 from torch.utils.data import Subset
-from torch_geometric.nn import GlobalAttention
-
+from torch_geometric.nn.aggr import AttentionalAggregation
+from basicTauBuilder import BasicTauBuilder
 
 class TauEndToEndSimple(nn.Module):
     def __init__(
@@ -37,7 +40,7 @@ class TauEndToEndSimple(nn.Module):
             self.nn_pf_mha.append(torch.nn.MultiheadAttention(embedding_dim, 4, batch_first=True))
             self.nn_pf_mha_norm.append(torch.nn.LayerNorm(embedding_dim))
 
-        self.nn_pf_ga = GlobalAttention(
+        self.nn_pf_ga = AttentionalAggregation(
             nn.Sequential(
                 nn.Linear(embedding_dim, width),
                 self.act(),
@@ -45,8 +48,18 @@ class TauEndToEndSimple(nn.Module):
                 self.act(),
                 nn.Linear(width, width),
                 self.act(),
-                nn.Linear(width, embedding_dim),
+                nn.Linear(width, 1),
             )
+        )
+        
+        self.nn_pred_istau = nn.Sequential(
+            nn.Linear(4 + embedding_dim, width),
+            self.act(),
+            nn.Linear(width, width),
+            self.act(),
+            nn.Linear(width, width),
+            self.act(),
+            nn.Linear(width, 1),
         )
 
         self.nn_pred_visenergy = nn.Sequential(
@@ -84,10 +97,13 @@ class TauEndToEndSimple(nn.Module):
         # (original_features, multi-head attention features)
         jet_feats = torch.cat([batch.jet_features, jet_encoded], axis=-1)
 
+        # run a binary classification whether or not this jet is from a tau
+        pred_istau = torch.sigmoid(self.nn_pred_istau(jet_feats)).squeeze(-1)
+        
         # run a per-jet NN for visible energy prediction
-        pred_visenergy = self.nn_pred_visenergy(jet_feats)
+        pred_visenergy = self.nn_pred_visenergy(jet_feats).squeeze(-1)
 
-        return pred_visenergy
+        return pred_istau, pred_visenergy
 
 
 def model_loop(model, ds_loader, optimizer, is_train, dev):
@@ -100,9 +116,12 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
     njets = 0
     for batch in ds_loader:
         batch = batch.to(device=dev)
-        pred_visenergy = model(batch)[:, 0]
+        pred_istau, pred_visenergy = model(batch)
         true_visenergy = batch.gen_tau_vis_energy
-        loss = torch.nn.functional.mse_loss(pred_visenergy, true_visenergy)
+        true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
+        loss_energy = torch.nn.functional.mse_loss(pred_visenergy, true_visenergy)
+        loss_cls = torch.nn.functional.binary_cross_entropy(pred_istau, true_istau)
+        loss = loss_cls + loss_energy
         if is_train:
             loss.backward()
             optimizer.step()
@@ -115,6 +134,52 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+class SimpleDNNTauBuilder(BasicTauBuilder):
+    def __init__(
+        self,
+        model,
+        config={},
+    ):
+        self.model = model
+        model.eval()
+        self._builderConfig = dict()
+        for key in config:
+            self._builderConfig[key] = config[key]
+
+    def processJets(self, jets):
+        ds = TauJetDataset()
+        data_obj = ds.process_file_data(jets)
+        pred_istau, pred_visenergy = self.model(data_obj)
+
+        pred_istau = pred_istau.detach().numpy()
+        pred_visenergy = pred_visenergy.detach().numpy()
+        njets = len(jets["reco_jet_p4s"]["x"])
+        assert(njets == len(pred_istau))
+        assert(njets == len(pred_visenergy))
+
+        tauP4 = vector.awk(
+            ak.zip(
+                {
+                    "px": np.zeros(njets),
+                    "py": np.zeros(njets),
+                    "pz": np.zeros(njets),
+                    "E": pred_visenergy,
+                }
+            )
+        )
+        tauCharges = np.zeros(njets)
+        dmode = np.zeros(njets)
+
+        #as a dummy placeholder, just return the first PFCand for each jet
+        tau_cand_p4s = jets["reco_cand_p4s"][:, 0]
+
+        return {
+            "tauP4": tauP4,
+            "tauSigCandP4s": tau_cand_p4s,
+            "tauClassifier": pred_istau,
+            "tauCharge": tauCharges,
+            "tauDmode": dmode,
+        }
 
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
@@ -143,7 +208,9 @@ def main(cfg):
         loss_train = model_loop(model, ds_train_loader, optimizer, True, dev)
         loss_val = model_loop(model, ds_val_loader, optimizer, False, dev)
         print("epoch={} loss_train={:.4f} loss_val={:.4f}".format(iepoch, loss_train, loss_val))
-
+   
+    model = model.to(device="cpu")
+    torch.save(model, "data/model.pt")
 
 if __name__ == "__main__":
     main()
