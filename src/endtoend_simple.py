@@ -9,9 +9,10 @@ import torch.nn as nn
 from torch_geometric.loader import DataLoader
 from taujetdataset import TauJetDataset
 
-from torch.utils.data import Subset
 from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
+from glob import glob
+import os.path as osp
 
 
 class TauEndToEndSimple(nn.Module):
@@ -186,14 +187,20 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
 
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
-    ds = TauJetDataset(cfg.input_dir)
-    ds_train = Subset(ds, range(0, cfg.ntrain))
-    ds_val = Subset(ds, range(cfg.ntrain, cfg.ntrain + cfg.ntest))
+    qcd_files = list(glob(osp.join(cfg.input_dir_QCD, "*.parquet")))
+    zh_files = list(glob(osp.join(cfg.input_dir_ZH_Htautau, "*.parquet")))
+    all_files = qcd_files + zh_files
+    ds_train = TauJetDataset(all_files[: cfg.ntrain])
+    ds_val = TauJetDataset(all_files[cfg.ntrain : cfg.ntrain + cfg.nval])
 
-    print("Loaded TauJetDataset with {} files".format(len(ds)))
+    print("Loaded TauJetDataset with {} train files".format(len(ds_train)))
+    print("Loaded TauJetDataset with {} val files".format(len(ds_val)))
+    # note, if batch_size>1, then the pf_to_jet indices will be incorrect and need to be recomputed
     ds_train_loader = DataLoader(ds_train, batch_size=1)
     ds_val_loader = DataLoader(ds_val, batch_size=1)
 
+    assert len(ds_train_loader) > 0
+    assert len(ds_val_loader) > 0
     print("train={} val={}".format(len(ds_train_loader), len(ds_val_loader)))
 
     if "CUDA_VISIBLE_DEVICES" in os.environ:

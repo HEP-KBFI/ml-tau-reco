@@ -8,8 +8,8 @@ from glob import glob
 
 
 class TauJetDataset(Dataset):
-    def __init__(self, path=""):
-        self.path = path
+    def __init__(self, filelist=[]):
+        self.filelist = filelist
 
         # The order of features in the jet feature tensor
         self.reco_jet_features = ["x", "y", "z", "tau"]
@@ -19,8 +19,7 @@ class TauJetDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        raw_list = glob(osp.join(self.path, "*.parquet"))
-        return sorted(raw_list)
+        return self.filelist
 
     def __len__(self):
         return len(self.processed_file_names)
@@ -88,7 +87,8 @@ class TauJetDataset(Dataset):
 
 
 if __name__ == "__main__":
-    ds = TauJetDataset(sys.argv[1])
+    filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
+    ds = TauJetDataset(filelist)
     print("Loaded TauJetDataset with {} files".format(len(ds)))
 
     # treat each input file like a batch
