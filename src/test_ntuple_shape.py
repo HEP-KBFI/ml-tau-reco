@@ -20,7 +20,9 @@ def test_data_shapes(file_path):
 
 
 def level_one(data):
-    event_reco_candidates = ak.num(data.event_reco_candidates, axis=0)
+    event_reco_cand_p4s = ak.num(data.event_reco_cand_p4s, axis=0)
+    event_reco_cand_pdg = ak.num(data.event_reco_cand_pdg, axis=0)
+    event_reco_cand_charge = ak.num(data.event_reco_cand_charge, axis=0)
     reco_cand_p4s = ak.num(data.reco_cand_p4s, axis=0)
     reco_cand_charge = ak.num(data.reco_cand_charge, axis=0)
     reco_cand_pdg = ak.num(data.reco_cand_pdg, axis=0)
@@ -28,7 +30,9 @@ def level_one(data):
     gen_jet_p4s = ak.num(data.gen_jet_p4s, axis=0)
     gen_jet_tau_decaymode = ak.num(data.gen_jet_tau_decaymode, axis=0)
     gen_jet_tau_vis_energy = ak.num(data.gen_jet_tau_vis_energy, axis=0)
-    assert event_reco_candidates == reco_cand_p4s
+    assert event_reco_cand_p4s == event_reco_cand_pdg
+    assert event_reco_cand_pdg == event_reco_cand_charge
+    assert event_reco_cand_p4s == reco_cand_p4s
     assert reco_cand_p4s == reco_cand_charge
     assert reco_cand_pdg == reco_cand_charge
     assert reco_cand_pdg == reco_jet_p4s
@@ -41,11 +45,16 @@ def level_one(data):
 
 
 def level_two(data):
+    event_reco_cand_p4s = sum(ak.num(data.event_reco_cand_p4s, axis=1))
+    event_reco_cand_pdg = sum(ak.num(data.event_reco_cand_pdg, axis=1))
+    event_reco_cand_charge = sum(ak.num(data.event_reco_cand_charge, axis=1))
     reco_cand_p4s = sum(ak.num(data.reco_cand_p4s, axis=1))
     reco_cand_charge = sum(ak.num(data.reco_cand_charge, axis=1))
     reco_cand_pdg = sum(ak.num(data.reco_cand_pdg, axis=1))
     assert reco_cand_p4s == reco_cand_charge
     assert reco_cand_pdg == reco_cand_charge
+    assert event_reco_cand_p4s == event_reco_cand_pdg
+    assert event_reco_cand_pdg == event_reco_cand_charge
     print("Level two correct")
 
 

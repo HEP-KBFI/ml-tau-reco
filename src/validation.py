@@ -61,14 +61,14 @@ def plot_reco_vs_gen_cand_energy_cm(data, output_path):
             }
         )
     ).energy
-    gen_energy = ak.flatten((gen_energy[gen_energy != -1]).to_numpy(), axis=1)
-    reco_cand_energy = ak.flatten((reco_cand_energy[gen_energy != -1]).to_numpy(), axis=1)
+    gen_energy_ = ak.flatten((gen_energy[gen_energy != -1]), axis=1).to_numpy()
+    reco_cand_energy_ = ak.flatten((reco_cand_energy[gen_energy != -1]), axis=1).to_numpy()
     pl.plot_regression_confusion_matrix(
-        y_true=gen_energy,
-        y_pred=reco_cand_energy,
+        y_true=gen_energy_,
+        y_pred=reco_cand_energy_,
         output_path=output_path,
-        left_bin_edge=np.min([reco_cand_energy, gen_energy]),
-        right_bin_edge=np.max([reco_cand_energy, gen_energy]),
+        left_bin_edge=np.min([reco_cand_energy_, gen_energy_]),
+        right_bin_edge=np.max([reco_cand_energy_, gen_energy_]),
         y_label="Reco candidate energy",
         x_label="Matched gen energy",
     )
