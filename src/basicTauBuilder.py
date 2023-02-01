@@ -2,7 +2,6 @@ import numpy as np
 import awkward as ak
 from abc import ABC, abstractmethod
 
-
 class BasicTauBuilder(ABC):
     def __init__(self, config=dict()):
         self._builderConfig = config
@@ -72,7 +71,7 @@ class BasicTauBuilder(ABC):
         return ak.Array([self._get_decayMode(cand_pdg_ids) for cand_pdg_ids in taus_pdg_ids])
 
     def printConfig(self):
-        print("Running OracleTauBuilder with config:")
+        print("Running %s with config:" % self.__class__.__name__)
         print(self._builderConfig)
 
     @property
