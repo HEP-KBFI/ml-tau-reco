@@ -2,7 +2,8 @@
 set -e
 set -x
 
-cd src
+mkdir ntuple
+cd ntuple
 
 #Download test files if they don't exist
 INFILE_TAU_DIR=/local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380
@@ -21,9 +22,10 @@ else
     INFILE_QCD_DIR=/local/joosep/clic_edm4hep/p8_ee_qcd_ecm380
 fi;
 
+
 #process EDM4HEP to training ntuple in .parquet format
-python3 edm4hep_to_ntuple.py samples_to_process=[ZH_Htautau] samples.ZH_Htautau.input_dir=$INFILE_TAU_DIR samples.ZH_Htautau.output_dir=$PWD test_run=True
-python3 edm4hep_to_ntuple.py samples_to_process=[QCD] samples.QCD.input_dir=$INFILE_QCD_DIR samples.QCD.output_dir=$PWD test_run=True
+python3 ../src/edm4hep_to_ntuple.py samples_to_process=[ZH_Htautau] samples.ZH_Htautau.input_dir=$INFILE_TAU_DIR samples.ZH_Htautau.output_dir=$PWD test_run=True
+python3 ../src/edm4hep_to_ntuple.py samples_to_process=[QCD] samples.QCD.input_dir=$INFILE_QCD_DIR samples.QCD.output_dir=$PWD test_run=True
 
 find . -type f -name "*.parquet"
 
@@ -31,17 +33,25 @@ TAU_FILENAME=reco_p8_ee_ZH_Htautau_ecm380_*.parquet
 QCD_FILENAME=reco_p8_ee_qcd_ecm380_*.parquet
 
 TAU_FILES=( $TAU_FILENAME )
-python3 test_ntuple_shape.py -f "$TAU_FILES"
+python3 ../src/test_ntuple_shape.py -f "$TAU_FILES"
 QCD_FILES=( $QCD_FILENAME )
-python3 test_ntuple_shape.py -f $QCD_FILES
+python3 ../src/test_ntuple_shape.py -f $QCD_FILES
 
 cd ..
 ls
+
 #Load the dataset in pytorch
-python3 src/taujetdataset.py ./src/
+python3 src/taujetdataset.py ./ntuple/
 
 #Load train an ultra-simple pytorch model
-python3 src/endtoend_simple.py input_dir=./src/ epochs=2 ntrain=1 ntest=1
+python3 src/endtoend_simple.py input_dir=./ntuple/ epochs=2 ntrain=1 ntest=1
+
+#run oracle -> oracle.parquet
+mkdir oracle
+python3 src/runBuilder.py  -n 1 -b oracle -i ntuple/ -o oracle
+cd oracle
+find . -type f -name "*.parquet"
+cd ..
 
 #run HPS -> hps.parquet
 #python3 reco_hps.py
