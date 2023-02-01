@@ -36,7 +36,7 @@ QCD_FILES=( $QCD_FILENAME )
 python3 test_ntuple_shape.py -f $QCD_FILES
 
 cd ..
-
+ls
 #Load the dataset in pytorch
 python3 src/taujetdataset.py ./src/
 
