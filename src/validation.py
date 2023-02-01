@@ -86,7 +86,6 @@ def plot_reco_cand_properties(data, properties: list, output_dir: str):
         )
     )
     for property_ in properties:
-        x = getattr(reco_cand_p4, property_)
         entries = ak.flatten(getattr(reco_cand_p4, property_), axis=-1)
         output_path = os.path.join(output_dir, f"{property_}.png")
         pl.plot_histogram(

@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import mplhep as hep
 import matplotlib.pyplot as plt
@@ -9,13 +8,12 @@ from sklearn.metrics import confusion_matrix
 def plot_roc_curve(
     efficiencies: list, fakerates: list, marker: str = "^", label: str = "ROC", output_path: str = "roc.png"
 ) -> None:
-    fig, ax = plt.subplots(figsize=(12,12))
+    fig, ax = plt.subplots(figsize=(12, 12))
     ax.plot(fakerates, efficiencies, marker=marker, label=label)
     plt.xlabel("Fake rate", fontdict={"size": 20})
     plt.ylabel("Efficiency", fontdict={"size": 20})
     plt.xscale("log")
     plt.grid(True, which="both")
-    box = ax.get_position()
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
@@ -32,9 +30,9 @@ def plot_regression_confusion_matrix(
     cmap: str = "Greys",
     y_label: str = "Predicted",
     x_label: str = "Truth",
-    title: str = "Confusion matrix"
+    title: str = "Confusion matrix",
 ) -> None:
-    """ Plots the confusion matrix for the regression task. Although confusion
+    """Plots the confusion matrix for the regression task. Although confusion
     matrix is in principle meant for classification task, the problem can be
     solved by binning the predictions and truth values.
 
@@ -70,15 +68,8 @@ def plot_regression_confusion_matrix(
     bin_edges = np.linspace(left_bin_edge, right_bin_edge, num=n_bins + 1)
     fig, ax = plt.subplots(figsize=figsize)
     ax.label_outer()
-    bin_counts = np.histogram2d(
-        y_true, y_pred, bins=[bin_edges, bin_edges])[0]
-    im = ax.pcolor(
-        bin_edges,
-        bin_edges,
-        bin_counts.transpose(),
-        cmap=cmap,
-        norm=colors.LogNorm()
-    )
+    bin_counts = np.histogram2d(y_true, y_pred, bins=[bin_edges, bin_edges])[0]
+    im = ax.pcolor(bin_edges, bin_edges, bin_counts.transpose(), cmap=cmap, norm=colors.LogNorm())
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     ax.set_aspect("equal")
     ax.set_ylabel(f"{y_label}")
@@ -99,7 +90,7 @@ def plot_classification_confusion_matrix(
     x_label: str = "Truth",
     title: str = "",
     figsize: tuple = (12, 12),
- ) -> None:
+) -> None:
     """Plots the confusion matrix for the classification task. Confusion
     matrix functions has the categories in the other way in order to have the
     truth on the x axis.
@@ -143,8 +134,8 @@ def plot_classification_confusion_matrix(
         for j in range(len(xbins) - 1):
             bin_value = histogram.T[i, j]
             ax.text(
-                xbins[j]+0.5,
-                ybins[i]+0.5,
+                xbins[j] + 0.5,
+                ybins[i] + 0.5,
                 f"{bin_value:.2f}",
                 color=bin_text_color,
                 ha="center",
@@ -200,7 +191,6 @@ def plot_histogram(
     plt.xlabel(x_label, fontdict={"size": 20})
     plt.ylabel(y_label, fontdict={"size": 20})
     plt.grid(True, which="both")
-    box = ax.get_position()
     plt.yscale("log")
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
     plt.savefig(output_path, bbox_inches="tight")
