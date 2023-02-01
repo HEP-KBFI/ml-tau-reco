@@ -5,15 +5,7 @@ m_pi0 = 0.135
 
 
 class Tau:
-    def __init__(self, barcode=-1):
-        self.p4 = vector(pt=0.0, phi=0.0, theta=0.0, mass=0.0)
-        updatePtEtaPhiMass()
-        self.signalChargedCands = []
-        self.signalStrips = []
-        updateSignalCands()
-        self.barcode = barcode
-
-    def __init__(self, chargedCands, strips, barcode=-1):
+    def __init__(self, chargedCands=[], strips=[], barcode=-1):
         self.p4 = vector(pt=0.0, phi=0.0, theta=0.0, mass=0.0)
         for chargedCand in chargedCands:
             self.p4 += chargedCand.p4
@@ -23,7 +15,7 @@ class Tau:
             strip_pz = strip.p4.pz
             strip_E = math.sqrt(strip_px * strip_px + strip_py * strip_py + strip_pz * strip_pz + m_pi0 * m_pi0)
             self.p4 += vector(px=strip_px, py=strip_py, pz=strip_pz, E=strip_E)
-        updatePtEtaPhiMass()
+        self.updatePtEtaPhiMass()
         self.q = 0.0
         for chargedCand in chargedCands:
             if chargedCand.q > 0.0:
@@ -34,10 +26,10 @@ class Tau:
                 assert 0
         self.signalChargedCands = chargedCands
         self.signalStrips = strips
-        updateCands()
+        self.updateSignalCands()
         self.barcode = barcode
 
-    def updateCands(self):
+    def updateSignalCands(self):
         self.numSignalChargedCands = len(self.signalChargedCands)
         self.numSignalStrips = len(self.signalStrips)
         self.signalCands = set()

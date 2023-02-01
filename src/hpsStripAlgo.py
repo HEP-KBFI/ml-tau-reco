@@ -2,6 +2,7 @@ import math
 import vector
 
 from hpsGetParameter import getParameter
+from hpsStrip import Strip
 
 
 class StripAlgo:
@@ -32,13 +33,13 @@ class StripAlgo:
 
         self.verbosity = verbosity
 
-    def updateStripP4(strip):
+    def updateStripP4(self, strip):
         strip.p4 = vector(pt=0.0, phi=0.0, theta=0.0, mass=0.0)
         for cand in strip.cands:
             strip.p4 += cand.p4
         strip.updatePtEtaPhiMass()
 
-    def addCandsToStrip(strip, cands, candBarcodesPreviousStrips, candBarcodesCurrentStrip):
+    def addCandsToStrip(self, strip, cands, candBarcodesPreviousStrips, candBarcodesCurrentStrip):
         isCandAdded = False
         for cand in cands:
             if not (cand.barcode in candBarcodesPreviousStrips or cand.barcode in candBarcodesCurrentStrip):
@@ -47,16 +48,16 @@ class StripAlgo:
                 if dEta < self.maxStripSizeEta and dPhi < self.maxStripSizePhi:
                     strip.cands.add(cand)
                     if self.updateStripAfterEachCand:
-                        updateStripP4(strip)
+                        self.updateStripP4(strip)
                     candBarcodesCurrentStrip.add(cand.barcode)
                     isCandAdded = True
         return isCandAdded
 
-    def markCandsInStrip(candBarcodesPreviousStrips, candBarcodesCurrentStrip):
+    def markCandsInStrip(self, candBarcodesPreviousStrips, candBarcodesCurrentStrip):
 
         candBarcodesPreviousStrips.update(candBarcodesCurrentStrip)
 
-    def buildStrips(cands):
+    def buildStrips(self, cands):
         seedCands = []
         addCands = []
         for cand in cands:
@@ -73,7 +74,10 @@ class StripAlgo:
 
         idxStrip = 0
         for seedCand in seedCands:
-            if not seedCand.barcode in seedCandFlags:
+            if (
+                seedCand.barcode not in seedCandBarcodesPreviousStrips
+                and seedCand.barcode not in addCandBarcodesPreviousStrips
+            ):
                 currentStrip = Strip()
 
                 seedCandBarcodesCurrentStrip = set()
@@ -82,14 +86,14 @@ class StripAlgo:
                 stripBuildIterations = 0
                 while stripBuildIterations < self.maxStripBuildIterations or self.maxStripBuildIterations == -1:
                     isCandAdded = False
-                    isCandAdded |= addCandsToStrip(
+                    isCandAdded |= self.addCandsToStrip(
                         currentStrip, seedCands, seedCandBarcodesPreviousStrips, seedCandBarcodesCurrentStrip
                     )
-                    isCandAdded |= addCandsToStrip(
+                    isCandAdded |= self.addCandsToStrip(
                         currentStrip, addCands, addCandBarcodesPreviousStrips, addCandBarcodesCurrentStrip
                     )
                     if not self.updateStripAfterEachCand:
-                        updateStripP4(currentStrip)
+                        self.updateStripP4(currentStrip)
                     if not isCandAdded:
                         break
                     ++stripBuildIterations
@@ -98,7 +102,7 @@ class StripAlgo:
                     currentStrip.barcode = idxStrip
                     ++idxStrip
                     output_strips.append(currentStrip)
-                    markCandsInStrip(seedCandBarcodesPreviousStrips, seedCandBarcodesCurrentStrip)
-                    markCandsInStrip(addCandBarcodesPreviousStrips, addCandBarcodesCurrentStrip)
+                    self.markCandsInStrip(seedCandBarcodesPreviousStrips, seedCandBarcodesCurrentStrip)
+                    self.markCandsInStrip(addCandBarcodesPreviousStrips, addCandBarcodesCurrentStrip)
 
         return output_strips

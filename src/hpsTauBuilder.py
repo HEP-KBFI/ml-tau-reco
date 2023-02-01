@@ -1,11 +1,13 @@
 import awkward as ak
 import json
 import os
+import vector
 
 from basicTauBuilder import BasicTauBuilder
 from hpsAlgo import HPSAlgo
-from hpsCand import Cand, buildCands, isHigherPt
-from hpsJet import Jet, buildJets
+from hpsCand import buildCands, isHigherPt
+from hpsJet import buildJets
+from hpsTau import Tau
 
 # CV: to-run: execute './scripts/run-env.sh python3 src/runBuilder.py --builder hps' in the ml-tau-reco directory
 
@@ -35,7 +37,7 @@ class HPSTauBuilder(BasicTauBuilder):
         if os.path.isfile(cfgFileName):
             cfgFile = open(cfgFileName, "r")
             cfg = json.load(cfgFile)
-            if not "HPSAlgo" in cfg.keys():
+            if "HPSAlgo" not in cfg.keys():
                 raise RuntimeError("Failed to parse config file %s !!")
             self._builderConfig = cfg["HPSAlgo"]
             self.hpsAlgo = HPSAlgo(self._builderConfig)
