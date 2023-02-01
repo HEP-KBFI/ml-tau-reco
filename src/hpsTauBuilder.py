@@ -30,7 +30,7 @@ def get_decayMode(tau):
 
 
 class HPSTauBuilder(BasicTauBuilder):
-    def __init__(self, cfgFileName="./config/hpsAlgo_cfg.py"):
+    def __init__(self, cfgFileName="./config/hpsAlgo_cfg.json"):
         super(BasicTauBuilder, self).__init__()
         if os.path.isfile(cfgFileName):
             cfgFile = open(cfgFileName, "r")
