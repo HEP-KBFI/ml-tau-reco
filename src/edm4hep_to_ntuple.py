@@ -421,8 +421,12 @@ def process_input_file(arrays: ak.Array):
     gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask)
     data = {
-        "event_reco_candidates": ak.from_iter(
-            [[reco_p4[i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+        "event_reco_cand_p4s": ak.from_iter([[reco_p4[i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]),
+        "event_reco_cand_pdg": ak.from_iter(
+            [[reco_particles["type"][i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+        ),
+        "event_reco_cand_charge": ak.from_iter(
+            [[reco_particles["charge"][i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_charge": get_jet_constituent_charges(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
@@ -454,15 +458,18 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
 def process_all_input_files(cfg: DictConfig) -> None:
     print("Working directory : {}".format(os.getcwd()))
-    os.makedirs(cfg.output_dir, exist_ok=True)
-    input_wcp = os.path.join(cfg.input_dir, "*.root")
-    if cfg.test_run:
-        n_files = 1
-    else:
-        n_files = None
-    input_paths = glob.glob(input_wcp)[:n_files]
-    pool = multiprocessing.Pool(processes=8)
-    pool.starmap(process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(cfg.output_dir)))
+    for sample in cfg.samples_to_process:
+        output_dir = cfg.samples[sample].output_dir
+        input_dir = cfg.samples[sample].input_dir
+        os.makedirs(output_dir, exist_ok=True)
+        input_wcp = os.path.join(input_dir, "*.root")
+        if cfg.test_run:
+            n_files = 1
+        else:
+            n_files = None
+        input_paths = glob.glob(input_wcp)[:n_files]
+        pool = multiprocessing.Pool(processes=8)
+        pool.starmap(process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(output_dir)))
 
 
 if __name__ == "__main__":

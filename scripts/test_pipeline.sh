@@ -22,8 +22,8 @@ else
 fi;
 
 #process EDM4HEP to training ntuple in .parquet format
-python3 edm4hep_to_ntuple.py input_dir=$INFILE_TAU_DIR output_dir=$PWD test_run=True
-python3 edm4hep_to_ntuple.py input_dir=$INFILE_QCD_DIR output_dir=$PWD test_run=True
+python3 edm4hep_to_ntuple.py samples_to_process=[ZH_Htautau] samples.ZH_Htautau.input_dir=$INFILE_TAU_DIR samples.ZH_Htautau.output_dir=$PWD test_run=True
+python3 edm4hep_to_ntuple.py samples_to_process=[QCD] samples.QCD.input_dir=$INFILE_QCD_DIR samples.QCD.output_dir=$PWD test_run=True
 
 find . -type f -name "*.parquet"
 
