@@ -13,6 +13,7 @@ from torch.utils.data import Subset
 from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
 
+
 class TauEndToEndSimple(nn.Module):
     def __init__(
         self,
@@ -51,7 +52,7 @@ class TauEndToEndSimple(nn.Module):
                 nn.Linear(width, 1),
             )
         )
-        
+
         self.nn_pred_istau = nn.Sequential(
             nn.Linear(4 + embedding_dim, width),
             self.act(),
@@ -99,7 +100,7 @@ class TauEndToEndSimple(nn.Module):
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = torch.sigmoid(self.nn_pred_istau(jet_feats)).squeeze(-1)
-        
+
         # run a per-jet NN for visible energy prediction
         pred_visenergy = self.nn_pred_visenergy(jet_feats).squeeze(-1)
 
@@ -134,6 +135,7 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+
 class SimpleDNNTauBuilder(BasicTauBuilder):
     def __init__(
         self,
@@ -154,8 +156,8 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         pred_istau = pred_istau.detach().numpy()
         pred_visenergy = pred_visenergy.detach().numpy()
         njets = len(jets["reco_jet_p4s"]["x"])
-        assert(njets == len(pred_istau))
-        assert(njets == len(pred_visenergy))
+        assert njets == len(pred_istau)
+        assert njets == len(pred_visenergy)
 
         tauP4 = vector.awk(
             ak.zip(
@@ -170,7 +172,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         tauCharges = np.zeros(njets)
         dmode = np.zeros(njets)
 
-        #as a dummy placeholder, just return the first PFCand for each jet
+        # as a dummy placeholder, just return the first PFCand for each jet
         tau_cand_p4s = jets["reco_cand_p4s"][:, 0]
 
         return {
@@ -180,6 +182,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
             "tauCharge": tauCharges,
             "tauDmode": dmode,
         }
+
 
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
@@ -208,9 +211,10 @@ def main(cfg):
         loss_train = model_loop(model, ds_train_loader, optimizer, True, dev)
         loss_val = model_loop(model, ds_val_loader, optimizer, False, dev)
         print("epoch={} loss_train={:.4f} loss_val={:.4f}".format(iepoch, loss_train, loss_val))
-   
+
     model = model.to(device="cpu")
     torch.save(model, "data/model.pt")
+
 
 if __name__ == "__main__":
     main()

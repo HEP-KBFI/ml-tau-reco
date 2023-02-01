@@ -2,7 +2,7 @@
 
 from oracleTauBuilder import OracleTauBuilder
 from hpsTauBuilder import HPSTauBuilder
-from endtoend_simple import SimpleDNNTauBuilder, TauEndToEndSimple
+from endtoend_simple import SimpleDNNTauBuilder
 import argparse
 import os
 import glob
@@ -15,9 +15,9 @@ if __name__ == "__main__":
     parser.add_argument("--output", "-o", type=str, default="/local/tolange/CLIC_oracle/")
     parser.add_argument("--nFiles", "-n", type=int, default=1)
     args = parser.parse_args()
-    
+
     builder = None
-    
+
     if args.builder == "oracle":
         builder = OracleTauBuilder()
         builder.printConfig()
@@ -26,20 +26,21 @@ if __name__ == "__main__":
         builder.printConfig()
     elif args.builder == "simplednn":
         import torch
+
         pytorch_model = torch.load("data/model.pt")
         builder = SimpleDNNTauBuilder(pytorch_model)
         builder.printConfig()
     else:
         raise ValueError("This builder is not implemented: %s" % (args.builder))
-    
+
     if not os.path.exists(args.input):
         raise OSError("Path does not exist: %s" % (args.input))
-    
+
     if not os.path.exists(args.output):
         raise OSError("Path does not exist: %s" % (args.output))
-    
+
     input_paths = glob.glob(os.path.join(args.input, "*.parquet"))[: args.nFiles]
-    
+
     for p in input_paths:
         # load jets
         print("Load jets from", p)
