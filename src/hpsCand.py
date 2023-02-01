@@ -1,6 +1,3 @@
-import vector
-
-
 class Cand:
     def __init__(self, p4, pdgId, q, barcode):
         self.p4 = p4
@@ -18,7 +15,8 @@ def buildCands(cands_p4, cands_pdgId, cands_q):
     cands = []
     numCands = len(cands_p4)
     for idx in range(numCands):
-        cand = Cand(cands_p4, cands_pdgId, cands_q, barcode=idx)
+        cand = Cand(cands_p4[idx], cands_pdgId[idx], cands_q[idx], barcode=idx)
+        cands.append(cand)
     return cands
 
 

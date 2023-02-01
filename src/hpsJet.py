@@ -1,4 +1,4 @@
-from hpsCand import Cand, buildCands
+from hpsCand import buildCands
 
 
 class Jet:
@@ -27,4 +27,5 @@ def buildJets(jets_p4, jets_constituents_p4, jets_constituents_pdgId, jets_const
     numJets = len(jets_p4)
     for idx in range(numJets):
         jet = Jet(jets_p4[idx], jets_constituents_p4[idx], jets_constituents_pdgId[idx], jets_constituents_q[idx])
+        jets.append(jet)
     return jets

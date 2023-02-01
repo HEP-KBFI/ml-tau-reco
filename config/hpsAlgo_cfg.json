@@ -6,7 +6,7 @@
             "minElectronPt": 0.5,
             "minGammaPt": 1.0,
             "minMuonPt": 0.5,
-            "minNeutralHadronPt": 10.0,
+            "minNeutralHadronPt": 10.0
         },
         "matchingConeSize": 1.0e-1,
         "isolationConeSize": 5.0e-1,
@@ -21,7 +21,7 @@
             "updateStripAfterEachCand": false,
             "maxStripBuildIterations": -1,
             "maxStripSizeEta": 0.05,
-            "maxStripSizePhi": 0.20,
-        },
+            "maxStripSizePhi": 0.20
+        }
     }
 }
