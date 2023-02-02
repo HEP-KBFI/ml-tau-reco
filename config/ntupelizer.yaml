@@ -26,3 +26,4 @@ validation:
   output_dir: $HOME/CLIC_ntuple_validation
   validation_samples:
     - ZH_Htautau
+    - QCD

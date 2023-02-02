@@ -43,7 +43,6 @@ if __name__ == "__main__":
         raise OSError("Path does not exist: %s" % (args.input))
 
     input_paths = glob.glob(os.path.join(args.input, "*.parquet"))[: args.nFiles]
-    print(" input_paths = %s" % input_paths)
 
     output_path = args.output
     if output_path == "":
