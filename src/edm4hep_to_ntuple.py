@@ -46,9 +46,9 @@ def calculate_p4(p_type: str, arrs: ak.Array):
         ak.zip(
             {
                 "mass": particles["mass"],
-                "x": particles["momentum.x"],
-                "y": particles["momentum.y"],
-                "z": particles["momentum.z"],
+                "px": particles["momentum.x"],
+                "py": particles["momentum.y"],
+                "pz": particles["momentum.z"],
             }
         )
     )
@@ -68,7 +68,7 @@ def cluster_reco_jets(particles_p4):
         constituent_index.append(ci)
     constituent_index = ak.from_iter(constituent_index)
     jets = ak.from_iter(jets)
-    jets = vector.awk(ak.zip({"mass": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
+    jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
     return jets, constituent_index
 
 
@@ -76,6 +76,7 @@ def cluster_gen_jets(particles_p4):
     jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
     cluster = fastjet.ClusterSequence(particles_p4, jetdef)
     jets = vector.awk(cluster.inclusive_jets(min_pt=2.0))
+    jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
     return jets
 
 
@@ -293,8 +294,8 @@ def get_jet_constituent_p4s(reco_p4, constituent_idx, num_ptcls_per_jet):
     return vector.awk(ak.zip({"x": ret.x, "y": ret.y, "z": ret.z, "mass": ret.tau}))
 
 
-def get_jet_constituent_pdgs(reco_particles, constituent_idx, num_ptcls_per_jet):
-    reco_pdg_flat = reco_particles["type"][ak.flatten(constituent_idx, axis=-1)]
+def get_jet_constituent_pdgs(reco_particle_pdg, constituent_idx, num_ptcls_per_jet):
+    reco_pdg_flat = reco_particle_pdg[ak.flatten(constituent_idx, axis=-1)]
     return ak.from_iter(
         [ak.unflatten(reco_pdg_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
     )
@@ -320,14 +321,27 @@ def to_vector(jet):
     )
 
 
+def map_pdgid_to_candid(pdgid, charge):
+    if pdgid == 0:
+        return 0
+    # photon, electron, muon
+    if pdgid in [22, 11, 13, 15]:
+        return pdgid
+    # charged hadron
+    if abs(charge) > 0:
+        return 211
+    # neutral hadron
+    return 130
+
+
 def to_fourvec(jet):
-    return vector.awk(ak.zip({"mass": jet.tau, "x": jet.x, "y": jet.y, "z": jet.z}))
+    return vector.awk(ak.zip({"tau": jet.tau, "x": jet.x, "y": jet.y, "z": jet.z}))
 
 
 def get_matched_gen_jet_p4(reco_jets, gen_jets):
-    reco_jets = to_vector(reco_jets)
-    gen_jets = to_vector(gen_jets)
-    reco_indices, gen_indices = match_jets(reco_jets, gen_jets, deltaR_cut=0.3)
+    reco_jets_ = to_vector(reco_jets)
+    gen_jets_ = to_vector(gen_jets)
+    reco_indices, gen_indices = match_jets(reco_jets_, gen_jets_, deltaR_cut=0.3)
     return reco_indices, gen_indices
 
 
@@ -388,18 +402,29 @@ def get_stable_mc_particles(mc_particles, mc_p4):
     stable_mc_particles = ak.Array(
         {field: ak.Array(mc_particles[field][stable_pythia_mask]) for field in mc_particles.fields}
     )
-    stable_mc_p4 = ak.mask(mc_p4, stable_pythia_mask)
+    stable_mc_p4 = mc_p4[stable_pythia_mask]
     stable_mc_p4 = vector.awk(
         ak.zip(
             {
-                "mass": stable_mc_p4["tau"],
-                "x": stable_mc_p4["x"],
-                "y": stable_mc_p4["y"],
-                "z": stable_mc_p4["z"],
+                "tau": stable_mc_p4["tau"],
+                "px": stable_mc_p4["x"],
+                "py": stable_mc_p4["y"],
+                "pz": stable_mc_p4["z"],
             }
         )
     )
     return stable_mc_p4, stable_mc_particles
+
+
+def get_reco_particle_pdg(reco_particles):
+    reco_particle_pdg = []
+    for i in range(len(reco_particles.charge)):
+        n_particles_in_jet = ak.num(reco_particles.charge[i], axis=-1)
+        charges = ak.flatten(reco_particles["charge"][i], axis=-1).to_numpy()
+        pdgs = ak.flatten(reco_particles["type"][i], axis=-1).to_numpy()
+        mapped_pdgs = ak.from_iter([map_pdgid_to_candid(pdgs[j], charges[j]) for j in range(len(pdgs))])
+        reco_particle_pdg.append(mapped_pdgs)
+    return ak.from_iter(reco_particle_pdg)
 
 
 def process_input_file(arrays: ak.Array):
@@ -408,29 +433,35 @@ def process_input_file(arrays: ak.Array):
     # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_reco_jets(reco_p4)
     stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
-    # gen_jets = cluster_gen_jets(stable_mc_p4)
-    gen_jets = cluster_gen_jets(mc_p4)
+    gen_jets = cluster_gen_jets(stable_mc_p4)
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
     reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
-    reco_jets = vector.awk(ak.zip({"mass": reco_jets.tau, "x": reco_jets.x, "y": reco_jets.y, "z": reco_jets.z}))
+    reco_jets = vector.awk(ak.zip({"energy": reco_jets.t, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z}))
     gen_jets = ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)])
-    gen_jets = vector.awk(ak.zip({"mass": gen_jets.t, "x": gen_jets.x, "y": gen_jets.y, "z": gen_jets.z}))
+    gen_jets = vector.awk(ak.zip({"energy": gen_jets.t, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z}))
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
     gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask)
+    event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
-        "event_reco_cand_p4s": ak.from_iter([[reco_p4[i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]),
+        "event_reco_cand_p4s": vector.awk(ak.zip({
+            "px": event_reco_cand_p4s.x,
+            "py": event_reco_cand_p4s.y,
+            "pz": event_reco_cand_p4s.z,
+            "mass": event_reco_cand_p4s.tau
+        })),
         "event_reco_cand_pdg": ak.from_iter(
-            [[reco_particles["type"][i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+            [[reco_particle_pdg[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
         "event_reco_cand_charge": ak.from_iter(
-            [[reco_particles["charge"][i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+            [[reco_particles["charge"][j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_charge": get_jet_constituent_charges(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
-        "reco_cand_pdg": get_jet_constituent_pdgs(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
+        "reco_cand_pdg": get_jet_constituent_pdgs(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_jet_p4s": reco_jets,
         "gen_jet_p4s": gen_jets,
         "gen_jet_tau_decaymode": gen_jet_tau_decaymode,
