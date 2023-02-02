@@ -62,4 +62,3 @@ if __name__ == "__main__":
         outPath = os.path.join(output_path, os.path.split(p)[1])
         print("done, saving to ", outPath)
         ak.to_parquet(ak.Record(pjets), outPath)
-        raise OSError("Path does not exist: %s" % (args.input))
