@@ -6,9 +6,6 @@ class CombinatoricsGenerator:
         self.verbosity = verbosity
 
     def factorial(self, k):
-        if self.verbosity >= 2:
-            print("<CombinatoricsGenerator::factorial>:")
-            print(" k = %i" % k)
         assert k >= 0
         if k <= 1:
             return 1
@@ -16,12 +13,13 @@ class CombinatoricsGenerator:
             return k * self.factorial(k - 1)
 
     def generate(self, k, n):
-        if self.verbosity >= 1:
+        if self.verbosity >= 3:
             print("<CombinatoricsGenerator::generate>:")
-            print(" k = %i, n = %i" % (k, n))
+            print(" k=%i & n=%i" % (k, n))
 
         if k <= 0 or k > n:
-            if self.verbosity >= 1:
+            if self.verbosity >= 3:
+                print("combinations = []")
                 print("#combinations = 0 (expected = 0)")
             return []
 
@@ -33,8 +31,6 @@ class CombinatoricsGenerator:
         iteration = 0
         while True:
             assert len("".join("%i" % digits[idx] for idx in range(k))) <= len("%i" % n) * k
-            if self.verbosity >= 1:
-                print("iteration #%i: digits = %s" % (iteration, digits))
             retVal.append(copy.deepcopy(digits))
             if digits[current_digit] < (n - (k - current_digit)):
                 digits[current_digit] = digits[current_digit] + 1
@@ -50,7 +46,8 @@ class CombinatoricsGenerator:
                     break
             iteration += 1
 
-        if self.verbosity >= 1:
+        if self.verbosity >= 3:
+            print("combinations = %s" % retVal)
             print(
                 "#combinations = %i (expected = %i)"
                 % (len(retVal), self.factorial(n) / (self.factorial(k) * self.factorial(n - k)))
