@@ -10,8 +10,11 @@ class Cand:
         self.barcode = barcode
 
     def print(self):
-        print("cand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f" % \
-          (self.barcode, self.pt, self.eta, self.phi, self.pdgId, self.q))
+        print(
+            "cand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
+            % (self.barcode, self.pt, self.eta, self.phi, self.pdgId, self.q)
+        )
+
 
 def buildCands(cands_p4, cands_pdgId, cands_q):
     if not (len(cands_p4) == len(cands_pdgId) and len(cands_pdgId) == len(cands_q)):

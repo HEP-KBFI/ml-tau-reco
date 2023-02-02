@@ -17,11 +17,16 @@ class Jet:
         self.barcode = barcode
 
     def print(self):
-        print("jet #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.2f, #constituents = %i" % \
-          (self.barcode, self.pt, self.eta, self.phi, self.mass, len(self.constituents)))
+        print(
+            "jet #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.2f, #constituents = %i"
+            % (self.barcode, self.pt, self.eta, self.phi, self.mass, len(self.constituents))
+        )
         for cand in self.constituents:
-            print(" constituent #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f" % \
-              (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q))
+            print(
+                " constituent #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
+                % (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q)
+            )
+
 
 def buildJets(jets_p4, jets_constituents_p4, jets_constituents_pdgId, jets_constituents_q):
     if not (

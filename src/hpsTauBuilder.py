@@ -9,21 +9,20 @@ from hpsCand import buildCands
 from hpsJet import buildJets
 from hpsTau import Tau
 
-# CV: to-run: execute './scripts/run-env.sh python3 src/runBuilder.py --builder hps --input /local/laurits/CLIC_data/ZH_Htautau --verbosity 2' in the ml-tau-reco directory
+# to-run: execute './scripts/run-env.sh python3 src/runBuilder.py --builder hps
+#           --input /local/laurits/CLIC_data/ZH_Htautau --verbosity 2' in the ml-tau-reco directory
+
 
 def data_to_p4s(data):
-    retVal = list(vector.awk(ak.zip({
-        "px"  : data.x,
-        "py"  : data.y,
-        "pz"  : data.z,
-        "tau" : data.tau
-    })))
+    retVal = list(vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "tau": data.tau})))
     return retVal
+
 
 def data_to_p4s_x2(data):
     retVal = data_to_p4s(data)
-    retVal = [ list(p4s) for p4s in retVal ]
+    retVal = [list(p4s) for p4s in retVal]
     return retVal
+
 
 def get_decayMode(tau):
     retVal = None
@@ -68,7 +67,7 @@ class HPSTauBuilder(BasicTauBuilder):
         jet_cand_p4s = data_to_p4s_x2(data["reco_cand_p4s"])
         jet_cand_pdg = data["reco_cand_pdg"]
         jet_cand_charge = data["reco_cand_charge"]
-        
+
         event_cand_p4s = data_to_p4s_x2(data["event_reco_cand_p4s"])
         event_cand_pdg = data["event_reco_cand_pdg"]
         event_cand_charge = data["event_reco_cand_charge"]
@@ -104,10 +103,10 @@ class HPSTauBuilder(BasicTauBuilder):
             taus.append(tau)
 
         retVal = {
-            "tauP4"         : ak.Array([ tau.p4 for tau in taus ]),
-            "tauSigCandP4s" : ak.Array([ ak.Array([ cand.p4 for cand in tau.signalCands ]) for tau in taus ]),
-            "tauClassifier" : ak.Array([ tau.idDiscr for tau in taus ]),
-            "tauCharge"     : ak.Array([ tau.q for tau in taus ]),
-            "tauDmode"      : ak.Array([ get_decayMode(tau) for tau in taus ]),
+            "tauP4": ak.Array([tau.p4 for tau in taus]),
+            "tauSigCandP4s": ak.Array([ak.Array([cand.p4 for cand in tau.signalCands]) for tau in taus]),
+            "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),
+            "tauCharge": ak.Array([tau.q for tau in taus]),
+            "tauDmode": ak.Array([get_decayMode(tau) for tau in taus]),
         }
         return retVal

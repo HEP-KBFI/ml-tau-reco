@@ -93,9 +93,9 @@ class StripAlgo:
                 seedCand.barcode not in seedCandBarcodesPreviousStrips
                 and seedCand.barcode not in addCandBarcodesPreviousStrips
             ):
-                currentStrip = Strip([ seedCand ], idxStrip)
+                currentStrip = Strip([seedCand], idxStrip)
 
-                seedCandBarcodesCurrentStrip = set([ seedCand.barcode ])
+                seedCandBarcodesCurrentStrip = set([seedCand.barcode])
                 addCandBarcodesCurrentStrip = set()
 
                 stripBuildIterations = 0

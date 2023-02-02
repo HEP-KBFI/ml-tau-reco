@@ -3,6 +3,7 @@ import vector
 
 m_pi0 = 0.135
 
+
 class Strip:
     def __init__(self, cands=[], barcode=-1):
         sum_p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
@@ -24,8 +25,12 @@ class Strip:
         self.mass = self.p4.mass
 
     def print(self):
-        print("strip #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f" % \
-          (self.barcode, self.p4.energy, self.pt, self.eta, self.phi, self.p4.mass))
+        print(
+            "strip #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f"
+            % (self.barcode, self.p4.energy, self.pt, self.eta, self.phi, self.p4.mass)
+        )
         for cand in self.cands:
-            print(" cand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f" % \
-              (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q))
+            print(
+                " cand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
+                % (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q)
+            )

@@ -143,7 +143,7 @@ class HPSAlgo:
                 "maxStripMass": +1.0e3,
                 "maxChargedCands": 6,
                 "maxStrips": 3,
-            }
+            },
         }
 
         self.combinatorics = CombinatoricsGenerator(verbosity)
@@ -169,7 +169,7 @@ class HPSAlgo:
                 or (cand.abs_pdgId == 13 and cand.pt > self.isolationCand_minMuonPt)
                 or (cand.abs_pdgId == 22 and cand.pt > self.isolationCand_minGammaPt)
                 or (cand.abs_pdgId == 211 and cand.pt > self.isolationCand_minChargedHadronPt)
-                or (cand.abs_pdgId in [ 130, 2112 ] and cand.pt > self.isolationCand_minNeutralHadronPt)
+                or (cand.abs_pdgId in [130, 2112] and cand.pt > self.isolationCand_minNeutralHadronPt)
             ):
                 isolationCands.append(cand)
         return isolationCands
@@ -231,8 +231,10 @@ class HPSAlgo:
         barcode = 0
         for decayMode, cfgDecayMode in self.targetedDecayModes.items():
             if self.verbosity >= 4:
-                print("decayMode = %s: numChargedCands = %i, numStrips = %i" % \
-                  (decayMode, cfgDecayMode["numChargedCands"], cfgDecayMode["numStrips"]))
+                print(
+                    "decayMode = %s: numChargedCands = %i, numStrips = %i"
+                    % (decayMode, cfgDecayMode["numChargedCands"], cfgDecayMode["numStrips"])
+                )
 
             decayMode_numChargedCands = cfgDecayMode["numChargedCands"]
             if len(signal_chargedCands) < decayMode_numChargedCands:
@@ -325,7 +327,8 @@ class HPSAlgo:
             tau_candidate.idDiscr = math.exp(-alpha * tau_candidate.combinedIso)
             if self.verbosity >= 3:
                 tau_candidate.print()
-        # CV: sort tau candidates by multiplicity of charged signal candidates, pT, multiplicity of strips, and combined isolation (in that order);
+        # CV: sort tau candidates by multiplicity of charged signal candidates,
+        #     pT, multiplicity of strips, and combined isolation (in that order);
         #     reverse=True argument needed in order to sort tau candidates in order of decreasing (and NOT increasing) rank
         tau_candidates.sort(key=cmp_to_key(rank_tau_candidates), reverse=True)
 
