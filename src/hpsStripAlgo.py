@@ -7,7 +7,8 @@ from hpsStrip import Strip
 
 class StripAlgo:
     def __init__(self, cfg, verbosity=0):
-        print("<StripAlgo::StripAlgo>:")
+        if verbosity >= 1:
+            print("<StripAlgo::StripAlgo>:")
         self.useGammas = getParameter(cfg, "useGammas", True)
         self.minGammaPtSeed = getParameter(cfg, "minGammaPtSeed", 1.0)
         self.minGammaPtAdd = getParameter(cfg, "minGammaPtAdd", 1.0)
@@ -19,24 +20,25 @@ class StripAlgo:
         self.maxStripBuildIterations = getParameter(cfg, "maxStripBuildIterations", -1)
         self.maxStripSizeEta = getParameter(cfg, "maxStripSizeEta", 0.05)
         self.maxStripSizePhi = getParameter(cfg, "maxStripSizePhi", 0.20)
-        print(" useGammas = %s" % self.useGammas)
-        print(" minGammaPtSeed = %1.2f" % self.minGammaPtSeed)
-        print(" minGammaPtAdd = %1.2f" % self.minGammaPtAdd)
-        print(" useElectrons = %s" % self.useElectrons)
-        print(" minElectronPtSeed = %1.2f" % self.minElectronPtSeed)
-        print(" minElectronPtAdd = %1.2f" % self.minElectronPtAdd)
-        print(" minStripPt = %1.2f" % self.minStripPt)
-        print(" updateStripAfterEachCand = %s" % self.updateStripAfterEachCand)
-        print(" maxStripBuildIterations = %i" % self.maxStripBuildIterations)
-        print(" maxStripSizeEta = %1.2f" % self.maxStripSizeEta)
-        print(" maxStripSizePhi = %1.2f" % self.maxStripSizePhi)
+        if verbosity >= 1:
+            print(" useGammas = %s" % self.useGammas)
+            print(" minGammaPtSeed = %1.2f" % self.minGammaPtSeed)
+            print(" minGammaPtAdd = %1.2f" % self.minGammaPtAdd)
+            print(" useElectrons = %s" % self.useElectrons)
+            print(" minElectronPtSeed = %1.2f" % self.minElectronPtSeed)
+            print(" minElectronPtAdd = %1.2f" % self.minElectronPtAdd)
+            print(" minStripPt = %1.2f" % self.minStripPt)
+            print(" updateStripAfterEachCand = %s" % self.updateStripAfterEachCand)
+            print(" maxStripBuildIterations = %i" % self.maxStripBuildIterations)
+            print(" maxStripSizeEta = %1.2f" % self.maxStripSizeEta)
+            print(" maxStripSizePhi = %1.2f" % self.maxStripSizePhi)
 
         self.verbosity = verbosity
 
     def updateStripP4(self, strip):
-        strip.p4 = vector(pt=0.0, phi=0.0, theta=0.0, mass=0.0)
+        strip.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
         for cand in strip.cands:
-            strip.p4 += cand.p4
+            strip.p4 = strip.p4 + cand.p4
         strip.updatePtEtaPhiMass()
 
     def addCandsToStrip(self, strip, cands, candBarcodesPreviousStrips, candBarcodesCurrentStrip):
@@ -58,14 +60,25 @@ class StripAlgo:
         candBarcodesPreviousStrips.update(candBarcodesCurrentStrip)
 
     def buildStrips(self, cands):
+        if self.verbosity >= 1:
+            print("<StripAlgo::buildStrips>:")
         seedCands = []
         addCands = []
         for cand in cands:
-            if (cand.pdgId == 22 and self.useGammas) or (cand.pdgId == 11 and self.useElectrons):
+            if (cand.abs_pdgId == 22 and self.useGammas) or (cand.abs_pdgId == 11 and self.useElectrons):
                 if cand.pt > self.minGammaPtSeed:
                     seedCands.append(cand)
                 elif cand.pt > self.minGammaPtAdd:
                     addCands.append(cand)
+        if self.verbosity >= 1:
+            print("seedCands:")
+            for cand in seedCands:
+                cand.print()
+            print("#seedCands = %i" % len(seedCands))
+            print("addCands:")
+            for cand in addCands:
+                cand.print()
+            print("#addCands = %i" % len(addCands))
 
         output_strips = []
 
@@ -74,13 +87,15 @@ class StripAlgo:
 
         idxStrip = 0
         for seedCand in seedCands:
+            if self.verbosity >= 4:
+                print("Processing seedCand #%i" % seedCand.barcode)
             if (
                 seedCand.barcode not in seedCandBarcodesPreviousStrips
                 and seedCand.barcode not in addCandBarcodesPreviousStrips
             ):
-                currentStrip = Strip()
+                currentStrip = Strip([seedCand], idxStrip)
 
-                seedCandBarcodesCurrentStrip = set()
+                seedCandBarcodesCurrentStrip = set([seedCand.barcode])
                 addCandBarcodesCurrentStrip = set()
 
                 stripBuildIterations = 0
@@ -98,11 +113,20 @@ class StripAlgo:
                         break
                     ++stripBuildIterations
 
+                if self.verbosity >= 4:
+                    print("currentStrip:")
+                    currentStrip.print()
+
                 if currentStrip.pt > self.minStripPt:
                     currentStrip.barcode = idxStrip
                     ++idxStrip
                     output_strips.append(currentStrip)
                     self.markCandsInStrip(seedCandBarcodesPreviousStrips, seedCandBarcodesCurrentStrip)
                     self.markCandsInStrip(addCandBarcodesPreviousStrips, addCandBarcodesCurrentStrip)
+
+        if self.verbosity >= 4:
+            print("output_strips:")
+            for strip in output_strips:
+                strip.print()
 
         return output_strips

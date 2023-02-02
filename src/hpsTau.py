@@ -1,20 +1,13 @@
-import math
 import vector
-
-m_pi0 = 0.135
 
 
 class Tau:
     def __init__(self, chargedCands=[], strips=[], barcode=-1):
-        self.p4 = vector(pt=0.0, phi=0.0, theta=0.0, mass=0.0)
+        self.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
         for chargedCand in chargedCands:
-            self.p4 += chargedCand.p4
+            self.p4 = self.p4 + chargedCand.p4
         for strip in strips:
-            strip_px = strip.p4.px
-            strip_py = strip.p4.py
-            strip_pz = strip.p4.pz
-            strip_E = math.sqrt(strip_px * strip_px + strip_py * strip_py + strip_pz * strip_pz + m_pi0 * m_pi0)
-            self.p4 += vector(px=strip_px, py=strip_py, pz=strip_pz, E=strip_E)
+            self.p4 = self.p4 + strip.p4
         self.updatePtEtaPhiMass()
         self.q = 0.0
         for chargedCand in chargedCands:
@@ -27,6 +20,13 @@ class Tau:
         self.signalChargedCands = chargedCands
         self.signalStrips = strips
         self.updateSignalCands()
+        self.idDiscr = -1.0
+        self.decayMode = "undefined"
+        self.isoCands = set()
+        self.chargedIso = -1.0
+        self.gammaIso = -1.0
+        self.neutralHadronIso = -1.0
+        self.combinedIso = -1.0
         self.barcode = barcode
 
     def updateSignalCands(self):
@@ -34,7 +34,7 @@ class Tau:
         self.numSignalStrips = len(self.signalStrips)
         self.signalCands = set()
         self.signalCands.update(self.signalChargedCands)
-        for strip in self.signalSrips:
+        for strip in self.signalStrips:
             for cand in strip.cands:
                 self.signalCands.add(cand)
 
@@ -43,3 +43,29 @@ class Tau:
         self.eta = self.p4.eta
         self.phi = self.p4.phi
         self.mass = self.p4.mass
+
+    def print(self):
+        print(
+            "tau #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, idDiscr = %1.3f, decayMode = %s"
+            % (self.barcode, self.pt, self.eta, self.phi, self.mass, self.idDiscr, self.decayMode)
+        )
+        # for cand in self.signalChargedCands:
+        #    print(" signalChargedCand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f" % \
+        #      (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q))
+        # for strip in self.signalStrips:
+        #    print(" signalStrip #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f" % \
+        #      (strip.barcode, strip.pt, strip.eta, strip.phi, strip.mass))
+        for cand in self.signalCands:
+            print(
+                " signalCand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
+                % (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q)
+            )
+        for cand in self.isoCands:
+            print(
+                " isoCand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
+                % (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q)
+            )
+        print(
+            " isolation: charged = %1.2f, gamma = %1.2f, neutralHadron = %1.2f, combined = %1.2f"
+            % (self.chargedIso, self.gammaIso, self.neutralHadronIso, self.combinedIso)
+        )

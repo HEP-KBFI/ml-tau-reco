@@ -5,11 +5,23 @@ import vector
 
 from basicTauBuilder import BasicTauBuilder
 from hpsAlgo import HPSAlgo
-from hpsCand import buildCands, isHigherPt
+from hpsCand import buildCands
 from hpsJet import buildJets
 from hpsTau import Tau
 
-# CV: to-run: execute './scripts/run-env.sh python3 src/runBuilder.py --builder hps' in the ml-tau-reco directory
+# to-run: execute './scripts/run-env.sh python3 src/runBuilder.py --builder hps
+#           --input /local/laurits/CLIC_data/ZH_Htautau --verbosity 2' in the ml-tau-reco directory
+
+
+def data_to_p4s(data):
+    retVal = list(vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "tau": data.tau})))
+    return retVal
+
+
+def data_to_p4s_x2(data):
+    retVal = data_to_p4s(data)
+    retVal = [list(p4s) for p4s in retVal]
+    return retVal
 
 
 def get_decayMode(tau):
@@ -32,7 +44,7 @@ def get_decayMode(tau):
 
 
 class HPSTauBuilder(BasicTauBuilder):
-    def __init__(self, cfgFileName="./config/hpsAlgo_cfg.json"):
+    def __init__(self, cfgFileName="./config/hpsAlgo_cfg.json", verbosity=0):
         super(BasicTauBuilder, self).__init__()
         if os.path.isfile(cfgFileName):
             cfgFile = open(cfgFileName, "r")
@@ -40,29 +52,54 @@ class HPSTauBuilder(BasicTauBuilder):
             if "HPSAlgo" not in cfg.keys():
                 raise RuntimeError("Failed to parse config file %s !!")
             self._builderConfig = cfg["HPSAlgo"]
-            self.hpsAlgo = HPSAlgo(self._builderConfig)
+            self.hpsAlgo = HPSAlgo(self._builderConfig, verbosity)
+            self.verbosity = verbosity
             cfgFile.close()
         else:
             raise RuntimeError("Failed to read config file %s !!")
 
-    def processJets(self, jets):
-        jets = buildJets(jets["reco_jet_p4s"], jets["reco_cand_p4s"], jets["reco_cand_pdg"], jets["reco_cand_charge"])
-        jets.sort(key=isHigherPt)
+    def processJets(self, data):
+        if self.verbosity >= 3:
+            print("data:")
+            print(data.fields)
 
-        iso_cands = buildCands(jets["event_reco_cand_p4s"], jets["event_reco_cand_pdg"], jets["event_reco_cand_charge"])
-        iso_cands.sort(key=isHigherPt)
+        jet_p4s = data_to_p4s(data["reco_jet_p4s"])
+        jet_cand_p4s = data_to_p4s_x2(data["reco_cand_p4s"])
+        jet_cand_pdg = data["reco_cand_pdg"]
+        jet_cand_charge = data["reco_cand_charge"]
+
+        event_cand_p4s = data_to_p4s_x2(data["event_reco_cand_p4s"])
+        event_cand_pdg = data["event_reco_cand_pdg"]
+        event_cand_charge = data["event_reco_cand_charge"]
+
+        jets = buildJets(jet_p4s, jet_cand_p4s, jet_cand_pdg, jet_cand_charge)
 
         taus = []
-        for jet in jets:
-            tau = self.hpsAlgo(jet, iso_cands)
+        for idxJet, jet in enumerate(jets):
+            if self.verbosity >= 2:
+                jet.print()
+            iso_cands = buildCands(event_cand_p4s[idxJet], event_cand_pdg[idxJet], event_cand_charge[idxJet])
+            # CV: reverse=True argument needed in order to sort candidates in order of decreasing (and NOT increasing) pT)
+            iso_cands.sort(key=lambda cand: cand.pt, reverse=True)
+            if self.verbosity >= 4:
+                print("iso_cands:")
+                for cand in iso_cands:
+                    cand.print()
+            tau = self.hpsAlgo.buildTau(jet, iso_cands)
             if tau is None:
+                print("Warning: Failed to find tau -> building dummy")
                 # CV: build "dummy" tau to maintain 1-to-1 correspondence between taus and jets
                 tau = Tau()
-                tau.p4 = vector(pt=0.0, phi=0.0, theta=0.0, mass=0.0)
+                tau.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
                 tau.signalCands = []
+                tau.isoCands = []
                 tau.idDiscr = -1
                 tau.q = 0
                 tau.decayMode = "undefined"
+            if self.verbosity >= 2:
+                tau.print()
+            if idxJet > 5:
+                raise ValueError("STOP.")
             taus.append(tau)
 
         retVal = {

@@ -1,6 +1,6 @@
+from functools import cmp_to_key
 import math
 
-from hpsCand import isHigherPt
 from hpsCombinatoricsGenerator import CombinatoricsGenerator
 from hpsGetParameter import getParameter
 from hpsStrip import Strip
@@ -27,28 +27,29 @@ def selectCandsByDeltaR(cands, ref, dRmax):
 def selectCandsByPdgId(cands, pdgIds=[]):
     selectedCands = []
     for cand in cands:
-        if cand.pdgId in pdgIds:
+        if cand.abs_pdgId in pdgIds:
             selectedCands.append(cand)
     return selectedCands
 
 
-def isHigherRank(tau1, tau2):
-    if tau1.numChargedCands > tau2.numChargedCands:
-        return True
-    if tau1.numChargedCands < tau2.numChargedCands:
-        return False
+def rank_tau_candidates(tau1, tau2):
+    if tau1.numSignalChargedCands > tau2.numSignalChargedCands:
+        return +1
+    if tau1.numSignalChargedCands < tau2.numSignalChargedCands:
+        return -1
     if tau1.pt > tau2.pt:
-        return True
+        return +1
     if tau1.pt < tau2.pt:
-        return False
-    if tau1.numStrips > tau2.numStrips:
-        return True
-    if tau1.numStrips < tau2.numStrips:
-        return False
+        return -1
+    if tau1.numSignalStrips > tau2.numSignalStrips:
+        return +1
+    if tau1.numSignalStrips < tau2.numSignalStrips:
+        return -1
     if tau1.combinedIso < tau2.combinedIso:
-        return True
+        return +1
     if tau1.combinedIso > tau2.combinedIso:
-        return False
+        return -1
+    return 0
 
 
 def compPtSum(cands):
@@ -60,17 +61,19 @@ def compPtSum(cands):
 
 class HPSAlgo:
     def __init__(self, cfg, verbosity=0):
-        print("<HPSAlgo::HPSAlgo>:")
+        if verbosity >= 1:
+            print("<HPSAlgo::HPSAlgo>:")
 
         cfgSignalCands = cfg["signalCands"]
         self.signalCand_minChargedHadronPt = getParameter(cfgSignalCands, "minChargedHadronPt", 0.5)
         self.signalCand_minElectronPt = getParameter(cfgSignalCands, "minElectronPt", 0.5)
         # CV: don't use muons when building the signal constituents of the tau
         self.signalCand_minMuonPt = getParameter(cfgSignalCands, "minChargedHadronPt", 1.0e6)
-        print("signalCands:")
-        print(" minChargedHadronPt = %1.2f" % self.signalCand_minChargedHadronPt)
-        print(" minElectronPt = %1.2f" % self.signalCand_minElectronPt)
-        print(" minMuonPt = %1.2f" % self.signalCand_minMuonPt)
+        if verbosity >= 1:
+            print("signalCands:")
+            print(" minChargedHadronPt = %1.2f" % self.signalCand_minChargedHadronPt)
+            print(" minElectronPt = %1.2f" % self.signalCand_minElectronPt)
+            print(" minMuonPt = %1.2f" % self.signalCand_minMuonPt)
 
         cfgIsolationCands = cfg["isolationCands"]
         self.isolationCand_minChargedHadronPt = getParameter(cfgIsolationCands, "minChargedHadronPt", 0.5)
@@ -78,19 +81,21 @@ class HPSAlgo:
         self.isolationCand_minGammaPt = getParameter(cfgIsolationCands, "minGammaPt", 0.5)
         self.isolationCand_minMuonPt = getParameter(cfgIsolationCands, "minMuonPt", 0.5)
         self.isolationCand_minNeutralHadronPt = getParameter(cfgIsolationCands, "minNeutralHadronPt", 10.0)
-        print("isolationCands:")
-        print(" minChargedHadronPt = %1.2f" % self.isolationCand_minChargedHadronPt)
-        print(" minElectronPt = %1.2f" % self.isolationCand_minElectronPt)
-        print(" minGammaPt = %1.2f" % self.isolationCand_minGammaPt)
-        print(" minMuonPt = %1.2f" % self.isolationCand_minMuonPt)
-        print(" minNeutralHadronPt = %1.2f" % self.isolationCand_minNeutralHadronPt)
+        if verbosity >= 1:
+            print("isolationCands:")
+            print(" minChargedHadronPt = %1.2f" % self.isolationCand_minChargedHadronPt)
+            print(" minElectronPt = %1.2f" % self.isolationCand_minElectronPt)
+            print(" minGammaPt = %1.2f" % self.isolationCand_minGammaPt)
+            print(" minMuonPt = %1.2f" % self.isolationCand_minMuonPt)
+            print(" minNeutralHadronPt = %1.2f" % self.isolationCand_minNeutralHadronPt)
 
         self.matchingConeSize = getParameter(cfg, "matchingConeSize", 1.0e-1)
         self.isolationConeSize = getParameter(cfg, "isolationConeSize", 5.0e-1)
-        print(" matchingConeSize = %1.2f" % self.matchingConeSize)
-        print(" isolationConeSize = %1.2f" % self.isolationConeSize)
+        if verbosity >= 1:
+            print("matchingConeSize = %1.2f" % self.matchingConeSize)
+            print("isolationConeSize = %1.2f" % self.isolationConeSize)
 
-        self.stripAlgo = StripAlgo(cfg["StripAlgo"])
+        self.stripAlgo = StripAlgo(cfg["StripAlgo"], verbosity)
 
         self.targetedDecayModes = {
             "1Prong0Pi0": {
@@ -149,9 +154,9 @@ class HPSAlgo:
         signalCands = []
         for cand in cands:
             if (
-                (cand.pdgId == 11 and cand.pt > self.signalCand_minElectronPt)
-                or (cand.pdgId == 13 and cand.pt > self.signalCand_minMuonPt)
-                or (cand.pdgId == 111 and cand.pt > self.signalCand_minChargedHadronPt)
+                (cand.abs_pdgId == 11 and cand.pt > self.signalCand_minElectronPt)
+                or (cand.abs_pdgId == 13 and cand.pt > self.signalCand_minMuonPt)
+                or (cand.abs_pdgId == 211 and cand.pt > self.signalCand_minChargedHadronPt)
             ):
                 signalCands.append(cand)
         return signalCands
@@ -160,11 +165,11 @@ class HPSAlgo:
         isolationCands = []
         for cand in cands:
             if (
-                (cand.pdgId == 11 and cand.pt > self.isolationCand_minElectronPt)
-                or (cand.pdgId == 13 and cand.pt > self.isolationCand_minMuonPt)
-                or (cand.pdgId == 22 and cand.pt > self.isolationCand_minGammaPt)
-                or (cand.pdgId == 111 and cand.pt > self.isolationCand_minChargedHadronPt)
-                or (cand.pdgId == 130 and cand.pt > self.isolationCand_minNeutralHadronPt)
+                (cand.abs_pdgId == 11 and cand.pt > self.isolationCand_minElectronPt)
+                or (cand.abs_pdgId == 13 and cand.pt > self.isolationCand_minMuonPt)
+                or (cand.abs_pdgId == 22 and cand.pt > self.isolationCand_minGammaPt)
+                or (cand.abs_pdgId == 211 and cand.pt > self.isolationCand_minChargedHadronPt)
+                or (cand.abs_pdgId in [130, 2112] and cand.pt > self.isolationCand_minNeutralHadronPt)
             ):
                 isolationCands.append(cand)
         return isolationCands
@@ -188,57 +193,76 @@ class HPSAlgo:
         for strip in strips:
             cleanedCands = self.cleanCands(strip.cands, chargedCands)
             cleanedStrip = Strip(cleanedCands, strip.barcode)
-            if len(cleanedCands) > 0 and cleanedStrip.pt > self.stripAlgo.self.minStripPt:
+            if len(cleanedCands) > 0 and cleanedStrip.pt > self.stripAlgo.minStripPt:
                 cleanedStrips.append(cleanedStrip)
         return cleanedStrips
 
     def preselectTaus(self, taus):
         preselectedTaus = []
         for tau in taus:
-            if not math.abs(tau.charge) == 1:
+            if not abs(tau.q) == 1:
                 continue
             if not deltaR(tau, tau.jet) < self.matchingConeSize:
                 continue
             if not (
-                tau.mass > self.targetedDecayModes[tau.decayMode]["minMass"]
-                and tau.mass < self.targetedDecayModes[tau.decayMode]["maxMass"]
+                tau.mass > self.targetedDecayModes[tau.decayMode]["minTauMass"]
+                and tau.mass < self.targetedDecayModes[tau.decayMode]["maxTauMass"]
             ):
                 continue
             preselectedTaus.append(tau)
         return preselectedTaus
 
     def buildTau(self, jet, iso_cands):
+        if self.verbosity >= 2:
+            print("<hpsAlgo::buildTau>:")
+
         signal_chargedCands = self.selectSignalChargedCands(jet.constituents)
 
         signal_strips = self.stripAlgo.buildStrips(jet.constituents)
-        signal_strips.sort(key=isHigherPt)
+        # CV: reverse=True argument needed in order to sort strips in order of decreasing (and NOT increasing) pT
+        signal_strips.sort(key=lambda cand: cand.pt, reverse=True)
+
+        if self.verbosity >= 2:
+            print("#signal_chargedCands = %i" % len(signal_chargedCands))
+            print("#signal_strips = %i" % len(signal_strips))
+            print("#iso_cands = %i" % len(iso_cands))
 
         tau_candidates = []
         barcode = 0
         for decayMode, cfgDecayMode in self.targetedDecayModes.items():
+            if self.verbosity >= 4:
+                print(
+                    "decayMode = %s: numChargedCands = %i, numStrips = %i"
+                    % (decayMode, cfgDecayMode["numChargedCands"], cfgDecayMode["numStrips"])
+                )
+
             decayMode_numChargedCands = cfgDecayMode["numChargedCands"]
             if len(signal_chargedCands) < decayMode_numChargedCands:
                 continue
 
-            selectedStrips = None
-            if len(signal_strips) > 0:
+            decayMode_numStrips = cfgDecayMode["numStrips"]
+            selectedStrips = []
+            if decayMode_numStrips > 0 and len(signal_strips) > 0:
                 minStripMass = cfgDecayMode["minStripMass"]
                 maxStripMass = cfgDecayMode["maxStripMass"]
-                selectedStrips = []
                 for strip in signal_strips:
                     if strip.mass > minStripMass and strip.mass < maxStripMass:
                         selectedStrips.append(strip)
-
-            decayMode_numStrips = cfgDecayMode["numStrips"]
+            if self.verbosity >= 4:
+                print("selectedStrips = %i" % len(selectedStrips))
             if len(selectedStrips) < decayMode_numStrips:
                 continue
 
             chargedCandCombos = self.combinatorics.generate(
                 decayMode_numChargedCands, min(len(signal_chargedCands), cfgDecayMode["maxChargedCands"])
             )
+            if self.verbosity >= 4:
+                print("chargedCandCombos = %s" % chargedCandCombos)
             stripCombos = self.combinatorics.generate(
-                decayMode_numStrips, min(len(selectedStrips)), cfgDecayMode["maxStrips"]
+                decayMode_numStrips, min(len(selectedStrips), cfgDecayMode["maxStrips"])
             )
+            if self.verbosity >= 4:
+                print("stripCombos = %s" % stripCombos)
 
             numChargedCandCombos = len(chargedCandCombos)
             for idxChargedCandCombo in range(numChargedCandCombos):
@@ -248,45 +272,68 @@ class HPSAlgo:
 
                 numStripCombos = len(stripCombos)
                 for idxStripCombo in range(max(1, numStripCombos)):
+                    stripCombo = []
                     strips = []
                     if idxStripCombo < numStripCombos:
                         stripCombo = stripCombos[idxStripCombo]
                         assert len(stripCombo) == decayMode_numStrips
                         strips = [selectedStrips[stripCombo[idx]] for idx in range(decayMode_numStrips)]
+                    if self.verbosity >= 4:
+                        print("Processing combination of chargedCands = %s & strips = %s" % (chargedCandCombo, stripCombo))
 
                     cleanedStrips = self.cleanStrips(strips, chargedCands)
+                    if self.verbosity >= 4:
+                        print("#cleanedStrips = %i" % len(cleanedStrips))
                     if len(cleanedStrips) < decayMode_numStrips:
                         continue
-                    cleanedStrips.sort(key=isHigherPt)
+                    # CV: reverse=True argument needed in order to sort strips in order of decreasing (and NOT increasing) pT
+                    cleanedStrips.sort(key=lambda strip: strip.pt, reverse=True)
 
                     tau_candidate = Tau(chargedCands, cleanedStrips, barcode)
+                    tau_candidate.jet = jet
                     tau_candidate.decayMode = decayMode
+                    if self.verbosity >= 4:
+                        print("tau_candidate:")
+                        tau_candidate.print()
                     tau_candidates.append(tau_candidate)
                     barcode += 1
 
+        if self.verbosity >= 4:
+            print("#tau_candidates (before preselection) = %i" % len(tau_candidates))
         tau_candidates = self.preselectTaus(tau_candidates)
-        tau_candidates.sort(key=isHigherRank)
+        if self.verbosity >= 4:
+            print("#tau_candidates (after preselection) = %i" % len(tau_candidates))
+        for tau_candidate in tau_candidates:
+            tau_iso_cands = selectCandsByDeltaR(iso_cands, tau_candidate, self.isolationConeSize)
+            print("#tau_iso_cands@1 = %i" % len(tau_iso_cands))
+            tau_iso_cands = self.selectIsolationCands(tau_iso_cands)
+            print("#tau_iso_cands@2 = %i" % len(tau_iso_cands))
+            tau_iso_cands = self.cleanCands(tau_iso_cands, tau_candidate.signalCands)
+            print("#tau_iso_cands@3 = %i" % len(tau_iso_cands))
 
-        tau = None
-        if len(tau_candidates) > 0:
-            tau = tau_candidates[0]
-
-            iso_cands = self.selectCandsByDeltaR(iso_cands, tau, self.isolationConeSize)
-            iso_cands = self.cleanCands(tau.cands, iso_cands)
-
-            tau.isoCands = iso_cands
-            tau.isoChargedCands = selectCandsByPdgId(iso_cands, [11, 13, 111])
-            tau.isoGammaCands = selectCandsByPdgId(iso_cands, [22])
-            tau.isoNeutralHadronCands = selectCandsByPdgId(iso_cands, [130])
-            tau.chargedIso = compPtSum(tau.isoChargedCands)
-            tau.gammaIso = compPtSum(tau.isoGammaCands)
-            tau.neutralHadronIso = compPtSum(tau.isoNeutralHadronCands)
+            tau_candidate.isoCands = tau_iso_cands
+            tau_candidate.isoChargedCands = selectCandsByPdgId(tau_iso_cands, [11, 13, 211])
+            tau_candidate.isoGammaCands = selectCandsByPdgId(tau_iso_cands, [22])
+            tau_candidate.isoNeutralHadronCands = selectCandsByPdgId(tau_iso_cands, [130, 2112])
+            tau_candidate.chargedIso = compPtSum(tau_candidate.isoChargedCands)
+            tau_candidate.gammaIso = compPtSum(tau_candidate.isoGammaCands)
+            tau_candidate.neutralHadronIso = compPtSum(tau_candidate.isoNeutralHadronCands)
             # CV: don't use neutral hadrons when computing the isolation of the tau
-            tau.combinedIso = tau.chargedIso + tau.gammaIso
+            tau_candidate.combinedIso = tau_candidate.chargedIso + tau_candidate.gammaIso
 
             # CV: constant alpha choosen such that idDiscr varies smoothly between 0 and 1
             #     for typical values of the combined isolation pT-sum
             alpha = 0.2
-            tau.idDiscr = math.exp(-alpha * tau.combinedIso)
+            tau_candidate.idDiscr = math.exp(-alpha * tau_candidate.combinedIso)
+            if self.verbosity >= 3:
+                tau_candidate.print()
+        # CV: sort tau candidates by multiplicity of charged signal candidates,
+        #     pT, multiplicity of strips, and combined isolation (in that order);
+        #     reverse=True argument needed in order to sort tau candidates in order of decreasing (and NOT increasing) rank
+        tau_candidates.sort(key=cmp_to_key(rank_tau_candidates), reverse=True)
+
+        tau = None
+        if len(tau_candidates) > 0:
+            tau = tau_candidates[0]
 
         return tau

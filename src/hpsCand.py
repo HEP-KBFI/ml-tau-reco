@@ -5,8 +5,15 @@ class Cand:
         self.eta = p4.eta
         self.phi = p4.phi
         self.pdgId = pdgId
+        self.abs_pdgId = abs(pdgId)
         self.q = q
         self.barcode = barcode
+
+    def print(self):
+        print(
+            "cand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
+            % (self.barcode, self.pt, self.eta, self.phi, self.pdgId, self.q)
+        )
 
 
 def buildCands(cands_p4, cands_pdgId, cands_q):
@@ -18,7 +25,3 @@ def buildCands(cands_p4, cands_pdgId, cands_q):
         cand = Cand(cands_p4[idx], cands_pdgId[idx], cands_q[idx], barcode=idx)
         cands.append(cand)
     return cands
-
-
-def isHigherPt(cand1, cand2):
-    return cand1.pt > cand2.pt
