@@ -419,7 +419,6 @@ def get_stable_mc_particles(mc_particles, mc_p4):
 def get_reco_particle_pdg(reco_particles):
     reco_particle_pdg = []
     for i in range(len(reco_particles.charge)):
-        n_particles_in_jet = ak.num(reco_particles.charge[i], axis=-1)
         charges = ak.flatten(reco_particles["charge"][i], axis=-1).to_numpy()
         pdgs = ak.flatten(reco_particles["type"][i], axis=-1).to_numpy()
         mapped_pdgs = ak.from_iter([map_pdgid_to_candid(pdgs[j], charges[j]) for j in range(len(pdgs))])
@@ -447,12 +446,16 @@ def process_input_file(arrays: ak.Array):
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
-        "event_reco_cand_p4s": vector.awk(ak.zip({
-            "px": event_reco_cand_p4s.x,
-            "py": event_reco_cand_p4s.y,
-            "pz": event_reco_cand_p4s.z,
-            "mass": event_reco_cand_p4s.tau
-        })),
+        "event_reco_cand_p4s": vector.awk(
+            ak.zip(
+                {
+                    "px": event_reco_cand_p4s.x,
+                    "py": event_reco_cand_p4s.y,
+                    "pz": event_reco_cand_p4s.z,
+                    "mass": event_reco_cand_p4s.tau,
+                }
+            )
+        ),
         "event_reco_cand_pdg": ak.from_iter(
             [[reco_particle_pdg[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),

@@ -1,0 +1,32 @@
+plotting:
+  output_dir: /local/laurits/CLIC_metrics
+algorithms:
+  EndToEnd:
+    sig_ntuples_dir: /foo/bar
+    bkg_ntuples_dir: /foo/bar
+    compare: False
+  HPS_DeepTau:
+    sig_ntuples_dir: /foo/bar
+    bkg_ntuples_dir: /foo/bar
+    compare: False
+  MLReco_DeepTau:
+    sig_ntuples_dir: /foo/bar
+    bkg_ntuples_dir: /foo/bar
+    compare: False
+  HPS_only:
+    sig_ntuples_dir: /foo/bar
+    bkg_ntuples_dir: /foo/bar
+    compare: False
+  Oracle:
+    sig_ntuples_dir: /home/laurits/CLIC_taus/ZH_Htautau
+    bkg_ntuples_dir: /home/laurits/CLIC_taus/QCD
+    compare: True
+metrics:
+  denominator: "pt >= 20 && |eta| < 2.3"
+  efficiency:
+    variables:
+      - name: pt
+        x_range: [20, 500]
+        n_bins: 32
+  # fake_ref: reco_jet
+  # eff_obj: gen_jet/tau
