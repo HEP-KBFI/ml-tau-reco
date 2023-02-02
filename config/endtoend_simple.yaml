@@ -1,4 +1,5 @@
-input_dir: ./
+input_dir_QCD: /local/laurits/CLIC_data/QCD
+input_dir_ZH_Htautau: /local/laurits/CLIC_data/ZH_Htautau
 epochs: 1
 ntrain: 1
-ntest: 1
+nval: 1
