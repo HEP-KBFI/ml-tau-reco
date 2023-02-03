@@ -29,7 +29,7 @@ def plot_reco_jet_energy_cm(data, output_path):
     reco_jet_en = vector.awk(
         ak.zip(
             {
-                "energy": data.reco_jet_p4s.t,
+                "mass": data.reco_jet_p4s.tau,
                 "x": data.reco_jet_p4s.x,
                 "y": data.reco_jet_p4s.y,
                 "z": data.reco_jet_p4s.z,

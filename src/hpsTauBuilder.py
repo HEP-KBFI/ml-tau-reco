@@ -14,7 +14,7 @@ from hpsTau import Tau
 
 
 def data_to_p4s(data):
-    retVal = list(vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "tau": data.tau})))
+    retVal = list(vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau})))
     return retVal
 
 
@@ -103,10 +103,10 @@ class HPSTauBuilder(BasicTauBuilder):
             taus.append(tau)
 
         retVal = {
-            "tauP4": ak.Array([tau.p4 for tau in taus]),
-            "tauSigCandP4s": ak.Array([ak.Array([cand.p4 for cand in tau.signalCands]) for tau in taus]),
+            "tau_p4s": ak.Array([tau.p4 for tau in taus]),
+            "tauSigCand_p4s": ak.Array([ak.Array([cand.p4 for cand in tau.signalCands]) for tau in taus]),
             "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),
-            "tauCharge": ak.Array([tau.q for tau in taus]),
-            "tauDmode": ak.Array([get_decayMode(tau) for tau in taus]),
+            "tau_charge": ak.Array([tau.q for tau in taus]),
+            "tau_decaymode": ak.Array([get_decayMode(tau) for tau in taus]),
         }
         return retVal

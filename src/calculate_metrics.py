@@ -16,17 +16,18 @@ import matplotlib.pyplot as plt
 from general import load_all_data
 
 
-def plot_eff_fake(algorithm_metrics, key, cfg, output_dir):
+def plot_eff_fake(algorithm_metrics, key, cfg, output_dir, cut):
     metrics = cfg.metrics.efficiency.variables
     for metric in metrics:
         output_path = os.path.join(output_dir, f"{metric.name}_{key}.png")
         fig, ax = plt.subplots(figsize=(12, 12))
         for algorithm, values in algorithm_metrics.items():
-            plt.plot(values[metric.name]['x_values'], values[metric.name]['y_values'], label=algorithm)
+            plt.plot(values[cut][metric.name]['x_values'], values[cut][metric.name]['y_values'], label=algorithm)
         plt.grid()
         plt.legend()
         plt.xlabel(metric.name)
         plt.ylabel(key)
+        plt.title(f"tauClassifier > {cut}")
         plt.savefig(output_path, bbox_inches='tight')
         plt.close('all')
 
@@ -37,7 +38,7 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
     reco_tau_energies = vector.awk(
         ak.zip(
             {
-                "energy": sig_data.tau_p4.t,
+                "mass": sig_data.tau_p4.tau,
                 "x": sig_data.tau_p4.x,
                 "y": sig_data.tau_p4.y,
                 "z": sig_data.tau_p4.z,
@@ -84,11 +85,11 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
     )
 
 
-def calculate_eff_fake(data, ref_obj, cfg):
+def calculate_eff_fake(data, ref_obj, cfg, tau_classifier_cut):
     ref_p4 = vector.awk(
         ak.zip(
             {
-                "mass": data[ref_obj].t,
+                "mass": data[ref_obj].tau,
                 "x": data[ref_obj].x,
                 "y": data[ref_obj].y,
                 "z": data[ref_obj].z,
@@ -98,31 +99,30 @@ def calculate_eff_fake(data, ref_obj, cfg):
     tau_p4 = vector.awk(
         ak.zip(
             {
-                "energy": data.tau_p4.t,
+                "mass": data.tau_p4.tau,
                 "x": data.tau_p4.x,
                 "y": data.tau_p4.y,
                 "z": data.tau_p4.z,
             }
         )
     )
+    tau_classifier_mask = data.tauClassifier > tau_classifier_cut
     # Need to also have some cuts for the generator tau, like abs(eta) > 2.4 and pt > 20.
     var_eff_fake = {}
     for variable in cfg.metrics.efficiency.variables:
         name = variable.name
         x_range = variable.x_range
         ref_var_ = getattr(ref_p4, name)
-        tau_var_ = getattr(tau_p4, name)
         bin_edges = np.linspace(variable.x_range[0], variable.x_range[1], num=variable.n_bins)
         bin_centers = (bin_edges[1:] + bin_edges[:-1])/2
 
         ref_var_mask = ref_var_ != -1
-        ref_var = ref_var_[ref_var_mask]
-        tau_var_mask = tau_var_ != -1
-        tau_var = tau_var_[tau_var_mask*ref_var_mask]
+        denominator = ref_var_
+        numerator = ref_var_[tau_classifier_mask]
 
-        tau_hist = np.histogram(tau_var, bins=bin_edges)[0]
-        ref_hist = np.histogram(ref_var, bins=bin_edges)[0]
-        eff_fake = tau_hist/ref_hist
+        numerator_ = np.histogram(numerator, bins=bin_edges)[0]
+        denominator_ = np.histogram(denominator, bins=bin_edges)[0]
+        eff_fake = numerator_/denominator_
         var_eff_fake[name] = {
             "x_values": bin_centers,
             "y_values": eff_fake
@@ -130,19 +130,21 @@ def calculate_eff_fake(data, ref_obj, cfg):
     return var_eff_fake
 
 
-# def plot_roc(efficiencies, fakerates, cfg, output_dir):
-#     metrics = cfg.metrics.efficiency.variables
-#     for metric in metrics:
-#         output_path = os.path.join(output_dir, f"{metric.name}_ROC.png")
-#         fig, ax = plt.subplots(figsize=(12, 12))
-#         for (algorithm, efficiencies), (algorithm_, fakerates) in zip(efficiencies.items(), fakerates.items()):
-#             plt.plot(fakerates[metric.name]['y_values'], efficiencies[metric.name]['y_values'], label=algorithm)
-#         plt.grid()
-#         plt.legend()
-#         plt.xlabel("Fakerate")
-#         plt.ylabel("Efficiency")
-#         plt.savefig(output_path, bbox_inches='tight')
-#         plt.close('all')
+def plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts):
+    metrics = cfg.metrics.efficiency.variables
+    for metric in metrics:
+        output_path = os.path.join(output_dir, f"{metric.name}_ROC.png")
+        fig, ax = plt.subplots(figsize=(12, 12))
+        for (algorithm, efficiency_histos), (algorithm_, fakerate_histos) in zip(efficiencies.items(), fakerates.items()):
+            fakerates = [np.nanmean(fakerate_histos[cut][metric.name]['y_values']) for cut in classifier_cuts]
+            efficiencies = [np.nanmean(efficiency_histos[cut][metric.name]['y_values']) for cut in classifier_cuts]
+            plt.plot(fakerates, efficiencies, label=algorithm)
+        plt.grid()
+        plt.legend()
+        plt.xlabel("Fakerate")
+        plt.ylabel("Efficiency")
+        plt.savefig(output_path, bbox_inches='tight')
+        plt.close('all')
 
 
 @hydra.main(config_path="../config", config_name="metrics", version_base=None)
@@ -153,20 +155,24 @@ def plot_all_metrics(cfg):
     os.makedirs(output_dir, exist_ok=True)
     efficiencies = {}
     fakerates = {}
+    classifier_cuts = np.linspace(start=0, stop=1, num=51)
     for algorithm in algorithms:
         sig_input_dir = cfg.algorithms[algorithm].sig_ntuples_dir
         bkg_input_dir = cfg.algorithms[algorithm].bkg_ntuples_dir
         sig_data = load_all_data(sig_input_dir)
         bkg_data = load_all_data(bkg_input_dir)
-        efficiencies[algorithm] = calculate_eff_fake(sig_data, "gen_jet_p4s", cfg)
-        fakerates[algorithm] = calculate_eff_fake(bkg_data, "reco_jet_p4s", cfg)
+        efficiencies[algorithm] = {}
+        fakerates[algorithm] = {}
+        for cut in classifier_cuts:
+            efficiencies[algorithm][cut] = calculate_eff_fake(sig_data, "gen_jet_p4s", cfg, cut)
+            fakerates[algorithm][cut] = calculate_eff_fake(bkg_data, "reco_jet_p4s", cfg, cut)
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
         plot_energy_resolution(sig_data, algorithm_output_dir)
         # plot_decaymode_reconstruction(sig_data, algorithm_output_dir)
-    plot_eff_fake(efficiencies, key="efficiencies", cfg=cfg, output_dir=output_dir)
-    plot_eff_fake(fakerates, key="fakerates", cfg=cfg, output_dir=output_dir)
-    # plot_roc(efficiencies, fakerates, cfg, output_dir)
+    plot_eff_fake(efficiencies, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=0.96)
+    plot_eff_fake(fakerates, key="fakerates", cfg=cfg, output_dir=output_dir, cut=0.96)
+    plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts)
 
 
 if __name__ == '__main__':
