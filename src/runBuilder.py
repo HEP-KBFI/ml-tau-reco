@@ -7,13 +7,13 @@ import argparse
 import os
 import glob
 import awkward as ak
-import getpass
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--builder", "-b", type=str, choices=["oracle", "hps", "simplednn"], default="oracle")
     parser.add_argument("--input", "-i", type=str, default="/local/laurits/CLIC_data/ZH_Htautau")
-    parser.add_argument("--output", "-o", type=str, default="/local/tolange/CLIC_oracle/")
+    parser.add_argument("--output", "-o", type=str, default="/local/$USER/CLIC_tau_ntuples/")
     parser.add_argument("--nFiles", "-n", type=int, default=1)
     parser.add_argument("--verbosity", "-v", type=int, default=0)
     args = parser.parse_args()
@@ -44,11 +44,7 @@ if __name__ == "__main__":
 
     input_paths = glob.glob(os.path.join(args.input, "*.parquet"))[: args.nFiles]
 
-    output_path = args.output
-    if output_path == "":
-        output_path = "/local/%s/CLIC_oracle/" % getpass.getuser()
-
-    output_dir = args.output
+    output_dir = os.path.join(os.path.expandvars(args.output), args.builder)
     os.makedirs(output_dir, exist_ok=True)
 
     for path in input_paths:
