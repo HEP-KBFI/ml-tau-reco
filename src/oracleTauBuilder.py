@@ -82,7 +82,7 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(tauCandP4s.px, axis=1),
                     "py": ak.sum(tauCandP4s.py, axis=1),
                     "pz": ak.sum(tauCandP4s.pz, axis=1),
-                    "E": ak.sum(tauCandP4s.energy, axis=1),
+                    "mass": ak.sum(tauCandP4s.mass, axis=1),
                 }
             )
         )
@@ -92,7 +92,7 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(isoCandP4s.px, axis=1),
                     "py": ak.sum(isoCandP4s.py, axis=1),
                     "pz": ak.sum(isoCandP4s.pz, axis=1),
-                    "E": ak.sum(isoCandP4s.energy, axis=1),
+                    "mass": ak.sum(isoCandP4s.mass, axis=1),
                 }
             )
         )
@@ -102,7 +102,7 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(chargedIsoCandP4s.px, axis=1),
                     "py": ak.sum(chargedIsoCandP4s.py, axis=1),
                     "pz": ak.sum(chargedIsoCandP4s.pz, axis=1),
-                    "E": ak.sum(chargedIsoCandP4s.energy, axis=1),
+                    "mass": ak.sum(chargedIsoCandP4s.mass, axis=1),
                 }
             )
         )
@@ -112,7 +112,7 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(neutralIsoCandP4s.px, axis=1),
                     "py": ak.sum(neutralIsoCandP4s.py, axis=1),
                     "pz": ak.sum(neutralIsoCandP4s.pz, axis=1),
-                    "E": ak.sum(neutralIsoCandP4s.energy, axis=1),
+                    "mass": ak.sum(neutralIsoCandP4s.mass, axis=1),
                 }
             )
         )
