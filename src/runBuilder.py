@@ -48,7 +48,6 @@ if __name__ == "__main__":
     if output_path == "":
         output_path = "/local/%s/CLIC_oracle/" % getpass.getuser()
 
-
     output_dir = args.output
     os.makedirs(output_dir, exist_ok=True)
 

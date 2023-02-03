@@ -1,19 +1,14 @@
 import operator
 import numpy as np
 
-OPERATORS = {
-    '>=': operator.ge,
-    '<=': operator.le,
-    '==': operator.eq,
-    '>': operator.gt,
-    '<': operator.lt
-}
+OPERATORS = {">=": operator.ge, "<=": operator.le, "==": operator.eq, ">": operator.gt, "<": operator.lt}
 
 
 class GeneralCut:
-    """ Cuts based on string """
+    """Cuts based on string"""
+
     def __init__(self, cut_string):
-        """ Initializes the string based cut class
+        """Initializes the string based cut class
 
         Args:
             cut_string : str
@@ -27,23 +22,22 @@ class GeneralCut:
         self.separate_cuts()
 
     def separate_cuts(self):
-        """ Separates all the cuts in the general cut string """
+        """Separates all the cuts in the general cut string"""
         self.cut_string = self.cut_string.replace(" ", "")
         raw_cuts = self.cut_string.split("&&")
         for cut_ in raw_cuts:
             self._all_cuts.append(self.interpret_single_cut_string(cut_))
-        return self._all_cuts
 
     def interpret_single_cut_string(self, cut_string):
-        """ Interpretes the single-cut string """
-        cut = ''
-        for operator in OPERATORS.keys():
-            if operator in cut_string:
-                cut = cut_string.split(operator)
-                cut.insert(1, operator)
+        """Interpretes the single-cut string"""
+        cut = ""
+        for operator_ in OPERATORS.keys():
+            if operator_ in cut_string:
+                cut = cut_string.split(operator_)
+                cut.insert(1, operator_)
                 return cut
-        if cut == '':
-            raise ValueError('No cut selected')
+        if cut == "":
+            raise ValueError("No cut selected")
 
     @property
     def all_cuts(self):
@@ -52,12 +46,8 @@ class GeneralCut:
 
 class Histogram:
     """Initializes the histogram"""
-    def __init__(
-            self,
-            data: np.array,
-            bin_edges: np.array,
-            histogram_data_type: str,
-            binned=False) -> None:
+
+    def __init__(self, data: np.array, bin_edges: np.array, histogram_data_type: str, binned=False) -> None:
         self.data = data
         self.histogram_data_type = histogram_data_type
         self.bin_edges = bin_edges
@@ -76,8 +66,7 @@ class Histogram:
 
     def __add__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
-            raise ArithmeticError(
-                "The bins of two histograms do not match, cannot sum them.")
+            raise ArithmeticError("The bins of two histograms do not match, cannot sum them.")
         result = self.binned_data + other.binned_data
         return Histogram(result, self.bin_edges, "Sum", binned=True)
 
@@ -86,16 +75,12 @@ class Histogram:
 
     def __truediv__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
-            raise ArithmeticError(
-                "The bins of two histograms do not match, cannot divide them.")
-        result = np.nan_to_num(
-                                self.binned_data / other.binned_data,
-                                copy=True, nan=0.0, posinf=None, neginf=None)
+            raise ArithmeticError("The bins of two histograms do not match, cannot divide them.")
+        result = np.nan_to_num(self.binned_data / other.binned_data, copy=True, nan=0.0, posinf=None, neginf=None)
         return Histogram(result, self.bin_edges, "Efficiency", binned=True)
 
     def __mul__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
-            raise ArithmeticError(
-                "The bins of two histograms do not match, cannot multiply them.")
+            raise ArithmeticError("The bins of two histograms do not match, cannot multiply them.")
         result = self.binned_data * other.binned_data
         return Histogram(result, self.bin_edges, "Multiplicity", binned=True)

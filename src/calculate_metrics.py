@@ -22,14 +22,14 @@ def plot_eff_fake(algorithm_metrics, key, cfg, output_dir, cut):
         output_path = os.path.join(output_dir, f"{metric.name}_{key}.png")
         fig, ax = plt.subplots(figsize=(12, 12))
         for algorithm, values in algorithm_metrics.items():
-            plt.plot(values[cut][metric.name]['x_values'], values[cut][metric.name]['y_values'], label=algorithm)
+            plt.plot(values[cut][metric.name]["x_values"], values[cut][metric.name]["y_values"], label=algorithm)
         plt.grid()
         plt.legend()
         plt.xlabel(metric.name)
         plt.ylabel(key)
         plt.title(f"tauClassifier > {cut}")
-        plt.savefig(output_path, bbox_inches='tight')
-        plt.close('all')
+        plt.savefig(output_path, bbox_inches="tight")
+        plt.close("all")
 
 
 def plot_energy_resolution(sig_data, algorithm_output_dir):
@@ -55,7 +55,7 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
         right_bin_edge=np.max([gen_tau_vis_energies, reco_tau_energies]),
         y_label="Reconstructed tau energy",
         x_label="GenTau vis energy",
-        title="Energy resolution"
+        title="Energy resolution",
     )
 
 
@@ -63,10 +63,6 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
     output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.png")
     gen_tau_decaymodes = sig_data.gen_jet_tau_decaymode.to_numpy()
     reco_tau_decaymodes = sig_data.tau_decaymode.to_numpy()
-    print(gen_tau_decaymodes)
-    print(gen_tau_decaymodes.shape)
-    print(type(reco_tau_decaymodes))
-    print(reco_tau_decaymodes.shape)
     # Mapping of decaymodes needed, not all classes classified, such as [14: 'ThreeProngNPiZero']
     mapping = {
         0: "\\pi^{\\pm}",
@@ -74,14 +70,11 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
         2: "\\pi^{\\pm}\\pi^{0}\\pi^{0}",
         10: "\\pi^{\\pm}\\pi^{\\mp}\\pi^{\\pm}",
         11: "\\pi^{\\pm}\\pi^{\\mp}\\pi^{\\pm}\\pi^{0}",
-        15: "Other"
+        15: "Other",
     }
     categories = [value for value in mapping.values()]
     pl.plot_classification_confusion_matrix(
-        true_cats=gen_tau_decaymodes,
-        pred_cats=reco_tau_decaymodes,
-        categories=categories,
-        output_path=output_path
+        true_cats=gen_tau_decaymodes, pred_cats=reco_tau_decaymodes, categories=categories, output_path=output_path
     )
 
 
@@ -96,37 +89,23 @@ def calculate_eff_fake(data, ref_obj, cfg, tau_classifier_cut):
             }
         )
     )
-    tau_p4 = vector.awk(
-        ak.zip(
-            {
-                "mass": data.tau_p4.tau,
-                "x": data.tau_p4.x,
-                "y": data.tau_p4.y,
-                "z": data.tau_p4.z,
-            }
-        )
-    )
     tau_classifier_mask = data.tauClassifier > tau_classifier_cut
     # Need to also have some cuts for the generator tau, like abs(eta) > 2.4 and pt > 20.
     var_eff_fake = {}
     for variable in cfg.metrics.efficiency.variables:
         name = variable.name
-        x_range = variable.x_range
         ref_var_ = getattr(ref_p4, name)
         bin_edges = np.linspace(variable.x_range[0], variable.x_range[1], num=variable.n_bins)
-        bin_centers = (bin_edges[1:] + bin_edges[:-1])/2
+        bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
 
         ref_var_mask = ref_var_ != -1
-        denominator = ref_var_
-        numerator = ref_var_[tau_classifier_mask]
+        denominator = ref_var_[ref_var_mask]
+        numerator = ref_var_[ref_var_mask * tau_classifier_mask]
 
         numerator_ = np.histogram(numerator, bins=bin_edges)[0]
         denominator_ = np.histogram(denominator, bins=bin_edges)[0]
-        eff_fake = numerator_/denominator_
-        var_eff_fake[name] = {
-            "x_values": bin_centers,
-            "y_values": eff_fake
-        }
+        eff_fake = numerator_ / denominator_
+        var_eff_fake[name] = {"x_values": bin_centers, "y_values": eff_fake}
     return var_eff_fake
 
 
@@ -136,15 +115,15 @@ def plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts):
         output_path = os.path.join(output_dir, f"{metric.name}_ROC.png")
         fig, ax = plt.subplots(figsize=(12, 12))
         for (algorithm, efficiency_histos), (algorithm_, fakerate_histos) in zip(efficiencies.items(), fakerates.items()):
-            fakerates = [np.nanmean(fakerate_histos[cut][metric.name]['y_values']) for cut in classifier_cuts]
-            efficiencies = [np.nanmean(efficiency_histos[cut][metric.name]['y_values']) for cut in classifier_cuts]
+            fakerates = [np.nanmean(fakerate_histos[cut][metric.name]["y_values"]) for cut in classifier_cuts]
+            efficiencies = [np.nanmean(efficiency_histos[cut][metric.name]["y_values"]) for cut in classifier_cuts]
             plt.plot(fakerates, efficiencies, label=algorithm)
         plt.grid()
         plt.legend()
         plt.xlabel("Fakerate")
         plt.ylabel("Efficiency")
-        plt.savefig(output_path, bbox_inches='tight')
-        plt.close('all')
+        plt.savefig(output_path, bbox_inches="tight")
+        plt.close("all")
 
 
 @hydra.main(config_path="../config", config_name="metrics", version_base=None)
@@ -175,5 +154,5 @@ def plot_all_metrics(cfg):
     plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     plot_all_metrics()
