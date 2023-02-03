@@ -12,8 +12,8 @@ import getpass
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--builder", "-b", type=str, choices=["oracle", "hps", "simplednn"], default="oracle")
-    parser.add_argument("--input", "-i", type=str, default="/local/laurits/CLIC_data/")
-    parser.add_argument("--output", "-o", type=str, default="")
+    parser.add_argument("--input", "-i", type=str, default="/local/laurits/CLIC_data/ZH_Htautau")
+    parser.add_argument("--output", "-o", type=str, default="/local/tolange/CLIC_oracle/")
     parser.add_argument("--nFiles", "-n", type=int, default=1)
     parser.add_argument("--verbosity", "-v", type=int, default=0)
     args = parser.parse_args()
@@ -41,24 +41,26 @@ if __name__ == "__main__":
 
     if not os.path.exists(args.input):
         raise OSError("Path does not exist: %s" % (args.input))
+
     input_paths = glob.glob(os.path.join(args.input, "*.parquet"))[: args.nFiles]
-    print(" input_paths = %s" % input_paths)
 
     output_path = args.output
     if output_path == "":
         output_path = "/local/%s/CLIC_oracle/" % getpass.getuser()
-    print(" output_path = %s" % output_path)
-    if not os.path.exists(output_path):
-        raise OSError("Path does not exist: %s" % (output_path))
 
-    for p in input_paths:
+    output_dir = args.output
+    os.makedirs(output_dir, exist_ok=True)
+
+    for path in input_paths:
         # load jets
-        print("Load jets from", p)
-        jets = ak.from_parquet(p)
+        print("Load jets from", path)
+        jets = ak.from_parquet(path)
         # process in tauBuilder
         print("Processing jets...")
         pjets = builder.processJets(jets)
         # saving for metric scripts
-        outPath = os.path.join(output_path, os.path.split(p)[1])
-        print("done, saving to ", outPath)
-        ak.to_parquet(ak.Record(pjets), outPath)
+        output_path = os.path.join(output_dir, os.path.basename(path))
+        print("done, saving to ", output_path)
+        merged_info = {field: jets[field] for field in jets.fields}
+        merged_info.update(pjets)
+        ak.to_parquet(ak.Record(merged_info), output_path)

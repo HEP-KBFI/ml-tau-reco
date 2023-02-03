@@ -3,18 +3,16 @@ branches:
   - MCParticles
   - MergedRecoParticles
 test_run: False
-input_dir: /local/joosep/clic_edm4hep/p8_ee_qcd_ecm365
-output_dir: /local/laurits/CLIC_data/QCD
 samples_to_process:
   - ZH_Htautau
   - QCD
 samples:
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /local/laurits/CLIC_data/ZH_Htautau_
+    output_dir: /local/laurits/CLIC_data/ZH_Htautau
   QCD:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_qcd_ecm365
-    output_dir: /local/laurits/CLIC_data/QCD_
+    output_dir: /local/laurits/CLIC_data/QCD
   TT:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_tt_ecm365
     output_dir: /local/laurits/CLIC_data/TT
@@ -28,3 +26,4 @@ validation:
   output_dir: $HOME/CLIC_ntuple_validation
   validation_samples:
     - ZH_Htautau
+    - QCD

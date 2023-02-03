@@ -25,7 +25,7 @@ def validate_ntuples(cfg: DictConfig) -> None:
 
 
 def plot_reco_jet_energy_cm(data, output_path):
-    gen_jet_en = data.gen_jet_tau_vis_energy
+    gen_jet_en_ = data.gen_jet_tau_vis_energy
     reco_jet_en = vector.awk(
         ak.zip(
             {
@@ -36,8 +36,8 @@ def plot_reco_jet_energy_cm(data, output_path):
             }
         )
     ).energy
-    gen_jet_en = (gen_jet_en[gen_jet_en != -1]).to_numpy()
-    reco_jet_en = (reco_jet_en[gen_jet_en != -1]).to_numpy()
+    gen_jet_en = (gen_jet_en_[gen_jet_en_ != -1]).to_numpy()
+    reco_jet_en = (reco_jet_en[gen_jet_en_ != -1]).to_numpy()
     pl.plot_regression_confusion_matrix(
         y_true=gen_jet_en,
         y_pred=reco_jet_en,

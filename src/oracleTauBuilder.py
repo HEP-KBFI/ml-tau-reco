@@ -82,7 +82,7 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(tauCandP4s.px, axis=1),
                     "py": ak.sum(tauCandP4s.py, axis=1),
                     "pz": ak.sum(tauCandP4s.pz, axis=1),
-                    "E": ak.sum(tauCandP4s.energy, axis=1),
+                    "mass": ak.sum(tauCandP4s.mass, axis=1),
                 }
             )
         )
@@ -92,7 +92,7 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(isoCandP4s.px, axis=1),
                     "py": ak.sum(isoCandP4s.py, axis=1),
                     "pz": ak.sum(isoCandP4s.pz, axis=1),
-                    "E": ak.sum(isoCandP4s.energy, axis=1),
+                    "mass": ak.sum(isoCandP4s.mass, axis=1),
                 }
             )
         )
@@ -102,7 +102,7 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(chargedIsoCandP4s.px, axis=1),
                     "py": ak.sum(chargedIsoCandP4s.py, axis=1),
                     "pz": ak.sum(chargedIsoCandP4s.pz, axis=1),
-                    "E": ak.sum(chargedIsoCandP4s.energy, axis=1),
+                    "mass": ak.sum(chargedIsoCandP4s.mass, axis=1),
                 }
             )
         )
@@ -112,16 +112,16 @@ class OracleTauBuilder(BasicTauBuilder):
                     "px": ak.sum(neutralIsoCandP4s.px, axis=1),
                     "py": ak.sum(neutralIsoCandP4s.py, axis=1),
                     "pz": ak.sum(neutralIsoCandP4s.pz, axis=1),
-                    "E": ak.sum(neutralIsoCandP4s.energy, axis=1),
+                    "mass": ak.sum(neutralIsoCandP4s.mass, axis=1),
                 }
             )
         )
         dclass = self._calcClassifier(tauP4, isoP4, chargedIsoP4, neutralIsoP4)
         dmode = self._get_decayModes(ak.mask(jets["reco_cand_pdg"], tauSelMask))
         return {
-            "tauP4": tauP4,
-            "tauSigCandP4s": tauCandP4s,
+            "tau_p4": tauP4,
+            "tauSigCand_p4s": tauCandP4s,
             "tauClassifier": dclass,
-            "tauCharge": tauCharges,
-            "tauDmode": dmode,
+            "tau_charge": tauCharges,
+            "tau_decaymode": dmode,
         }

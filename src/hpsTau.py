@@ -22,7 +22,7 @@ class Tau:
         self.updateSignalCands()
         self.idDiscr = -1.0
         self.decayMode = "undefined"
-        self.isoCands = set()
+        self.iso_cands = set()
         self.chargedIso = -1.0
         self.gammaIso = -1.0
         self.neutralHadronIso = -1.0

@@ -51,7 +51,19 @@ Navigate from your laptop browser to the notebook address that begins with `http
 
 # Producing the general Ntuples
 
-TODO
+The general command to produce the ntuples is
+```bash
+./scripts/run-env.sh python3 src/edm4hep_to_ntuple.py
+```
+It takes all the configuration settings from ```config/ntupelizer```. All the parameters can be replaced on commandline.
+
+The same configuration file is used to check the validity of the ntuple. Validation script is run as follows:
+
+```bash
+./scripts/run-env.sh python ./src/validation.py
+```
+
+Feel free to implement/suggest any other tests for validation as there are currently only the most basic ones.
 
 # Running your tauBuilder
 
@@ -63,4 +75,8 @@ to run on all available ntuples run with ``` -n -1 ```
 
 # Running the metric checks on the tauBuilder tuples
 
-TODO
+After updating in ```config/metrics``` the paths where the tauBuilder for a specific algorithm has written it's output one simply runs:
+
+```bash
+./scripts/run-env.sh python3 src/calculate_metrics.py
+```
