@@ -7,7 +7,7 @@ import argparse
 import os
 import glob
 import awkward as ak
-import getpass
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
