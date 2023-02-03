@@ -77,17 +77,23 @@ class HPSTauBuilder(BasicTauBuilder):
         taus = []
         for idxJet, jet in enumerate(jets):
             if self.verbosity >= 2:
+                print("Processing entry %i" % idxJet)
                 jet.print()
-            iso_cands = buildCands(event_cand_p4s[idxJet], event_cand_pdg[idxJet], event_cand_charge[idxJet])
+            elif idxJet > 0 and (idxJet % 1000) == 0:
+                print("Processing entry %i" % idxJet)
+
+            event_iso_cands = buildCands(event_cand_p4s[idxJet], event_cand_pdg[idxJet], event_cand_charge[idxJet])
             # CV: reverse=True argument needed in order to sort candidates in order of decreasing (and NOT increasing) pT)
-            iso_cands.sort(key=lambda cand: cand.pt, reverse=True)
+            event_iso_cands.sort(key=lambda cand: cand.pt, reverse=True)
             if self.verbosity >= 4:
-                print("iso_cands:")
-                for cand in iso_cands:
+                print("event_iso_cands:")
+                for cand in event_iso_cands:
                     cand.print()
-            tau = self.hpsAlgo.buildTau(jet, iso_cands)
+
+            tau = self.hpsAlgo.buildTau(jet, event_iso_cands)
             if tau is None:
-                print("Warning: Failed to find tau -> building dummy")
+                if self.verbosity >= 2:
+                    print("Warning: Failed to find tau -> building dummy")
                 # CV: build "dummy" tau to maintain 1-to-1 correspondence between taus and jets
                 tau = Tau()
                 tau.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)

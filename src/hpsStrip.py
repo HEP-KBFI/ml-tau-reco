@@ -30,7 +30,4 @@ class Strip:
             % (self.barcode, self.p4.energy, self.pt, self.eta, self.phi, self.p4.mass)
         )
         for cand in self.cands:
-            print(
-                " cand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
-                % (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q)
-            )
+            cand.print()

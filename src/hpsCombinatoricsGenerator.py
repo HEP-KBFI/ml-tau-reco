@@ -28,7 +28,6 @@ class CombinatoricsGenerator:
         digits = [idx for idx in range(k)]
 
         current_digit = k - 1
-        iteration = 0
         while True:
             assert len("".join("%i" % digits[idx] for idx in range(k))) <= len("%i" % n) * k
             retVal.append(copy.deepcopy(digits))
@@ -44,7 +43,6 @@ class CombinatoricsGenerator:
                     current_digit = k - 1
                 else:
                     break
-            iteration += 1
 
         if self.verbosity >= 3:
             print("combinations = %s" % retVal)

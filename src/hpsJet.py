@@ -11,6 +11,7 @@ class Jet:
         self.constituents = buildCands(jet_constituents_p4, jet_constituents_pdgId, jet_constituents_q)
         # CV: reverse=True argument needed in order to sort jet constituents in order of decreasing (and NOT increasing) pT
         self.constituents.sort(key=lambda cand: cand.pt, reverse=True)
+        self.num_constituents = len(self.constituents)
         self.q = 0.0
         for cand in self.constituents:
             self.q += cand.q
@@ -21,11 +22,9 @@ class Jet:
             "jet #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.2f, #constituents = %i"
             % (self.barcode, self.pt, self.eta, self.phi, self.mass, len(self.constituents))
         )
+        print("constituents:")
         for cand in self.constituents:
-            print(
-                " constituent #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
-                % (cand.barcode, cand.pt, cand.eta, cand.phi, cand.pdgId, cand.q)
-            )
+            cand.print()
 
 
 def buildJets(jets_p4, jets_constituents_p4, jets_constituents_pdgId, jets_constituents_q):
