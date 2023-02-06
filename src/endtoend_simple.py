@@ -17,6 +17,7 @@ import os.path as osp
 
 from torch.utils.tensorboard import SummaryWriter
 
+
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
@@ -36,6 +37,7 @@ def ffn(input_dim, output_dim, width, act, dropout):
         torch.nn.LayerNorm(width),
         nn.Linear(width, output_dim),
     )
+
 
 class SelfAttentionLayer(nn.Module):
     def __init__(self, embedding_dim=32, num_heads=8, width=128, dropout=0.3):
@@ -59,6 +61,7 @@ class SelfAttentionLayer(nn.Module):
         x = self.dropout(x)
         return x
 
+
 class TauEndToEndSimple(nn.Module):
     def __init__(
         self,
@@ -74,13 +77,15 @@ class TauEndToEndSimple(nn.Module):
 
         self.nn_pf_mha = nn.ModuleList()
         for i in range(3):
-            self.nn_pf_mha.append(SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout))
+            self.nn_pf_mha.append(
+                SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
+            )
 
         self.nn_pf_ga = AttentionalAggregation(ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
         self.agg = torch_geometric.nn.MeanAggregation()
 
-        self.nn_pred_istau = ffn(4+2*self.embedding_dim, 1, self.width, self.act, self.dropout)
-        self.nn_pred_visenergy = ffn(4+2*self.embedding_dim, 1, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
+        self.nn_pred_visenergy = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
 
     def forward(self, batch):
         pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
@@ -93,11 +98,11 @@ class TauEndToEndSimple(nn.Module):
 
         # run a simple self-attention over the PF candidates in each jet
         for mha_layer in self.nn_pf_mha:
-            pf_encoded_corr = mha_layer(pfs_padded, mask)
+            pfs_padded = mha_layer(pfs_padded, mask)
 
         # get the encoded PF candidates after attention, undo the padding
         pf_encoded = torch.cat([pfs_padded[i][~mask[i]] for i in range(pfs_padded.shape[0])])
-        assert(pf_encoded.shape[0] == batch.jet_pf_features.shape[0])
+        assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # now collapse the PF information in each jet with a global attention layer
         jet_encoded1 = self.nn_pf_ga(pf_encoded, batch.pf_to_jet)
@@ -105,7 +110,7 @@ class TauEndToEndSimple(nn.Module):
 
         # get the list of per-jet features as a concat of
         # (original_features, multi-head attention features)
-        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded1], axis=-1)
+        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = torch.sigmoid(self.nn_pred_istau(jet_feats)).squeeze(-1)
@@ -129,8 +134,8 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
         pred_istau, pred_visenergy = model(batch)
         true_visenergy = batch.gen_tau_vis_energy
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
-        loss_energy = torch.nn.functional.mse_loss(pred_visenergy*true_istau, true_visenergy*true_istau)
-        loss_cls = 10000.0*torch.nn.functional.binary_cross_entropy(pred_istau, true_istau)
+        loss_energy = torch.nn.functional.mse_loss(pred_visenergy * true_istau, true_visenergy * true_istau)
+        loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy(pred_istau, true_istau)
 
         loss = loss_cls + loss_energy
         if is_train:
@@ -197,16 +202,16 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
-    outpath = hydra_cfg['runtime']['output_dir']
+    outpath = hydra_cfg["runtime"]["output_dir"]
 
     qcd_files = list(glob(osp.join(cfg.input_dir_QCD, "*.parquet")))
     zh_files = list(glob(osp.join(cfg.input_dir_ZH_Htautau, "*.parquet")))
     print("qcd={} zh={}".format(len(qcd_files), len(zh_files)))
- 
-    qcd_files_train = qcd_files[:cfg.ntrain]
-    qcd_files_val = qcd_files[cfg.ntrain:cfg.ntrain+cfg.nval]
-    zh_files_train = zh_files[:cfg.ntrain]
-    zh_files_val = zh_files[cfg.ntrain:cfg.ntrain+cfg.nval]
+
+    qcd_files_train = qcd_files[: cfg.ntrain]
+    qcd_files_val = qcd_files[cfg.ntrain : cfg.ntrain + cfg.nval]
+    zh_files_train = zh_files[: cfg.ntrain]
+    zh_files_val = zh_files[cfg.ntrain : cfg.ntrain + cfg.nval]
 
     ds_train = TauJetDataset(qcd_files_train + zh_files_train, cfg.batch_size)
     ds_val = TauJetDataset(qcd_files_val + zh_files_val, cfg.batch_size)
@@ -214,7 +219,7 @@ def main(cfg):
     print("Loaded TauJetDataset with {} train steps".format(len(ds_train)))
     print("Loaded TauJetDataset with {} val steps".format(len(ds_val)))
     # note, if batch_size>1, then the pf_to_jet indices will be incorrect and need to be recomputed
-    #therefore, keep batch_size==1 here, and change it only in the TauJetDataset definition!
+    # therefore, keep batch_size==1 here, and change it only in the TauJetDataset definition!
     ds_train_loader = DataLoader(ds_train, batch_size=1, shuffle=True)
     ds_val_loader = DataLoader(ds_val, batch_size=1, shuffle=True)
 

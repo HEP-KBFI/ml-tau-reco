@@ -34,6 +34,7 @@ if __name__ == "__main__":
 
         pytorch_model = torch.load("data/model.pt")
         assert pytorch_model.__class__ == TauEndToEndSimple
+        assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
         builder = SimpleDNNTauBuilder(pytorch_model)
         builder.printConfig()
     else:

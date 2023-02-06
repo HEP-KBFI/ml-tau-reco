@@ -10,7 +10,8 @@ from glob import glob
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]
+
 
 class TauJetDataset(Dataset):
     def __init__(self, filelist=[], files_per_batch=5):
