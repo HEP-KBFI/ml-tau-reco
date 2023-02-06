@@ -11,8 +11,8 @@ class Cand:
 
     def print(self):
         print(
-            "cand #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, pdgId = %i, charge = %1.1f"
-            % (self.barcode, self.pt, self.eta, self.phi, self.pdgId, self.q)
+            "cand #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, pdgId = %i, charge = %1.1f"
+            % (self.barcode, self.p4.energy, self.pt, self.eta, self.phi, self.p4.mass, self.pdgId, self.q)
         )
 
 
