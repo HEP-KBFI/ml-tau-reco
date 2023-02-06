@@ -30,7 +30,7 @@ if __name__ == "__main__":
         builder.printConfig()
     elif args.builder == "simplednn":
         import torch
-        from endtoend_simple import TauEndToEndSimple
+        from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 
         pytorch_model = torch.load("data/model.pt")
         assert pytorch_model.__class__ == TauEndToEndSimple

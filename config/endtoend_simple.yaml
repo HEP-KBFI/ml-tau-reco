@@ -3,3 +3,4 @@ input_dir_ZH_Htautau: /local/laurits/CLIC_data/ZH_Htautau
 epochs: 10
 ntrain: 800
 nval: 200
+batch_size: 10
