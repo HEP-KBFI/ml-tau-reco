@@ -3,6 +3,7 @@ import hydra
 import vector
 import awkward as ak
 import numpy as np
+import tqdm
 import torch
 import torch_geometric
 import torch.nn as nn
@@ -116,7 +117,7 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
         model.eval()
     nsteps = 0
     njets = 0
-    for batch in ds_loader:
+    for batch in tqdm.tqdm(ds_loader, total=len(ds_loader)):
         batch = batch.to(device=dev)
         pred_istau, pred_visenergy = model(batch)
         true_visenergy = batch.gen_tau_vis_energy
@@ -189,9 +190,15 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
 def main(cfg):
     qcd_files = list(glob(osp.join(cfg.input_dir_QCD, "*.parquet")))
     zh_files = list(glob(osp.join(cfg.input_dir_ZH_Htautau, "*.parquet")))
-    all_files = qcd_files + zh_files
-    ds_train = TauJetDataset(all_files[: cfg.ntrain])
-    ds_val = TauJetDataset(all_files[cfg.ntrain : cfg.ntrain + cfg.nval])
+    print("qcd={} zh={}".format(len(qcd_files), len(zh_files)))
+ 
+    qcd_files_train = qcd_files[:cfg.ntrain]
+    qcd_files_val = qcd_files[cfg.ntrain:cfg.ntrain+cfg.nval]
+    zh_files_train = qcd_files[:cfg.ntrain]
+    zh_files_val = qcd_files[cfg.ntrain:cfg.ntrain+cfg.nval]
+
+    ds_train = TauJetDataset(qcd_files_train + zh_files_train)
+    ds_val = TauJetDataset(qcd_files_val + zh_files_val)
 
     print("Loaded TauJetDataset with {} train files".format(len(ds_train)))
     print("Loaded TauJetDataset with {} val files".format(len(ds_val)))
@@ -212,7 +219,7 @@ def main(cfg):
     model = TauEndToEndSimple().to(device=dev)
     print("params={}".format(count_parameters(model)))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.00001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
 
     for iepoch in range(cfg.epochs):
         loss_train = model_loop(model, ds_train_loader, optimizer, True, dev)
