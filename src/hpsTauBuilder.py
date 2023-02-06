@@ -79,7 +79,7 @@ class HPSTauBuilder(BasicTauBuilder):
             if self.verbosity >= 2:
                 print("Processing entry %i" % idxJet)
                 jet.print()
-            elif idxJet > 0 and (idxJet % 1000) == 0:
+            elif idxJet > 0 and (idxJet % 100) == 0:
                 print("Processing entry %i" % idxJet)
 
             event_iso_cands = buildCands(event_cand_p4s[idxJet], event_cand_pdg[idxJet], event_cand_charge[idxJet])
@@ -104,13 +104,36 @@ class HPSTauBuilder(BasicTauBuilder):
                 tau.decayMode = "undefined"
             if self.verbosity >= 2:
                 tau.print()
-            if idxJet > 5:
+            if self.verbosity >= 4 and idxJet > 10:
                 raise ValueError("STOP.")
             taus.append(tau)
 
         retVal = {
-            "tau_p4s": ak.Array([tau.p4 for tau in taus]),
-            "tauSigCand_p4s": ak.Array([ak.Array([cand.p4 for cand in tau.signalCands]) for tau in taus]),
+            "tau_p4s": vector.awk(
+                ak.zip(
+                    {
+                        "px": [tau.p4.px for tau in taus],
+                        "py": [tau.p4.py for tau in taus],
+                        "pz": [tau.p4.pz for tau in taus],
+                        "mass": [tau.p4.mass for tau in taus],
+                    }
+                )
+            ),
+            "tauSigCand_p4s": ak.Array(
+                [
+                    vector.awk(
+                        ak.zip(
+                            {
+                                "px": [cand.p4.px for cand in tau.signal_cands],
+                                "py": [cand.p4.py for cand in tau.signal_cands],
+                                "pz": [cand.p4.pz for cand in tau.signal_cands],
+                                "mass": [cand.p4.mass for cand in tau.signal_cands],
+                            }
+                        )
+                    )
+                    for tau in taus
+                ]
+            ),
             "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),
             "tau_charge": ak.Array([tau.q for tau in taus]),
             "tau_decaymode": ak.Array([get_decayMode(tau) for tau in taus]),

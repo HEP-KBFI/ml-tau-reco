@@ -203,7 +203,7 @@ class HPSAlgo:
         event_iso_cands = selectCandsByDeltaR(event_iso_cands, jet, self.isolationConeSize + self.matchingConeSize)
         event_iso_cands = self.cleanCands(event_iso_cands, jet.constituents)
         if self.verbosity >= 2:
-            print("#event_iso_cands = %i" % len(jet_iso_cands))
+            print("#event_iso_cands = %i" % len(event_iso_cands))
             print("event_iso_cands:")
             for cand in event_iso_cands:
                 cand.print()
@@ -274,7 +274,7 @@ class HPSAlgo:
                     tau_candidate.jet = jet
                     tau_candidate.decayMode = decayMode
                     if (
-                        abs(tau_candidate.q) == 1
+                        abs(round(tau_candidate.q)) == 1
                         and deltaR(tau_candidate, tau_candidate.jet) < self.matchingConeSize
                         and tau_candidate.mass > self.targetedDecayModes[decayMode]["minTauMass"]
                         and tau_candidate.mass < self.targetedDecayModes[decayMode]["maxTauMass"]
@@ -302,6 +302,12 @@ class HPSAlgo:
                             tau_candidate.print()
                         tau_candidates.append(tau_candidate)
                         barcode += 1
+                    else:
+                        if self.verbosity >= 4:
+                            print("fails preselection:")
+                            print(" q = %i" % round(tau_candidate.q))
+                            print(" dR(tau,jet) = %1.2f" % deltaR(tau_candidate, tau_candidate.jet))
+                            print(" mass = %1.2f" % tau_candidate.mass)
 
         # CV: sort tau candidates by multiplicity of charged signal candidates,
         #     pT, multiplicity of strips, and combined isolation (in that order);
