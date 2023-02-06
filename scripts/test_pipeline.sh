@@ -51,15 +51,16 @@ python3 src/endtoend_simple.py input_dir_QCD=./ntuple/ input_dir_ZH_Htautau=./nt
 mkdir -p oracle
 python3 src/runBuilder.py  -n 1 -b oracle -i ntuple/ -o oracle
 
+#run HPS -> hps.parquet
+mkdir -p hps
+python3 src/runBuilder.py -n 1 -b hps -i ntuple/ -o hps
+
 #run simple DNN reco
 mkdir -p simplednn
 python3 src/runBuilder.py  -n 1 -b simplednn -i ntuple/ -o simplednn
 
 #list all files
 find . -type f -name "*.parquet"
-
-#run HPS -> hps.parquet
-#python3 reco_hps.py
 
 #run HPS + DeepTau -> hps_deeptau.parquet
 #python3 reco_hps_deeptau.py
