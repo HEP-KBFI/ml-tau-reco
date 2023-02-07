@@ -29,10 +29,17 @@ def build_taus(cfg: DictConfig) -> None:
     print("<runBuilder>:")
     if cfg.builder == "Oracle":
         builder = OracleTauBuilder()
-        builder.printConfig()
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(verbosity=cfg.verbosity)
-        builder.printConfig()
+    elif cfg.builder == "SimpleDNN":
+        import torch
+        from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
+
+        pytorch_model = torch.load("data/model.pt")
+        assert pytorch_model.__class__ == TauEndToEndSimple
+        assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
+        builder = SimpleDNNTauBuilder(pytorch_model)
+    builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     for sample in cfg.samples_to_process:
         output_dir = os.path.join(algo_output_dir, sample)
@@ -49,5 +56,5 @@ def build_taus(cfg: DictConfig) -> None:
                 process_single_file(input_path=input_path, builder=builder, output_dir=output_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     build_taus()
