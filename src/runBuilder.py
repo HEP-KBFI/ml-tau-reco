@@ -42,7 +42,9 @@ if __name__ == "__main__":
     if not os.path.exists(args.input):
         raise OSError("Path does not exist: %s" % (args.input))
 
-    input_paths = glob.glob(os.path.join(args.input, "*.parquet"))[: args.nFiles]
+    input_paths = glob.glob(os.path.join(args.input, "*.parquet"))
+    if args.nFiles > 0:
+        input_paths = input_paths[: args.nFiles]
 
     output_dir = os.path.join(os.path.expandvars(args.output), args.builder)
     os.makedirs(output_dir, exist_ok=True)
