@@ -119,7 +119,7 @@ class OracleTauBuilder(BasicTauBuilder):
         dclass = self._calcClassifier(tauP4, isoP4, chargedIsoP4, neutralIsoP4)
         dmode = self._get_decayModes(ak.mask(jets["reco_cand_pdg"], tauSelMask))
         return {
-            "tau_p4": tauP4,
+            "tau_p4s": tauP4,
             "tauSigCand_p4s": tauCandP4s,
             "tauClassifier": dclass,
             "tau_charge": tauCharges,
