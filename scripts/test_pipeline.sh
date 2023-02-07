@@ -45,7 +45,7 @@ ls
 python3 src/taujetdataset.py ./ntuple/
 
 #Train an ultra-simple pytorch model
-python3 src/endtoend_simple.py input_dir_QCD=./ntuple/ input_dir_ZH_Htautau=./ntuple/ epochs=2 ntrain=1 nval=1
+python3 src/endtoend_simple.py input_dir_QCD=./ntuple/ input_dir_ZH_Htautau=./ntuple/ epochs=2 ntrain=1 nval=1 batch_size=1
 
 #run oracle -> oracle.parquet
 mkdir -p oracle
