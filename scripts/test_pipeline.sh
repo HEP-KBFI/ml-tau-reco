@@ -47,16 +47,17 @@ python3 src/taujetdataset.py ./ntuple/
 #Train an ultra-simple pytorch model
 python3 src/endtoend_simple.py input_dir_QCD=./ntuple/ input_dir_ZH_Htautau=./ntuple/ epochs=2 ntrain=1 nval=1
 
-#run oracle -> oracle.parquet
-# mkdir -p oracle
-# python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=Oracle use_multiprocessing=False
+# run oracle -> oracle.parquet
+mkdir -p oracle
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=Oracle use_multiprocessing=False
 
-# #run HPS -> hps.parquet
-# mkdir -p hps
-# python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=HPS use_multiprocessing=False
+#run HPS -> hps.parquet
+mkdir -p hps
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=HPS use_multiprocessing=False
 
 #run simple DNN reco
 mkdir -p simplednn
+ls
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=SimpleDNN use_multiprocessing=False
 
 #list all files
