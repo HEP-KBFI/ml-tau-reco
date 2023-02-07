@@ -58,4 +58,3 @@ def build_taus(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     build_taus()
-
