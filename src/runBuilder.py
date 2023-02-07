@@ -1,65 +1,60 @@
 #!/usr/bin/python3
 
+import torch
+import os
+import glob
+import hydra
+import awkward as ak
+import multiprocessing
+from omegaconf import DictConfig
+from itertools import repeat
 from oracleTauBuilder import OracleTauBuilder
 from hpsTauBuilder import HPSTauBuilder
 from endtoend_simple import SimpleDNNTauBuilder
-import argparse
-import os
-import glob
-import awkward as ak
+from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--builder", "-b", type=str, choices=["oracle", "hps", "simplednn"], default="oracle")
-    parser.add_argument("--input", "-i", type=str, default="/local/laurits/CLIC_data/ZH_Htautau")
-    parser.add_argument("--output", "-o", type=str, default="/local/$USER/CLIC_tau_ntuples/")
-    parser.add_argument("--nFiles", "-n", type=int, default=1)
-    parser.add_argument("--verbosity", "-v", type=int, default=0)
-    args = parser.parse_args()
+def process_single_file(input_path: str, builder, output_dir) -> None:
+    print("Load jets from", input_path)
+    jets = ak.from_parquet(input_path)
+    print("Processing jets...")
+    pjets = builder.processJets(jets)
+    output_path = os.path.join(output_dir, os.path.basename(input_path))
+    print("done, saving to ", output_path)
+    merged_info = {field: jets[field] for field in jets.fields}
+    merged_info.update(pjets)
+    ak.to_parquet(ak.Record(merged_info), output_path)
 
+
+@hydra.main(config_path="../config", config_name="tau_builder", version_base=None)
+def build_taus(cfg: DictConfig) -> None:
     print("<runBuilder>:")
-
-    builder = None
-
-    if args.builder == "oracle":
+    if cfg.builder == "Oracle":
         builder = OracleTauBuilder()
-        builder.printConfig()
-    elif args.builder == "hps":
-        builder = HPSTauBuilder(verbosity=args.verbosity)
-        builder.printConfig()
-    elif args.builder == "simplednn":
-        import torch
-        from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
+    elif cfg.builder == "HPS":
+        builder = HPSTauBuilder(verbosity=cfg.verbosity)
+    elif cfg.builder == "SimpleDNN":
 
         pytorch_model = torch.load("data/model.pt")
         assert pytorch_model.__class__ == TauEndToEndSimple
         assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
         builder = SimpleDNNTauBuilder(pytorch_model)
-        builder.printConfig()
-    else:
-        raise ValueError("This builder is not implemented: %s" % (args.builder))
+    builder.printConfig()
+    algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
+    for sample in cfg.samples_to_process:
+        output_dir = os.path.join(algo_output_dir, sample)
+        samples_dir = cfg.samples[sample].output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        if not os.path.exists(samples_dir):
+            raise OSError("Ntuples do not exist: %s" % (samples_dir))
+        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[: cfg.n_files]
+        if cfg.use_multiprocessing:
+            pool = multiprocessing.Pool(processes=8)
+            pool.starmap(process_single_file, zip(input_paths, repeat(builder), repeat(output_dir)))
+        else:
+            for input_path in input_paths:
+                process_single_file(input_path=input_path, builder=builder, output_dir=output_dir)
 
-    if not os.path.exists(args.input):
-        raise OSError("Path does not exist: %s" % (args.input))
 
-    input_paths = glob.glob(os.path.join(args.input, "*.parquet"))
-    if args.nFiles > 0:
-        input_paths = input_paths[: args.nFiles]
-
-    output_dir = os.path.join(os.path.expandvars(args.output), args.builder)
-    os.makedirs(output_dir, exist_ok=True)
-
-    for path in input_paths:
-        # load jets
-        print("Load jets from", path)
-        jets = ak.from_parquet(path)
-        # process in tauBuilder
-        print("Processing jets...")
-        pjets = builder.processJets(jets)
-        # saving for metric scripts
-        output_path = os.path.join(output_dir, os.path.basename(path))
-        print("done, saving to ", output_path)
-        merged_info = {field: jets[field] for field in jets.fields}
-        merged_info.update(pjets)
-        ak.to_parquet(ak.Record(merged_info), output_path)
+if __name__ == "__main__":
+    build_taus()
