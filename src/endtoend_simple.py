@@ -94,7 +94,11 @@ class TauEndToEndSimple(nn.Module):
         pfs_list = list(torch_geometric.utils.unbatch(pf_encoded, batch.pf_to_jet))
         pfs_nested = torch.nested.nested_tensor(pfs_list)
         pfs_padded = torch.nested.to_padded_tensor(pfs_nested, -1)
-        mask = pfs_padded[:, :, -1] == -1
+        
+        f0 = list(torch_geometric.utils.unbatch(batch.jet_pf_features, batch.pf_to_jet))
+        f0 = torch.nested.nested_tensor(f0)
+        f0 = torch.nested.to_padded_tensor(f0, -1)
+        mask = f0[:, :, -1] == -1
 
         # run a simple self-attention over the PF candidates in each jet
         for mha_layer in self.nn_pf_mha:
@@ -236,7 +240,7 @@ def main(cfg):
     model = TauEndToEndSimple().to(device=dev)
     print("params={}".format(count_parameters(model)))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.00005)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.00001)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
 
