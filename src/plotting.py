@@ -1,5 +1,6 @@
 import numpy as np
 import mplhep as hep
+hep.style.use(hep.styles.CMS)
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from sklearn.metrics import confusion_matrix

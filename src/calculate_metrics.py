@@ -10,6 +10,8 @@ import os
 import hydra
 import vector
 import numpy as np
+import mplhep
+mplhep.style.use(mplhep.styles.CMS)
 import awkward as ak
 import plotting as pl
 import matplotlib.pyplot as plt
@@ -38,10 +40,10 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
     reco_tau_energies = vector.awk(
         ak.zip(
             {
-                "mass": sig_data.tau_p4.tau,
-                "x": sig_data.tau_p4.x,
-                "y": sig_data.tau_p4.y,
-                "z": sig_data.tau_p4.z,
+                "mass": sig_data.tau_p4s.tau,
+                "x": sig_data.tau_p4s.x,
+                "y": sig_data.tau_p4s.y,
+                "z": sig_data.tau_p4s.z,
             }
         )
     ).energy
@@ -101,29 +103,32 @@ def calculate_eff_fake(data, ref_obj, cfg, tau_classifier_cut):
         ref_var_mask = ref_var_ != -1
         denominator = ref_var_[ref_var_mask]
         numerator = ref_var_[ref_var_mask * tau_classifier_mask]
-
         numerator_ = np.histogram(numerator, bins=bin_edges)[0]
         denominator_ = np.histogram(denominator, bins=bin_edges)[0]
         eff_fake = numerator_ / denominator_
-        var_eff_fake[name] = {"x_values": bin_centers, "y_values": eff_fake}
+        var_eff_fake[name] = {
+            "x_values": bin_centers,
+            "y_values": eff_fake,
+            "eff_fake": sum(numerator_)/sum(denominator_),
+        }
     return var_eff_fake
 
 
 def plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts):
-    metrics = cfg.metrics.efficiency.variables
-    for metric in metrics:
-        output_path = os.path.join(output_dir, f"{metric.name}_ROC.png")
-        fig, ax = plt.subplots(figsize=(12, 12))
-        for (algorithm, efficiency_histos), (algorithm_, fakerate_histos) in zip(efficiencies.items(), fakerates.items()):
-            fakerates = [np.nanmean(fakerate_histos[cut][metric.name]["y_values"]) for cut in classifier_cuts]
-            efficiencies = [np.nanmean(efficiency_histos[cut][metric.name]["y_values"]) for cut in classifier_cuts]
-            plt.plot(fakerates, efficiencies, label=algorithm)
-        plt.grid()
-        plt.legend()
-        plt.xlabel("Fakerate")
-        plt.ylabel("Efficiency")
-        plt.savefig(output_path, bbox_inches="tight")
-        plt.close("all")
+    output_path = os.path.join(output_dir, "ROC.png")
+    fig, ax = plt.subplots(figsize=(12, 12))
+    for (algorithm, efficiency_histos), (algorithm_, fakerate_histos) in zip(efficiencies.items(), fakerates.items()):
+        fakerates = [fakerate_histos[cut]['pt']["eff_fake"] for cut in classifier_cuts]
+        efficiencies = [efficiency_histos[cut]['pt']["eff_fake"] for cut in classifier_cuts]
+        plt.plot(efficiencies, fakerates, label=algorithm)
+    plt.grid()
+    plt.legend()
+    plt.ylabel("Fakerate")
+    plt.xlabel("Efficiency")
+    plt.ylim((0.003, 1))
+    plt.yscale('log')
+    plt.savefig(output_path, bbox_inches="tight")
+    plt.close("all")
 
 
 @hydra.main(config_path="../config", config_name="metrics", version_base=None)
