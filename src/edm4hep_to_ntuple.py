@@ -443,7 +443,7 @@ def process_input_file(arrays: ak.Array):
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
     gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask)
-    event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_p4s = ak.from_iter([[reco_p4[j][i] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
         "event_reco_cand_p4s": vector.awk(
