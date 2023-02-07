@@ -15,13 +15,12 @@ from hpsTau import Tau
 
 
 def data_to_p4s(data):
-    retVal = list(vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau})))
+    retVal = vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau}))
     return retVal
 
 
 def data_to_p4s_x2(data):
     retVal = data_to_p4s(data)
-    retVal = [list(p4s) for p4s in retVal]
     return retVal
 
 
@@ -83,7 +82,6 @@ class HPSTauBuilder(BasicTauBuilder):
         event_cand_charge = data["event_reco_cand_charge"]
 
         jets = buildJets(jet_p4s, jet_cand_p4s, jet_cand_pdg, jet_cand_charge)
-
         taus = []
         for idxJet, jet in enumerate(jets):
             if self.verbosity >= 2:
