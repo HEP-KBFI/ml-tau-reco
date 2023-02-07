@@ -94,7 +94,7 @@ class TauEndToEndSimple(nn.Module):
         pfs_list = list(torch_geometric.utils.unbatch(pf_encoded, batch.pf_to_jet))
         pfs_nested = torch.nested.nested_tensor(pfs_list)
         pfs_padded = torch.nested.to_padded_tensor(pfs_nested, -1)
-        
+
         f0 = list(torch_geometric.utils.unbatch(batch.jet_pf_features, batch.pf_to_jet))
         f0 = torch.nested.nested_tensor(f0)
         f0 = torch.nested.to_padded_tensor(f0, -1)
