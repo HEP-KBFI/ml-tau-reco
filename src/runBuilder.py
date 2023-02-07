@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import torch
 import os
 import glob
 import hydra
@@ -10,6 +11,7 @@ from itertools import repeat
 from oracleTauBuilder import OracleTauBuilder
 from hpsTauBuilder import HPSTauBuilder
 from endtoend_simple import SimpleDNNTauBuilder
+from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
@@ -32,8 +34,6 @@ def build_taus(cfg: DictConfig) -> None:
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "SimpleDNN":
-        import torch
-        from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 
         pytorch_model = torch.load("data/model.pt")
         assert pytorch_model.__class__ == TauEndToEndSimple
