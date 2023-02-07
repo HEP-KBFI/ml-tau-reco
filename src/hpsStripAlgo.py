@@ -60,7 +60,7 @@ class StripAlgo:
         candBarcodesPreviousStrips.update(candBarcodesCurrentStrip)
 
     def buildStrips(self, cands):
-        if self.verbosity >= 1:
+        if self.verbosity >= 3:
             print("<StripAlgo::buildStrips>:")
         seedCands = []
         addCands = []
@@ -70,7 +70,7 @@ class StripAlgo:
                     seedCands.append(cand)
                 elif cand.pt > self.minGammaPtAdd:
                     addCands.append(cand)
-        if self.verbosity >= 1:
+        if self.verbosity >= 3:
             print("seedCands:")
             for cand in seedCands:
                 cand.print()

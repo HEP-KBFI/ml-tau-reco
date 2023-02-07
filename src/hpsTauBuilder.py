@@ -1,5 +1,6 @@
 import awkward as ak
 import json
+import numpy as np
 import os
 import vector
 
@@ -22,6 +23,15 @@ def data_to_p4s_x2(data):
     retVal = data_to_p4s(data)
     retVal = [list(p4s) for p4s in retVal]
     return retVal
+
+
+def build_dummy_array(num=0, dtype=np.float):
+    return ak.Array(
+        ak.contents.ListOffsetArray(
+            ak.index.Index64(np.zeros(num + 1, dtype=np.int64)),
+            ak.from_numpy(np.array([], dtype=dtype), highlevel=False),
+        )
+    )
 
 
 def get_decayMode(tau):
@@ -79,8 +89,11 @@ class HPSTauBuilder(BasicTauBuilder):
             if self.verbosity >= 2:
                 print("Processing entry %i" % idxJet)
                 jet.print()
-            elif idxJet > 0 and (idxJet % 1000) == 0:
+            elif idxJet > 0 and (idxJet % 100) == 0:
                 print("Processing entry %i" % idxJet)
+            # CV: enable the following two lines for faster turn-around time when testing
+            # if idxJet > 5:
+            #    continue
 
             event_iso_cands = buildCands(event_cand_p4s[idxJet], event_cand_pdg[idxJet], event_cand_charge[idxJet])
             # CV: reverse=True argument needed in order to sort candidates in order of decreasing (and NOT increasing) pT)
@@ -93,24 +106,52 @@ class HPSTauBuilder(BasicTauBuilder):
             tau = self.hpsAlgo.buildTau(jet, event_iso_cands)
             if tau is None:
                 if self.verbosity >= 2:
-                    print("Warning: Failed to find tau -> building dummy")
+                    print("Failed to find tau associated to jet:")
+                    jet.print()
+                    print(" -> building dummy tau")
                 # CV: build "dummy" tau to maintain 1-to-1 correspondence between taus and jets
                 tau = Tau()
                 tau.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
-                tau.signalCands = []
-                tau.isoCands = []
-                tau.idDiscr = -1
-                tau.q = 0
+                tau.signal_cands = set()
+                tau.iso_cands = set()
+                tau.idDiscr = -1.0
+                tau.q = 0.0
                 tau.decayMode = "undefined"
+                tau.barcode = -1
             if self.verbosity >= 2:
                 tau.print()
-            if idxJet > 5:
+            if self.verbosity >= 4 and idxJet > 10:
                 raise ValueError("STOP.")
             taus.append(tau)
 
         retVal = {
-            "tau_p4s": ak.Array([tau.p4 for tau in taus]),
-            "tauSigCand_p4s": ak.Array([ak.Array([cand.p4 for cand in tau.signalCands]) for tau in taus]),
+            "tau_p4s": vector.awk(
+                ak.zip(
+                    {
+                        "px": [tau.p4.px for tau in taus],
+                        "py": [tau.p4.py for tau in taus],
+                        "pz": [tau.p4.pz for tau in taus],
+                        "mass": [tau.p4.mass for tau in taus],
+                    }
+                )
+            ),
+            "tauSigCand_p4s": ak.Array(
+                [
+                    vector.awk(
+                        ak.zip(
+                            {
+                                "px": [cand.p4.px for cand in tau.signal_cands],
+                                "py": [cand.p4.py for cand in tau.signal_cands],
+                                "pz": [cand.p4.pz for cand in tau.signal_cands],
+                                "mass": [cand.p4.mass for cand in tau.signal_cands],
+                            }
+                        )
+                    )
+                    if len(tau.signal_cands) >= 1
+                    else build_dummy_array()
+                    for tau in taus
+                ]
+            ),
             "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),
             "tau_charge": ak.Array([tau.q for tau in taus]),
             "tau_decaymode": ak.Array([get_decayMode(tau) for tau in taus]),
