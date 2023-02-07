@@ -1,14 +1,19 @@
 import math
 import vector
+import numpy as np
 
 m_pi0 = 0.135
 
 
 class Strip:
     def __init__(self, cands=[], barcode=-1):
-        sum_p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
-        for cand in cands:
-            sum_p4 = sum_p4 + cand.p4
+        cands_p4 = [c.p4 for c in cands]
+        cands_p4 = np.array([[v.px, v.py, v.pz, v.E] for v in cands_p4])
+        if len(cands_p4) == 0:
+            sum_p4 = vector.obj(px=0, py=0, pz=0, E=0)
+        else:
+            sum_p4 = np.sum(cands_p4, axis=0)
+            sum_p4 = vector.obj(px=sum_p4[0], py=sum_p4[1], pz=sum_p4[2], E=sum_p4[3])
         strip_px = sum_p4.px
         strip_py = sum_p4.py
         strip_pz = sum_p4.pz
