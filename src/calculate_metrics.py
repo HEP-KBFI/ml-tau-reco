@@ -11,6 +11,7 @@ import hydra
 import vector
 import numpy as np
 import mplhep
+
 mplhep.style.use(mplhep.styles.CMS)
 import awkward as ak
 import plotting as pl
@@ -109,7 +110,7 @@ def calculate_eff_fake(data, ref_obj, cfg, tau_classifier_cut):
         var_eff_fake[name] = {
             "x_values": bin_centers,
             "y_values": eff_fake,
-            "eff_fake": sum(numerator_)/sum(denominator_),
+            "eff_fake": sum(numerator_) / sum(denominator_),
         }
     return var_eff_fake
 
@@ -118,15 +119,15 @@ def plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts):
     output_path = os.path.join(output_dir, "ROC.png")
     fig, ax = plt.subplots(figsize=(12, 12))
     for (algorithm, efficiency_histos), (algorithm_, fakerate_histos) in zip(efficiencies.items(), fakerates.items()):
-        fakerates = [fakerate_histos[cut]['pt']["eff_fake"] for cut in classifier_cuts]
-        efficiencies = [efficiency_histos[cut]['pt']["eff_fake"] for cut in classifier_cuts]
+        fakerates = [fakerate_histos[cut]["pt"]["eff_fake"] for cut in classifier_cuts]
+        efficiencies = [efficiency_histos[cut]["pt"]["eff_fake"] for cut in classifier_cuts]
         plt.plot(efficiencies, fakerates, label=algorithm)
     plt.grid()
     plt.legend()
     plt.ylabel("Fakerate")
     plt.xlabel("Efficiency")
     plt.ylim((0.003, 1))
-    plt.yscale('log')
+    plt.yscale("log")
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
 

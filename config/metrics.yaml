@@ -14,12 +14,12 @@ algorithms:
     bkg_ntuples_dir: /foo/bar
     compare: False
   HPS_only:
-    sig_ntuples_dir: /foo/bar
-    bkg_ntuples_dir: /foo/bar
-    compare: False
+    sig_ntuples_dir: /local/laurits/CLIC_taus/HPS/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus/HPS/QCD
+    compare: True
   Oracle:
-    sig_ntuples_dir: /home/laurits/CLIC_taus/ZH_Htautau
-    bkg_ntuples_dir: /home/laurits/CLIC_taus/QCD
+    sig_ntuples_dir: /local/laurits/CLIC_taus/Oracle/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus/Oracle/QCD
     compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
@@ -27,6 +27,9 @@ metrics:
     variables:
       - name: pt
         x_range: [20, 500]
+        n_bins: 32
+      - name: eta
+        x_range: [-2.6, 2.6]
         n_bins: 32
   # fake_ref: reco_jet
   # eff_obj: gen_jet/tau
