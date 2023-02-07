@@ -7,9 +7,17 @@ import os.path as osp
 from glob import glob
 
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i : i + n]
+
+
 class TauJetDataset(Dataset):
-    def __init__(self, filelist=[]):
-        self.filelist = filelist
+    def __init__(self, filelist=[], files_per_batch=5):
+
+        self.files_per_batch = files_per_batch
+        self.filelist = list(chunks(filelist, self.files_per_batch))
 
         # The order of features in the jet feature tensor
         self.reco_jet_features = ["x", "y", "z", "tau"]
@@ -81,7 +89,13 @@ class TauJetDataset(Dataset):
 
     def __getitem__(self, idx):
         # Load the n-th file
-        data = ak.from_parquet(self.processed_file_names[idx])
+        datas = []
+        for fi in self.processed_file_names[idx]:
+            datas.append(ak.from_parquet(fi))
+        data = {}
+        for k in datas[0].fields:
+            data[k] = ak.concatenate([d[k] for d in datas])
+        data = ak.Record(data)
         ret_data = self.process_file_data(data)
         return ret_data
 
