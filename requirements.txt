@@ -22,6 +22,7 @@ scikit-optimize
 scipy
 seaborn
 setGPU
+tensorboard
 tqdm
 uproot
 vector

@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import awkward as ak
 from abc import ABC, abstractmethod
@@ -73,7 +74,7 @@ class BasicTauBuilder(ABC):
 
     def printConfig(self):
         print("Running %s with config:" % self.__class__.__name__)
-        print(self._builderConfig)
+        print(json.dumps(self._builderConfig, indent=4, sort_keys=True))
 
     @property
     def builderConfig(self):

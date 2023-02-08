@@ -1,6 +1,7 @@
 import awkward as ak
 import vector
 
+
 class Cand:
     def __init__(self, p4, pdgId, q, barcode):
         self.p4 = p4
@@ -18,9 +19,11 @@ class Cand:
             % (self.barcode, self.p4.energy, self.pt, self.eta, self.phi, self.p4.mass, self.pdgId, self.q)
         )
 
+
 def read_event_cand_p4s(data):
     retVal = vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau}))
     return retVal
+
 
 def buildCands(cand_p4s, cand_pdgIds, cand_qs):
     if not (len(cand_p4s) == len(cand_pdgIds) and len(cand_pdgIds) == len(cand_qs)):
@@ -31,6 +34,7 @@ def buildCands(cand_p4s, cand_pdgIds, cand_qs):
         cand = Cand(cand_p4s[idx], cand_pdgIds[idx], cand_qs[idx], barcode=idx)
         cands.append(cand)
     return cands
+
 
 def readCands(data):
     event_cand_p4s = read_event_cand_p4s(data["event_reco_cand_p4s"])

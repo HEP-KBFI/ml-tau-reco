@@ -3,6 +3,7 @@ import vector
 
 from hpsCand import buildCands
 
+
 class Jet:
     def __init__(self, jet_p4, jet_constituents_p4, jet_constituents_pdgId, jet_constituents_q, barcode=-1):
         self.p4 = jet_p4
@@ -28,13 +29,16 @@ class Jet:
         for cand in self.constituents:
             cand.print()
 
+
 def read_jet_p4s(data):
     retVal = vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau}))
     return retVal
 
+
 def read_jet_constituent_p4s(data):
     retVal = vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau}))
     return retVal
+
 
 def buildJets(jet_p4s, jet_constituent_p4s, jet_constituent_pdgIds, jet_constituent_qs):
     if not (
@@ -49,6 +53,7 @@ def buildJets(jet_p4s, jet_constituent_p4s, jet_constituent_pdgIds, jet_constitu
         jet = Jet(jet_p4s[idx], jet_constituent_p4s[idx], jet_constituent_pdgIds[idx], jet_constituent_qs[idx], idx)
         jets.append(jet)
     return jets
+
 
 def readJets(data):
     jet_p4s = read_jet_p4s(data["reco_jet_p4s"])

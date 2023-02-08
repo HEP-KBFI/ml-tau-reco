@@ -5,11 +5,14 @@ import vector
 
 class Tau:
     def __init__(self, chargedCands=[], strips=[], barcode=-1):
-        self.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
-        for chargedCand in chargedCands:
-            self.p4 = self.p4 + chargedCand.p4
-        for strip in strips:
-            self.p4 = self.p4 + strip.p4
+        cands_and_strips = [c.p4 for c in chargedCands] + [s.p4 for s in strips]
+        cands_and_strips = np.array([[v.px, v.py, v.pz, v.E] for v in cands_and_strips])
+        if len(cands_and_strips) == 0:
+            self.p4 = vector.obj(px=0, py=0, pz=0, E=0)
+        else:
+            sum_p4 = np.sum(cands_and_strips, axis=0)
+            self.p4 = vector.obj(px=sum_p4[0], py=sum_p4[1], pz=sum_p4[2], E=sum_p4[3])
+
         self.updatePtEtaPhiMass()
         self.q = 0.0
         for chargedCand in chargedCands:
@@ -68,6 +71,7 @@ class Tau:
             % (self.chargedIso, self.gammaIso, self.neutralHadronIso, self.combinedIso)
         )
 
+
 def write_tau_p4s(taus):
     retVal = vector.awk(
         ak.zip(
@@ -81,6 +85,7 @@ def write_tau_p4s(taus):
     )
     return retVal
 
+
 def build_dummy_array(dtype=np.float):
     num = 0
     return ak.Array(
@@ -89,6 +94,7 @@ def build_dummy_array(dtype=np.float):
             ak.from_numpy(np.array([], dtype=dtype), highlevel=False),
         )
     )
+
 
 def write_tau_cand_p4s(taus, collection):
     retVal = ak.Array(
@@ -110,17 +116,18 @@ def write_tau_cand_p4s(taus, collection):
     )
     return retVal
 
+
 def write_tau_cand_attrs(taus, collection, attr, dtype):
     retVal = ak.Array(
         [
-            
-            ak.Array([getattr(cand, attr) for cand in getattr(tau, collection)])            
+            ak.Array([getattr(cand, attr) for cand in getattr(tau, collection)])
             if len(getattr(tau, collection)) >= 1
             else build_dummy_array(dtype)
             for tau in taus
         ]
     )
     return retVal
+
 
 def get_decayMode(tau):
     retVal = None
@@ -139,6 +146,7 @@ def get_decayMode(tau):
     else:
         raise ValueError("Invalid decayMode = '%s'" % tau.decayMode)
     return retVal
+
 
 def writeTaus(taus):
     retVal = {

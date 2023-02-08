@@ -8,9 +8,10 @@ from hpsCand import readCands
 from hpsJet import readJets
 from hpsTau import Tau, writeTaus
 
-# CV: to run the HPS tau reconstruction algorithm, execute 
+# CV: to run the HPS tau reconstruction algorithm, execute
 #       './scripts/run-env.sh python3 src/runBuilder.py -b hps -i /local/laurits/CLIC_data/ZH_Htautau -v 1'
 #     in the ml-tau-reco directory
+
 
 class HPSTauBuilder(BasicTauBuilder):
     def __init__(self, cfgFileName="./config/hpsAlgo_cfg.json", verbosity=0):
