@@ -1,3 +1,6 @@
+import awkward as ak
+import vector
+
 from hpsCand import buildCands
 
 
@@ -27,16 +30,35 @@ class Jet:
             cand.print()
 
 
-def buildJets(jets_p4, jets_constituents_p4, jets_constituents_pdgId, jets_constituents_q):
+def read_jet_p4s(data):
+    retVal = vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau}))
+    return retVal
+
+
+def read_jet_constituent_p4s(data):
+    retVal = vector.awk(ak.zip({"px": data.x, "py": data.y, "pz": data.z, "mass": data.tau}))
+    return retVal
+
+
+def buildJets(jet_p4s, jet_constituent_p4s, jet_constituent_pdgIds, jet_constituent_qs):
     if not (
-        len(jets_p4) == len(jets_constituents_p4)
-        and len(jets_constituents_p4) == len(jets_constituents_pdgId)
-        and len(jets_constituents_pdgId) == len(jets_constituents_q)
+        len(jet_p4s) == len(jet_constituent_p4s)
+        and len(jet_constituent_p4s) == len(jet_constituent_pdgIds)
+        and len(jet_constituent_pdgIds) == len(jet_constituent_qs)
     ):
-        raise ValueError("Length of lists for p4, constituents_p4, constituents_pdgId, and constituents_q don't match !!")
+        raise ValueError("Length of arrays for jet p4, constituent_p4, constituent_pdgId, and constituent_q don't match !!")
     jets = []
-    numJets = len(jets_p4)
-    for idx in range(numJets):
-        jet = Jet(jets_p4[idx], jets_constituents_p4[idx], jets_constituents_pdgId[idx], jets_constituents_q[idx], idx)
+    num_jets = len(jet_p4s)
+    for idx in range(num_jets):
+        jet = Jet(jet_p4s[idx], jet_constituent_p4s[idx], jet_constituent_pdgIds[idx], jet_constituent_qs[idx], idx)
         jets.append(jet)
+    return jets
+
+
+def readJets(data):
+    jet_p4s = read_jet_p4s(data["reco_jet_p4s"])
+    jet_constituent_p4s = read_jet_constituent_p4s(data["reco_cand_p4s"])
+    jet_constituent_pdgIds = data["reco_cand_pdg"]
+    jet_constituent_qs = data["reco_cand_charge"]
+    jets = buildJets(jet_p4s, jet_constituent_p4s, jet_constituent_pdgIds, jet_constituent_qs)
     return jets
