@@ -1,3 +1,5 @@
+import awkward as ak
+import numpy as np
 import vector
 
 
@@ -65,3 +67,93 @@ class Tau:
             " isolation: charged = %1.2f, gamma = %1.2f, neutralHadron = %1.2f, combined = %1.2f"
             % (self.chargedIso, self.gammaIso, self.neutralHadronIso, self.combinedIso)
         )
+
+def write_tau_p4s(taus):
+    retVal = vector.awk(
+        ak.zip(
+            {
+                "px": [tau.p4.px for tau in taus],
+                "py": [tau.p4.py for tau in taus],
+                "pz": [tau.p4.pz for tau in taus],
+                "mass": [tau.p4.mass for tau in taus],
+            }
+        )
+    )
+    return retVal
+
+def build_dummy_array(dtype=np.float):
+    num = 0
+    return ak.Array(
+        ak.contents.ListOffsetArray(
+            ak.index.Index64(np.zeros(num + 1, dtype=np.int64)),
+            ak.from_numpy(np.array([], dtype=dtype), highlevel=False),
+        )
+    )
+
+def write_tau_cand_p4s(taus, collection):
+    retVal = ak.Array(
+        [
+            vector.awk(
+                ak.zip(
+                    {
+                        "px": [cand.p4.px for cand in getattr(tau, collection)],
+                        "py": [cand.p4.py for cand in getattr(tau, collection)],
+                        "pz": [cand.p4.pz for cand in getattr(tau, collection)],
+                        "mass": [cand.p4.mass for cand in getattr(tau, collection)],
+                    }
+                )
+            )
+            if len(getattr(tau, collection)) >= 1
+            else build_dummy_array()
+            for tau in taus
+        ]
+    )
+    return retVal
+
+def write_tau_cand_attrs(taus, collection, attr, dtype):
+    retVal = ak.Array(
+        [
+            
+            ak.Array([getattr(cand, attr) for cand in getattr(tau, collection)])            
+            if len(getattr(tau, collection)) >= 1
+            else build_dummy_array(dtype)
+            for tau in taus
+        ]
+    )
+    return retVal
+
+def get_decayMode(tau):
+    retVal = None
+    if tau.decayMode == "undefined":
+        retVal = -1
+    elif tau.decayMode == "1Prong0Pi0":
+        retVal = 0
+    elif tau.decayMode == "1Prong1Pi0":
+        retVal = 1
+    elif tau.decayMode == "1Prong2Pi0":
+        retVal = 2
+    elif tau.decayMode == "3Prong0Pi0":
+        retVal = 10
+    elif tau.decayMode == "3Prong1Pi0":
+        retVal = 11
+    else:
+        raise ValueError("Invalid decayMode = '%s'" % tau.decayMode)
+    return retVal
+
+def writeTaus(taus):
+    retVal = {
+        "tau_p4s": write_tau_p4s(taus),
+        "tauSigCand_p4s": write_tau_cand_p4s(taus, "signal_cands"),
+        "tauSigCand_pdgIds": write_tau_cand_attrs(taus, "signal_cands", "pdgId", np.int),
+        "tauSigCand_q": write_tau_cand_attrs(taus, "signal_cands", "q", np.float),
+        "tauIsoCand_p4s": write_tau_cand_p4s(taus, "iso_cands"),
+        "tauIsoCand_pdgIds": write_tau_cand_attrs(taus, "iso_cands", "pdgId", np.int),
+        "tauIsoCand_q": write_tau_cand_attrs(taus, "iso_cands", "q", np.float),
+        "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),
+        "tauChargedIso": ak.Array([tau.chargedIso for tau in taus]),
+        "tauGammaIso": ak.Array([tau.gammaIso for tau in taus]),
+        "tauNeutralHadronIso": ak.Array([tau.neutralHadronIso for tau in taus]),
+        "tau_charge": ak.Array([tau.q for tau in taus]),
+        "tau_decaymode": ak.Array([get_decayMode(tau) for tau in taus]),
+    }
+    return retVal
