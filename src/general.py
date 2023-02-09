@@ -95,3 +95,27 @@ def check_rare_decaymode(pdg_ids):
     mu-neutrino, electron-neutrino, electron, photon"""
     common_particles = [16, 111, 211, 13, 14, 12, 11, 22]
     return sum(np.in1d(pdg_ids, common_particles)) != len(pdg_ids)
+
+
+def get_reduced_decaymodes(decaymodes: np.array):
+    """ Maps the full set of decay modes into a smaller subset, setting the rarer decaymodes under "Other" (# 15)"""
+    target_mapping = {
+        -1: -1,
+        0: 0,
+        1: 1,
+        2: 2,
+        3: 15,
+        4: 15,
+        5: 15,
+        6: 15,
+        7: 15,
+        8: 15,
+        9: 15,
+        10: 10,
+        11: 11,
+        12: 15,
+        13: 15,
+        14: 15,
+        15: 15,
+    }
+    return np.vectorize(target_mapping.get)(decaymodes)
