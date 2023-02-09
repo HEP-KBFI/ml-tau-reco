@@ -1,6 +1,6 @@
 input_dir_QCD: /local/laurits/CLIC_data/QCD
 input_dir_ZH_Htautau: /local/laurits/CLIC_data/ZH_Htautau
-epochs: 10
+epochs: 100
 ntrain: 800
 nval: 200
-batch_size: 10
+batch_size: 5
