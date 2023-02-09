@@ -69,9 +69,10 @@ Feel free to implement/suggest any other tests for validation as there are curre
 
 To run your tauBuilder code on the general Ntuples and produce tauBuilder tuples for the metric evaluation adapt ```src/runTauBuilder.py``` and run:
 ```
-[manivald] ./scripts/run-env.sh src/runTauBuilder.py -n NFILES -i NTUPLEINPUTDIR -o OUTPUTTUPLEDIR -b YOURBUILDERCLASS
+[manivald] ./scripts/run-env.sh python3 src/runBuilder.py builder=HPS n_files=1 verbosity=1 output_dir=/local/veelken/CLIC_tau_ntuples/$VERSION
 ```
-to run on all available ntuples run with ``` -n -1 ```
+it will run both datasets by default, so if you only want ZH_Htautau, then add also ```samples_to_process=['ZH_Htautau']``` to the end of the command
+
 
 # Running the metric checks on the tauBuilder tuples
 

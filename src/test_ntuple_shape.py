@@ -28,6 +28,7 @@ def level_one(data):
     reco_cand_pdg = ak.num(data.reco_cand_pdg, axis=0)
     reco_jet_p4s = ak.num(data.reco_jet_p4s, axis=0)
     gen_jet_p4s = ak.num(data.gen_jet_p4s, axis=0)
+    gen_jet_tau_charge = ak.num(data.gen_jet_tau_charge, axis=0)
     gen_jet_tau_decaymode = ak.num(data.gen_jet_tau_decaymode, axis=0)
     gen_jet_tau_vis_energy = ak.num(data.gen_jet_tau_vis_energy, axis=0)
     assert event_reco_cand_p4s == event_reco_cand_pdg
@@ -38,6 +39,7 @@ def level_one(data):
     assert reco_cand_pdg == reco_jet_p4s
     assert reco_jet_p4s == gen_jet_p4s
     assert gen_jet_tau_decaymode == gen_jet_p4s
+    assert gen_jet_tau_charge == gen_jet_tau_decaymode
     assert gen_jet_tau_vis_energy == gen_jet_tau_decaymode
     assert reco_cand_pdg == reco_jet_p4s
     assert reco_cand_charge == reco_jet_p4s
