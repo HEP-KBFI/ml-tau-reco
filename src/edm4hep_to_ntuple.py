@@ -56,7 +56,7 @@ def calculate_p4(p_type: str, arrs: ak.Array):
 
 
 def cluster_reco_jets(particles_p4):
-    jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
+    jetdef = fastjet.JetDefinition2Param(fastjet.ee_genkt_algorithm, 0.4, -1)
     # This workaround here is also only temporary due to incorrect object
     # initialization, see: https://github.com/scikit-hep/fastjet/issues/174
     constituent_index = []
@@ -73,11 +73,12 @@ def cluster_reco_jets(particles_p4):
 
 
 def cluster_gen_jets(particles_p4):
-    jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
+    jetdef = fastjet.JetDefinition2Param(fastjet.ee_genkt_algorithm, 0.4, -1)
     cluster = fastjet.ClusterSequence(particles_p4, jetdef)
     jets = vector.awk(cluster.inclusive_jets(min_pt=2.0))
     jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
-    return jets
+    constituent_index = cluster.constituent_index(min_pt=2.0)
+    return jets, constituent_index
 
 
 ###############################################################################
@@ -345,7 +346,7 @@ def get_matched_gen_jet_p4(reco_jets, gen_jets):
     return reco_indices, gen_indices
 
 
-def get_matched_gen_tau_decaymode(gen_jets, best_combos, tau_decaymodes):
+def get_matched_gen_tau_property(gen_jets, best_combos, property_, dummy_value=-1):
     gen_jet_full_info_array = []
     for event_id in range(len(gen_jets)):
         mapping = {i[1]: i[0] for i in best_combos[event_id]}
@@ -353,38 +354,35 @@ def get_matched_gen_tau_decaymode(gen_jets, best_combos, tau_decaymodes):
         for i, gen_jet in enumerate(gen_jets[event_id]):
             if len(best_combos[event_id]) > 0:
                 if i in best_combos[event_id][:, 1]:
-                    if len(tau_decaymodes[event_id]) == 0:
-                        value = -1
+                    if len(property_[event_id]) == 0:
+                        value = dummy_value
                     else:
-                        value = tau_decaymodes[event_id][mapping[i]]
+                        value = property_[event_id][mapping[i]]
                     gen_jet_info_array.append(value)
                 else:
-                    gen_jet_info_array.append(-1)
+                    gen_jet_info_array.append(dummy_value)
             else:
-                gen_jet_info_array.append(-1)
+                gen_jet_info_array.append(dummy_value)
         gen_jet_full_info_array.append(gen_jet_info_array)
     return ak.Array(gen_jet_full_info_array)
 
 
-def get_matched_gen_tau_vis_energy(gen_jets, best_combos, tau_energies):
-    gen_jet_full_info_array = []
-    for event_id in range(len(gen_jets)):
-        mapping = {i[1]: i[0] for i in best_combos[event_id]}
-        gen_jet_info_array = []
-        for i, gen_jet in enumerate(gen_jets[event_id]):
-            if len(best_combos[event_id]) > 0:
-                if i in best_combos[event_id][:, 1]:
-                    if len(tau_energies[event_id]) == 0:
-                        value = -1
-                    else:
-                        value = tau_energies[event_id][mapping[i]]
-                    gen_jet_info_array.append(value)
-                else:
-                    gen_jet_info_array.append(-1)
-            else:
-                gen_jet_info_array.append(-1)
-        gen_jet_full_info_array.append(gen_jet_info_array)
-    return ak.Array(gen_jet_full_info_array)
+def get_vis_tau_p4s(tau_mask, mc_particles, mc_p4):
+    all_events_tau_vis_p4s = []
+    for e_idx in range(len(mc_particles.PDG[tau_mask])):
+        daughter_mask = mc_particles.daughters_end[tau_mask][e_idx] < ak.num(mc_particles.daughters_begin[e_idx], axis=0)
+        n_daughters = len(mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask])
+        tau_vis_p4s = []
+        for d_idx in range(n_daughters):
+            daughter_indices = range(
+                mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask][d_idx],
+                mc_particles.daughters_end[tau_mask][e_idx][daughter_mask][d_idx],
+            )
+            PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
+            vis_particle_map = (PDG_ids != 12) * (PDG_ids != 14) * (PDG_ids != 16)
+            tau_vis_p4s.append(mc_p4[e_idx][daughter_indices][vis_particle_map])
+        all_events_tau_vis_p4s.append(tau_vis_p4s)
+    return all_events_tau_vis_p4s
 
 
 def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
@@ -392,9 +390,17 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
     best_combos = get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, daughter_mask)
     tau_energies = get_tau_energies(tau_mask, mc_particles, mc_p4)
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask)
-    tau_gen_jet_vis_energies = get_matched_gen_tau_vis_energy(gen_jets, best_combos, tau_energies)
-    tau_gen_jet_decaymodes = get_matched_gen_tau_decaymode(gen_jets, best_combos, tau_decaymodes)
-    return tau_gen_jet_vis_energies, tau_gen_jet_decaymodes
+    vis_tau_p4s = get_vis_tau_p4s(tau_mask, mc_particles, mc_p4)
+    tau_charges = mc_particles.charge[tau_mask]
+    gen_tau_jet_info = {
+        "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_energies),
+        "gen_jet_tau_decaymode": get_matched_gen_tau_property(gen_jets, best_combos, tau_decaymodes),
+        "tau_gen_jet_charge": get_matched_gen_tau_property(gen_jets, best_combos, tau_charges),
+        "tau_gen_jet_p4s": get_matched_gen_tau_property(
+            gen_jets, best_combos, vis_tau_p4s, dummy_value=ak.contents.EmptyArray()
+        ),
+    }
+    return gen_tau_jet_info
 
 
 def get_stable_mc_particles(mc_particles, mc_p4):
@@ -432,7 +438,7 @@ def process_input_file(arrays: ak.Array):
     # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_reco_jets(reco_p4)
     stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
-    gen_jets = cluster_gen_jets(stable_mc_p4)
+    gen_jets = cluster_gen_jets(stable_mc_p4)[0]
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
     reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
@@ -441,7 +447,7 @@ def process_input_file(arrays: ak.Array):
     gen_jets = vector.awk(ak.zip({"energy": gen_jets.t, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z}))
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
-    gen_jet_tau_vis_energy, gen_jet_tau_decaymode = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
+    gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4)
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask)
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
@@ -469,13 +475,14 @@ def process_input_file(arrays: ak.Array):
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
         "gen_jet_p4s": vector.awk(ak.zip({"mass": gen_jets.mass, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z})),
-        "gen_jet_tau_decaymode": gen_jet_tau_decaymode,
-        "gen_jet_tau_vis_energy": gen_jet_tau_vis_energy,
+        "gen_jet_tau_decaymode": gen_tau_jet_info["gen_jet_tau_decaymode"],
+        "gen_jet_tau_vis_energy": gen_tau_jet_info["gen_jet_tau_vis_energy"],
+        "gen_jet_tau_charge": gen_tau_jet_info["tau_gen_jet_charge"],
+        "gen_jet_tau_p4s": gen_tau_jet_info["tau_gen_jet_p4s"],
         "reco_cand_matched_gen_energy": get_jet_matched_constituent_gen_energy(
             arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters
         ),
     }
-    data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
     return data
 
 
@@ -484,6 +491,7 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
     start_time = time.time()
     arrays = load_single_file_contents(input_path, tree_path, branches)
     data = process_input_file(arrays)
+    data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
     save_record_to_file(data, output_ntuple_path)
