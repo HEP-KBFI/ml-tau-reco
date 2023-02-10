@@ -9,7 +9,7 @@ from hpsJet import readJets
 from hpsTau import Tau, writeTaus
 
 # CV: to run the HPS tau reconstruction algorithm, execute
-#       './scripts/run-env.sh python3 src/runBuilder.py -b hps -i /local/laurits/CLIC_data/ZH_Htautau -v 1'
+#       './scripts/run-env.sh python3 src/runBuilder.py builder=HPS samples_to_process=['ZH_Htautau'] n_files=1 verbosity=1'
 #     in the ml-tau-reco directory
 
 

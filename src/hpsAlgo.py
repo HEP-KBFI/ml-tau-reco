@@ -273,9 +273,20 @@ class HPSAlgo:
                     tau_candidate = Tau(chargedCands, cleanedStrips, barcode)
                     tau_candidate.jet = jet
                     tau_candidate.decayMode = decayMode
+                    signalConeSize = max(min(0.10, 3.0 / tau_candidate.pt), 0.05)
+                    passesSignalCone = True
+                    for cand in tau_candidate.signal_chargedCands:
+                        if deltaR(tau_candidate, cand) > signalConeSize:
+                            passesSignalCone = False
+                            break
+                    for strip in tau_candidate.signal_strips:
+                        if deltaR(tau_candidate, strip) > signalConeSize:
+                            passesSignalCone = False
+                            break
                     if (
                         abs(round(tau_candidate.q)) == 1
                         and deltaR(tau_candidate, tau_candidate.jet) < self.matchingConeSize
+                        and passesSignalCone
                         and tau_candidate.mass > self.targetedDecayModes[decayMode]["minTauMass"]
                         and tau_candidate.mass < self.targetedDecayModes[decayMode]["maxTauMass"]
                     ):
@@ -307,6 +318,11 @@ class HPSAlgo:
                             print("fails preselection:")
                             print(" q = %i" % round(tau_candidate.q))
                             print(" dR(tau,jet) = %1.2f" % deltaR(tau_candidate, tau_candidate.jet))
+                            print(" signalConeSize = %1.2f" % signalConeSize)
+                            for idx, cand in enumerate(tau_candidate.signal_chargedCands):
+                                print(" dR(tau,signal_chargedCand #%i) = %1.2f" % (idx, deltaR(tau_candidate, cand)))
+                            for idx, strip in enumerate(tau_candidate.signal_chargedCands):
+                                print(" dR(tau,signal_strip #%i) = %1.2f" % (idx, deltaR(tau_candidate, strip)))
                             print(" mass = %1.2f" % tau_candidate.mass)
 
         # CV: sort tau candidates by multiplicity of charged signal candidates,
