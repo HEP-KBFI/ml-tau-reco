@@ -275,11 +275,11 @@ class HPSAlgo:
                     tau_candidate.decayMode = decayMode
                     signalConeSize = max(min(0.10, 3.0 / tau_candidate.pt), 0.05)
                     passesSignalCone = True
-                    for cand in self.signal_chargedCands:
+                    for cand in tau_candidate.signal_chargedCands:
                         if deltaR(tau_candidate, cand) > signalConeSize:
                             passesSignalCone = False
                             break
-                    for strip in self.signal_strips:
+                    for strip in tau_candidate.signal_strips:
                         if deltaR(tau_candidate, strip) > signalConeSize:
                             passesSignalCone = False
                             break
