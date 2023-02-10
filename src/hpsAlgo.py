@@ -319,9 +319,9 @@ class HPSAlgo:
                             print(" q = %i" % round(tau_candidate.q))
                             print(" dR(tau,jet) = %1.2f" % deltaR(tau_candidate, tau_candidate.jet))
                             print(" signalConeSize = %1.2f" % signalConeSize)
-                            for idx, cand in enumerate(self.signal_chargedCands):
+                            for idx, cand in enumerate(tau_candidate.signal_chargedCands):
                                 print(" dR(tau,signal_chargedCand #%i) = %1.2f" % (idx, deltaR(tau_candidate, cand)))
-                            for idx, strip in enumerate(self.signal_chargedCands):
+                            for idx, strip in enumerate(tau_candidate.signal_chargedCands):
                                 print(" dR(tau,signal_strip #%i) = %1.2f" % (idx, deltaR(tau_candidate, strip)))
                             print(" mass = %1.2f" % tau_candidate.mass)
 
