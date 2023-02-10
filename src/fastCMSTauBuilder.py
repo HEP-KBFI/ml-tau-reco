@@ -319,14 +319,6 @@ class FastCMSTauBuilder(BasicTauBuilder):
         charge_smeared = charge_sig + charge_bkg
         return ak.Array(charge_smeared)
 
-    # TODO remove if not needed, i.e different lorentz dummy
-    """
-    Small helper to help with empty entries in akward arrays
-    """
-
-    def _fillEmptyWithX(self, data, X):
-        return ak.from_iter([data[i] if len(data[i]) != 0 else [X] for i in range(len(data))])
-
     """
     Processes the input jets to construct tau candidates.
     """
@@ -334,12 +326,9 @@ class FastCMSTauBuilder(BasicTauBuilder):
     def processJets(self, jets):
         isBG = jets["gen_jet_tau_decaymode"] <= -1
         genJetP4s = jets["gen_jet_p4s"]
-        # genVisTauP4s = jets['gen_jet_tau_p4s'] # TODO switch with line below once new ntuple is available
-        genVisTauP4s = jets["gen_jet_p4s"]
+        genVisTauP4s = jets['gen_jet_tau_p4s']
         tauP4s = self._smearEnergy(genVisTauP4s, genJetP4s, np.asarray(isBG))
-        # TODO switch to with line below if new ntuple is available
-        # dclass = self._calcClassifier(self._asP4(jets['gen_jet_tau_p4s']).pt,self._asP4(jets['reco_jet_p4s']).pt)
-        dclass = self._calcClassifier(self._asP4(jets["gen_jet_p4s"]).pt, self._asP4(jets["reco_jet_p4s"]).pt)
+        dclass = self._calcClassifier(self._asP4(jets['gen_jet_tau_p4s']).pt,self._asP4(jets['reco_jet_p4s']).pt)
         dmode_orig = self._conv_dMode(jets["gen_jet_tau_decaymode"])
         dmode_smeared = self._calcDmode(dmode_orig)
         charge_smeared = self._smearCharge(np.asarray(jets["gen_jet_tau_charge"]), isBG, self._asP4(genVisTauP4s).pt)
