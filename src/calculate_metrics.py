@@ -148,9 +148,9 @@ def plot_all_metrics(cfg):
         sig_input_dir = cfg.algorithms[algorithm].sig_ntuples_dir
         bkg_input_dir = cfg.algorithms[algorithm].bkg_ntuples_dir
         print(f"Loading signal data for {algorithm} from {sig_input_dir}")
-        sig_data = load_all_data(sig_input_dir)
+        sig_data = load_all_data(sig_input_dir, n_files=cfg.plotting.n_files)
         print(f"Loading background data for {algorithm} from {bkg_input_dir}")
-        bkg_data = load_all_data(bkg_input_dir)
+        bkg_data = load_all_data(bkg_input_dir, n_files=cfg.plotting.n_files)
         efficiencies[algorithm] = {}
         fakerates[algorithm] = {}
         for cut in classifier_cuts:

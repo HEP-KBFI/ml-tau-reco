@@ -18,6 +18,8 @@ def load_all_data(input_dir: str, n_files: int = None) -> ak.Array:
         input_data : ak.Array
             The concatenated data from all the loaded files
     """
+    if n_files == -1:
+        n_files = None
     input_files = glob.glob(os.path.join(input_dir, "*.parquet"))[:n_files]
     input_data = []
     for file_path in input_files:
