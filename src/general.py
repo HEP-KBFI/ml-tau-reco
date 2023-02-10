@@ -98,7 +98,7 @@ def check_rare_decaymode(pdg_ids):
 
 
 def get_reduced_decaymodes(decaymodes: np.array):
-    """ Maps the full set of decay modes into a smaller subset, setting the rarer decaymodes under "Other" (# 15)"""
+    """Maps the full set of decay modes into a smaller subset, setting the rarer decaymodes under "Other" (# 15)"""
     target_mapping = {
         -1: -1,
         0: 0,

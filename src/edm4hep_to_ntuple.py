@@ -130,7 +130,7 @@ def get_tau_energies(tau_mask, mc_particles, mc_p4):
             vis_particle_map = (PDG_ids != 12) * (PDG_ids != 14) * (PDG_ids != 16)
             tau_vis_energies.append(ak.sum(energies[vis_particle_map], axis=0))
         all_events_tau_vis_energies.append(tau_vis_energies)
-    return all_events_tau_vis_energies
+    return ak.from_iter(all_events_tau_vis_energies)
 
 
 ###############################################################################
@@ -354,10 +354,13 @@ def get_matched_gen_tau_property(gen_jets, best_combos, property_, dummy_value=-
         for i, gen_jet in enumerate(gen_jets[event_id]):
             if len(best_combos[event_id]) > 0:
                 if i in best_combos[event_id][:, 1]:
-                    if len(property_[event_id]) == 0:
-                        value = dummy_value
+                    if type(property_[event_id]) == ak.highlevel.Array:
+                        if len(property_[event_id]) == 0:
+                            value = dummy_value
+                        else:
+                            value = property_[event_id][mapping[i]]
                     else:
-                        value = property_[event_id][mapping[i]]
+                        value = property_[event_id]
                     gen_jet_info_array.append(value)
                 else:
                     gen_jet_info_array.append(dummy_value)
@@ -374,15 +377,41 @@ def get_vis_tau_p4s(tau_mask, mc_particles, mc_p4):
         n_daughters = len(mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask])
         tau_vis_p4s = []
         for d_idx in range(n_daughters):
+            tau_vis_p4 = vector.awk(
+                ak.zip(
+                    {
+                        "mass": [0.0],
+                        "x": [0.0],
+                        "y": [0.0],
+                        "z": [0.0],
+                    }
+                )
+            )[0]
             daughter_indices = range(
                 mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask][d_idx],
                 mc_particles.daughters_end[tau_mask][e_idx][daughter_mask][d_idx],
             )
             PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
             vis_particle_map = (PDG_ids != 12) * (PDG_ids != 14) * (PDG_ids != 16)
-            tau_vis_p4s.append(mc_p4[e_idx][daughter_indices][vis_particle_map])
-        all_events_tau_vis_p4s.append(tau_vis_p4s)
-    return all_events_tau_vis_p4s
+            for tau_daughter_p4 in mc_p4[e_idx][daughter_indices][vis_particle_map]:
+                tau_vis_p4 = tau_vis_p4 + tau_daughter_p4
+            tau_vis_p4s.append(tau_vis_p4)
+        if len(tau_vis_p4s) > 0:
+            all_events_tau_vis_p4s.append(tau_vis_p4s)
+        else:
+            all_events_tau_vis_p4s.append(
+                vector.awk(
+                    ak.zip(
+                        {
+                            "mass": [0.0],
+                            "x": [0.0],
+                            "y": [0.0],
+                            "z": [0.0],
+                        }
+                    )
+                )[0]
+            )
+    return ak.from_iter(all_events_tau_vis_p4s)
 
 
 def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
@@ -392,12 +421,22 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask)
     vis_tau_p4s = get_vis_tau_p4s(tau_mask, mc_particles, mc_p4)
     tau_charges = mc_particles.charge[tau_mask]
+    tau_gen_jet_p4s_fill_value = vector.awk(
+        ak.zip(
+            {
+                "mass": [0.0],
+                "x": [0.0],
+                "y": [0.0],
+                "z": [0.0],
+            }
+        )
+    )[0]
     gen_tau_jet_info = {
         "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_energies),
         "gen_jet_tau_decaymode": get_matched_gen_tau_property(gen_jets, best_combos, tau_decaymodes),
         "tau_gen_jet_charge": get_matched_gen_tau_property(gen_jets, best_combos, tau_charges),
         "tau_gen_jet_p4s": get_matched_gen_tau_property(
-            gen_jets, best_combos, vis_tau_p4s, dummy_value=ak.contents.EmptyArray()
+            gen_jets, best_combos, vis_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
         ),
     }
     return gen_tau_jet_info
