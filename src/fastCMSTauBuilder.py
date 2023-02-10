@@ -326,9 +326,9 @@ class FastCMSTauBuilder(BasicTauBuilder):
     def processJets(self, jets):
         isBG = jets["gen_jet_tau_decaymode"] <= -1
         genJetP4s = jets["gen_jet_p4s"]
-        genVisTauP4s = jets['gen_jet_tau_p4s']
+        genVisTauP4s = jets["gen_jet_tau_p4s"]
         tauP4s = self._smearEnergy(genVisTauP4s, genJetP4s, np.asarray(isBG))
-        dclass = self._calcClassifier(self._asP4(jets['gen_jet_tau_p4s']).pt,self._asP4(jets['reco_jet_p4s']).pt)
+        dclass = self._calcClassifier(self._asP4(jets["gen_jet_tau_p4s"]).pt, self._asP4(jets["reco_jet_p4s"]).pt)
         dmode_orig = self._conv_dMode(jets["gen_jet_tau_decaymode"])
         dmode_smeared = self._calcDmode(dmode_orig)
         charge_smeared = self._smearCharge(np.asarray(jets["gen_jet_tau_charge"]), isBG, self._asP4(genVisTauP4s).pt)
