@@ -65,7 +65,7 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
 def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
     output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.png")
     gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
-    reco_tau_decaymodes = sig_data.tau_decaymode.to_numpy()
+    reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
     # Mapping of decaymodes needed, not all classes classified, such as [14: 'ThreeProngNPiZero']
     mapping = {
         -1: "Jet",
