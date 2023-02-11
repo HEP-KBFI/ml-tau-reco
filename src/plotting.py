@@ -158,6 +158,7 @@ def plot_histogram(
     y_label: str = "",
     x_label: str = "",
     title: str = "",
+    integer_bins: bool = False
 ) -> None:
     """Plots the confusion matrix for the regression task. Although confusion
     matrix is in principle meant for classification task, the problem can be
@@ -187,9 +188,15 @@ def plot_histogram(
     Returns:
         None
     """
-    bin_edges = np.linspace(left_bin_edge, right_bin_edge, num=n_bins + 1)
     fig, ax = plt.subplots(figsize=figsize)
-    ax.hist(entries, bins=bin_edges, label=title)
+    if integer_bins:
+        bin_diff = np.min(np.diff(np.unique(entries)))
+        left_of_first_bin = np.min(entries) - float(bin_diff)/2
+        right_of_last_bin = np.max(entries) + float(bin_diff)/2
+        ax.hist(entries, np.arange(left_of_first_bin, right_of_last_bin + bin_diff, bin_diff), label=title)
+    else:
+        bin_edges = np.linspace(left_bin_edge, right_bin_edge, num=n_bins + 1)
+        ax.hist(entries, bins=bin_edges, label=title)
     plt.xlabel(x_label, fontdict={"size": 20})
     plt.ylabel(y_label, fontdict={"size": 20})
     plt.grid(True, which="both")
