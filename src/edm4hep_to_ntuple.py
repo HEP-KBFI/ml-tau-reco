@@ -444,10 +444,10 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
 
 def get_stable_mc_particles(mc_particles, mc_p4):
     stable_pythia_mask = mc_particles["generatorStatus"] == 1
-    stable_mc_particles = ak.Array(
-        {field: ak.Array(mc_particles[field][stable_pythia_mask]) for field in mc_particles.fields}
-    )
-    stable_mc_p4 = mc_p4[stable_pythia_mask]
+    neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (abs(mc_particles["PDG"]) != 16)
+    particle_mask = stable_pythia_mask * neutrino_mask
+    stable_mc_particles = ak.Array({field: ak.Array(mc_particles[field][particle_mask]) for field in mc_particles.fields})
+    stable_mc_p4 = mc_p4[particle_mask]
     stable_mc_p4 = vector.awk(
         ak.zip(
             {
@@ -471,11 +471,28 @@ def get_reco_particle_pdg(reco_particles):
     return ak.from_iter(reco_particle_pdg)
 
 
+def clean_reco_particles(reco_particles, reco_p4):
+    mask = reco_particles["type"] != 0
+    reco_particles = ak.Record({k: reco_particles[k][mask] for k in reco_particles.fields})
+    reco_p4 = vector.awk(
+        ak.zip(
+            {
+                "px": reco_p4[mask].x,
+                "py": reco_p4[mask].y,
+                "pz": reco_p4[mask].z,
+                "mass": reco_p4[mask].tau,
+            }
+        )
+    )
+    return reco_particles, reco_p4
+
+
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
-    # reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
-    reco_jets, reco_jet_constituent_indices = cluster_reco_jets(reco_p4)
+    reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
+    # reco_jets, reco_jet_constituent_indices = cluster_reco_jets(reco_p4)
+    reco_jets, reco_jet_constituent_indices = cluster_gen_jets(reco_p4)
     stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
     gen_jets = cluster_gen_jets(stable_mc_p4)[0]
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
