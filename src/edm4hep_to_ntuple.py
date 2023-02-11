@@ -444,11 +444,9 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mc_particles, mc_p4):
 
 def get_stable_mc_particles(mc_particles, mc_p4):
     stable_pythia_mask = mc_particles["generatorStatus"] == 1
-    neutrino_mask = (abs(mc_particles['PDG']) !=  12) * (abs(mc_particles['PDG']) !=  14) * (abs(mc_particles['PDG']) !=  16)
+    neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (abs(mc_particles["PDG"]) != 16)
     particle_mask = stable_pythia_mask * neutrino_mask
-    stable_mc_particles = ak.Array(
-        {field: ak.Array(mc_particles[field][particle_mask]) for field in mc_particles.fields}
-    )
+    stable_mc_particles = ak.Array({field: ak.Array(mc_particles[field][particle_mask]) for field in mc_particles.fields})
     stable_mc_p4 = mc_p4[particle_mask]
     stable_mc_p4 = vector.awk(
         ak.zip(
@@ -474,18 +472,18 @@ def get_reco_particle_pdg(reco_particles):
 
 
 def clean_reco_particles(reco_particles, reco_p4):
-    mask = reco_particles['type'] != 0
+    mask = reco_particles["type"] != 0
     reco_particles = ak.Record({k: reco_particles[k][mask] for k in reco_particles.fields})
     reco_p4 = vector.awk(
-            ak.zip(
-                {
-                    "px": reco_p4[mask].x,
-                    "py": reco_p4[mask].y,
-                    "pz": reco_p4[mask].z,
-                    "mass": reco_p4[mask].tau,
-                }
-            )
+        ak.zip(
+            {
+                "px": reco_p4[mask].x,
+                "py": reco_p4[mask].y,
+                "pz": reco_p4[mask].z,
+                "mass": reco_p4[mask].tau,
+            }
         )
+    )
     return reco_particles, reco_p4
 
 
