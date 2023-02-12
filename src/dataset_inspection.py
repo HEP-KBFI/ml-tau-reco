@@ -1,15 +1,15 @@
-import awkward as ak
-import hydra
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import glob
-from omegaconf import DictConfig
-import edm4hep_to_ntuple as nt
+import hydra
+import vector
+import numpy as np
 import mplhep as hep
+import awkward as ak
 import plotting as pl
 import seaborn as sns
-import vector
+import edm4hep_to_ntuple as nt
+import matplotlib.pyplot as plt
+from omegaconf import DictConfig
 
 hep.style.use(hep.styles.CMS)
 
@@ -19,7 +19,10 @@ def main(cfg: DictConfig) -> None:
     sample_arrays = {}
     for sample in cfg.samples_to_process:
         input_paths = glob.glob(os.path.join(cfg.samples[sample].input_dir, "*.root"))
-        n_files = cfg.n_files_per_sample
+        if cfg.n_files_per_sample == -1:
+            n_files = None
+        else:
+            n_files = cfg.n_files_per_sample
         arrays = []
         for input_path in input_paths[:n_files]:
             arrays.append(nt.load_single_file_contents(input_path, cfg.tree_path, cfg.branches))
