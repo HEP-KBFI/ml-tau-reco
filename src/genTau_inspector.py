@@ -11,7 +11,6 @@ from omegaconf import DictConfig
 
 @hydra.main(config_path="../config", config_name="genTau_inspector", version_base=None)
 def main(cfg: DictConfig) -> None:
-    sample_arrays = {}
     input_paths = glob.glob(os.path.join(cfg.samples.ZH_Htautau.input_dir, "*.root"))
     if cfg.n_files_per_sample == -1:
         n_files = None
@@ -24,7 +23,7 @@ def main(cfg: DictConfig) -> None:
     mc_particles, mc_p4 = nt.calculate_p4("MCParticles", arrays)
     gen_vis_tau_info = get_gen_vis_tau_info(mc_particles, mc_p4)
     output_path = os.path.expandvars(cfg.output_path)
-    with open(output_path, 'wt') as out_file:
+    with open(output_path, "wt") as out_file:
         json.dump(gen_vis_tau_info, out_file, indent=4)
 
 
@@ -58,19 +57,16 @@ def get_gen_vis_tau_info(mc_particles, mc_p4):
                 "eta": float(summed_vis_tau.eta[0]),
                 "phi": float(summed_vis_tau.phi[0]),
                 "pt": float(summed_vis_tau.pt[0]),
-                "daughters": []
+                "daughters": [],
             }
             for p4, pdg in zip(p4s, PDG_ids):
-                tau_info['daughters'].append({
-                        "PDG": int(pdg),
-                        "eta": float(p4.eta),
-                        "phi": float(p4.phi),
-                        "pt": float(p4.pt)
-                    })
+                tau_info["daughters"].append(
+                    {"PDG": int(pdg), "eta": float(p4.eta), "phi": float(p4.phi), "pt": float(p4.pt)}
+                )
             all_taus.append(tau_info)
         all_event_taus.append(all_taus)
     return all_event_taus
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

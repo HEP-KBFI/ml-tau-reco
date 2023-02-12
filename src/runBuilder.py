@@ -51,7 +51,7 @@ def build_taus(cfg: DictConfig) -> None:
             n_files = None
         else:
             n_files = cfg.n_files
-        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[: n_files]
+        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)
             pool.starmap(process_single_file, zip(input_paths, repeat(builder), repeat(output_dir)))
