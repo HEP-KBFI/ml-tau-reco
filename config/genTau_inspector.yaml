@@ -1,0 +1,5 @@
+n_files_per_sample: -1
+output_path: $HOME/genTau_inspector.json
+defaults:
+  - ntupelizer
+  - _self_
