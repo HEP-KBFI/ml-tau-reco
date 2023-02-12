@@ -47,7 +47,11 @@ def build_taus(cfg: DictConfig) -> None:
         os.makedirs(output_dir, exist_ok=True)
         if not os.path.exists(samples_dir):
             raise OSError("Ntuples do not exist: %s" % (samples_dir))
-        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[: cfg.n_files]
+        if cfg.n_files == -1:
+            n_files = None
+        else:
+            n_files = cfg.n_files
+        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)
             pool.starmap(process_single_file, zip(input_paths, repeat(builder), repeat(output_dir)))
