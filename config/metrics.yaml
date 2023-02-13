@@ -15,8 +15,8 @@ algorithms:
     bkg_ntuples_dir: /foo/bar
     compare: False
   HPS_only:
-    sig_ntuples_dir: /local/veelken/CLIC_tau_ntuples/2023Feb07/HPS/ZH_Htautau
-    bkg_ntuples_dir: /local/veelken/CLIC_tau_ntuples/2023Feb07/HPS/QCD
+    sig_ntuples_dir: /local/laurits/CLIC_taus/HPS/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus/HPS/QCD
     compare: True
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus/Oracle/ZH_Htautau

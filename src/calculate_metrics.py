@@ -129,7 +129,7 @@ def plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts):
     plt.legend()
     plt.ylabel("Fakerate")
     plt.xlabel("Efficiency")
-    plt.ylim((0.003, 1))
+    plt.ylim((1e-5, 1))
     plt.yscale("log")
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
@@ -175,7 +175,7 @@ def plot_all_metrics(cfg):
         efficiencies[algorithm] = {}
         fakerates[algorithm] = {}
         for cut in classifier_cuts:
-            efficiencies[algorithm][cut] = calculate_eff_fake(sig_data, "gen_jet_p4s", cfg, cut)
+            efficiencies[algorithm][cut] = calculate_eff_fake(sig_data, "gen_jet_tau_p4s", cfg, cut)
             fakerates[algorithm][cut] = calculate_eff_fake(bkg_data, "reco_jet_p4s", cfg, cut)
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
