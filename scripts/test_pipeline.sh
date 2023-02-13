@@ -51,6 +51,10 @@ python3 src/endtoend_simple.py input_dir_QCD=./ntuple/ input_dir_ZH_Htautau=./nt
 mkdir -p oracle
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=Oracle use_multiprocessing=False output_dir=oracle
 
+# run fastCMSTauBuilder
+mkdir -p fastCMSTaus
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=FastCMSTau use_multiprocessing=False output_dir=fastCMSTaus
+
 #run HPS -> hps.parquet
 mkdir -p hps
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=HPS use_multiprocessing=False output_dir=hps
