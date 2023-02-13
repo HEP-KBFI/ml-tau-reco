@@ -30,9 +30,9 @@ def rank_tau_candidates(tau1, tau2):
         return +1
     if tau1.num_signal_strips < tau2.num_signal_strips:
         return -1
-    if tau1.combinedIso < tau2.combinedIso:
+    if tau1.combinedIso_dR0p5 < tau2.combinedIso_dR0p5:
         return +1
-    if tau1.combinedIso > tau2.combinedIso:
+    if tau1.combinedIso_dR0p5 > tau2.combinedIso_dR0p5:
         return -1
     return 0
 
