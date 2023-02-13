@@ -91,21 +91,14 @@ class TauEndToEndSimple(nn.Module):
         pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
 
         # pad the PF tensors across jets
-        pfs_list = list(torch_geometric.utils.unbatch(pf_encoded, batch.pf_to_jet))
-        pfs_nested = torch.nested.nested_tensor(pfs_list)
-        pfs_padded = torch.nested.to_padded_tensor(pfs_nested, -1)
-
-        f0 = list(torch_geometric.utils.unbatch(batch.jet_pf_features, batch.pf_to_jet))
-        f0 = torch.nested.nested_tensor(f0)
-        f0 = torch.nested.to_padded_tensor(f0, -1)
-        mask = f0[:, :, -1] == -1
+        pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.pf_to_jet, 0.0)
 
         # run a simple self-attention over the PF candidates in each jet
         for mha_layer in self.nn_pf_mha:
-            pfs_padded = mha_layer(pfs_padded, mask)
+            pfs_padded = mha_layer(pfs_padded, ~mask)
 
         # get the encoded PF candidates after attention, undo the padding
-        pf_encoded = torch.cat([pfs_padded[i][~mask[i]] for i in range(pfs_padded.shape[0])])
+        pf_encoded = torch.cat([pfs_padded[i][mask[i]] for i in range(pfs_padded.shape[0])])
         assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # now collapse the PF information in each jet with a global attention layer
@@ -250,6 +243,7 @@ def main(cfg):
         loss_val = model_loop(model, ds_val_loader, optimizer, False, dev)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
         print("epoch={} loss_train={:.4f} loss_val={:.4f}".format(iepoch, loss_train, loss_val))
+        torch.save(model, "data/model_{}.pt".format(iepoch))
 
     model = model.to(device="cpu")
     torch.save(model, "data/model.pt")
