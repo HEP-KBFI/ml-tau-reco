@@ -24,7 +24,7 @@ def save_record_to_file(data: dict, output_path: str) -> None:
     ak.to_parquet(ak.Record(data), output_path)
 
 
-def load_single_file_contents(path: str, tree_path: str, branches: list = None) -> ak.Array:
+def load_single_file_contents(path: str, tree_path: str = 'events', branches: list = ["MCParticles", "MergedRecoParticles"]) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
         arrays = tree.arrays(branches)

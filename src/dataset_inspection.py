@@ -390,13 +390,23 @@ def plot_met_response(stable_mc_p4, reco_p4, output_dir):
     reco_met = event_reco_p4.et
     gen_met = event_gen_p4.et
     met_response = reco_met / gen_met
+    met_response2 = reco_met - gen_met
     met_response_output_path = os.path.join(output_dir, "met_response.png")
+    met_response_output_path = os.path.join(output_dir, "met_response2.png")
     pl.plot_histogram(
         entries=met_response,
         output_path=met_response_output_path,
         left_bin_edge=min(met_response),
         right_bin_edge=max(met_response),
         x_label=r"$p_T^{reco MET} / p_T^{gen MET}$",
+        title="MET response",
+    )
+    pl.plot_histogram(
+        entries=met_response2,
+        output_path=met_response_output_path2,
+        left_bin_edge=min(met_response2),
+        right_bin_edge=max(met_response2),
+        x_label=r"$p_T^{reco MET} - p_T^{gen MET}$",
         title="MET response",
     )
 
