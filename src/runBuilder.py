@@ -12,6 +12,7 @@ from oracleTauBuilder import OracleTauBuilder
 from hpsTauBuilder import HPSTauBuilder
 from endtoend_simple import SimpleDNNTauBuilder
 from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
+from fastCMSTauBuilder import FastCMSTauBuilder
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
@@ -33,6 +34,8 @@ def build_taus(cfg: DictConfig) -> None:
         builder = OracleTauBuilder()
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(verbosity=cfg.verbosity)
+    elif cfg.builder == "FastCMSTau":
+        builder = FastCMSTauBuilder()
     elif cfg.builder == "SimpleDNN":
 
         pytorch_model = torch.load("data/model.pt")
