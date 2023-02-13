@@ -2,6 +2,8 @@ import awkward as ak
 import numpy as np
 import vector
 
+from hpsAlgoTools import comp_deltaPhi, comp_pt_sum, selectCandsByDeltaR, selectCandsByPdgId
+
 
 class Tau:
     def __init__(self, chargedCands=[], strips=[], barcode=-1):
@@ -28,10 +30,10 @@ class Tau:
         self.idDiscr = -1.0
         self.decayMode = "undefined"
         self.iso_cands = set()
-        self.chargedIso = -1.0
-        self.gammaIso = -1.0
-        self.neutralHadronIso = -1.0
-        self.combinedIso = -1.0
+        self.chargedIso_dR0p5 = -1.0
+        self.gammaIso_dR0p5 = -1.0
+        self.neutralHadronIso_dR0p5 = -1.0
+        self.combinedIso_dR0p5 = -1.0
         self.barcode = barcode
 
     def updateSignalCands(self):
@@ -42,6 +44,7 @@ class Tau:
         for strip in self.signal_strips:
             for cand in strip.cands:
                 self.signal_cands.add(cand)
+        self.signal_gammaCands = selectCandsByPdgId(self.signal_cands, [22])
 
     def updatePtEtaPhiMass(self):
         self.pt = self.p4.pt
@@ -144,8 +147,32 @@ def get_decayMode(tau):
     elif tau.decayMode == "3Prong1Pi0":
         retVal = 11
     else:
-        raise ValueError("Invalid decayMode = '%s'" % tau.decayMode)
+        raise RuntimeError("Invalid decayMode = '%s'" % tau.decayMode)
     return retVal
+
+
+def comp_photonPtSumOutsideSignalCone(tau):
+    retVal = 0.0
+    if tau.metric_dR is not None:
+        for cand in tau.signal_gammaCands:
+            dR = tau.metric_dR(tau, cand)
+            if dR > tau.signalConeSize:
+                retVal += cand.pt
+    return retVal
+
+
+def comp_pt_weighted_dX(tau, cands, metric):
+    pt_weighted_dX_sum = 0.0
+    pt_sum = 0.0
+    if metric is not None:
+        for cand in cands:
+            dX = abs(metric(tau, cand))
+            pt_weighted_dX_sum += cand.pt * dX
+            pt_sum += cand.pt
+    if pt_sum > 0.0:
+        return pt_weighted_dX_sum / pt_sum
+    else:
+        return 0.0
 
 
 def writeTaus(taus):
@@ -158,10 +185,28 @@ def writeTaus(taus):
         "tauIsoCand_pdgIds": write_tau_cand_attrs(taus, "iso_cands", "pdgId", np.int),
         "tauIsoCand_q": write_tau_cand_attrs(taus, "iso_cands", "q", np.float),
         "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),
-        "tauChargedIso": ak.Array([tau.chargedIso for tau in taus]),
-        "tauGammaIso": ak.Array([tau.gammaIso for tau in taus]),
-        "tauNeutralHadronIso": ak.Array([tau.neutralHadronIso for tau in taus]),
+        "tauChargedIso_dR0p5": ak.Array([tau.chargedIso_dR0p5 for tau in taus]),
+        "tauGammaIso_dR0p5": ak.Array([tau.gammaIso_dR0p5 for tau in taus]),
+        "tauNeutralHadronIso_dR0p5": ak.Array([tau.neutralHadronIso_dR0p5 for tau in taus]),
+        "tauChargedIso_dR0p3": ak.Array(
+            [comp_pt_sum(selectCandsByDeltaR(tau.iso_chargedCands, tau, 0.3, tau.metric_dR)) for tau in taus]
+        ),
+        "tauGammaIso_dR0p3": ak.Array(
+            [comp_pt_sum(selectCandsByDeltaR(tau.iso_gammaCands, tau, 0.3, tau.metric_dR)) for tau in taus]
+        ),
+        "tauNeutralHadronIso_dR0p3": ak.Array(
+            [comp_pt_sum(selectCandsByDeltaR(tau.iso_neutralHadronCands, tau, 0.3, tau.metric_dR)) for tau in taus]
+        ),
+        "tauPhotonPtSumOutsideSignalCone": ak.Array([comp_photonPtSumOutsideSignalCone(tau) for tau in taus]),
         "tau_charge": ak.Array([tau.q for tau in taus]),
         "tau_decaymode": ak.Array([get_decayMode(tau) for tau in taus]),
+        "tau_nGammas": ak.Array([len(tau.signal_gammaCands) for tau in taus]),
+        "tau_emEnergyFrac": ak.Array(
+            [(comp_pt_sum(tau.signal_gammaCands) / tau.pt) if tau.pt > 0.0 else 0.0 for tau in taus]
+        ),
+        "tau_dEta_strip": ak.Array([comp_pt_weighted_dX(tau, tau.signal_gammaCands, tau.metric_dEta) for tau in taus]),
+        "tau_dPhi_strip": ak.Array([comp_pt_weighted_dX(tau, tau.signal_gammaCands, comp_deltaPhi) for tau in taus]),
+        "tau_dR_signal": ak.Array([comp_pt_weighted_dX(tau, tau.signal_gammaCands, tau.metric_dR) for tau in taus]),
+        "tau_dR_iso": ak.Array([comp_pt_weighted_dX(tau, tau.iso_gammaCands, tau.metric_dR) for tau in taus]),
     }
     return retVal
