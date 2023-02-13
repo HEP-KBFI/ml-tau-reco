@@ -16,7 +16,6 @@ def split_to_datasets(cfg: DictConfig) -> None:
         n_files_in_sample = len(sample_paths)
         n_train_files = int(n_files_in_sample * fractions["train"])
         n_test_files = int(n_files_in_sample * fractions["test"])
-        n_validation_files = n_files_in_sample - n_train_files - n_test_files
         datasets["train"].extend(sample_paths[:n_train_files])
         datasets["test"].extend(sample_paths[n_train_files : n_train_files + n_test_files])
         datasets["validation"].extend(sample_paths[n_train_files + n_test_files :])
