@@ -1,6 +1,6 @@
 builder: HPS # Other options would be ['SimpleDNN', 'Oracle']
 output_dir: /local/$USER/CLIC_taus
-n_files: 100
+n_files: -1
 verbosity: 0
 use_multiprocessing: True
 defaults:

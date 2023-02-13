@@ -1,0 +1,5 @@
+n_files_per_sample: -1
+output_dir: $HOME/data_inspection
+defaults:
+  - ntupelizer
+  - _self_
