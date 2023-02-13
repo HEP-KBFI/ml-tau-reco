@@ -1,5 +1,6 @@
 plotting:
   output_dir: /local/laurits/CLIC_metrics
+  n_files: -1
 algorithms:
   EndToEnd:
     sig_ntuples_dir: /foo/bar
@@ -21,6 +22,10 @@ algorithms:
     sig_ntuples_dir: /local/laurits/CLIC_taus/Oracle/ZH_Htautau
     bkg_ntuples_dir: /local/laurits/CLIC_taus/Oracle/QCD
     compare: True
+  FastCMSTau:
+    sig_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/ZH_Htautau
+    bkg_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/QCD
+    compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   efficiency:
@@ -30,6 +35,9 @@ metrics:
         n_bins: 32
       - name: eta
         x_range: [-2.6, 2.6]
+        n_bins: 32
+      - name: theta
+        x_range: [-3.14, 3.14]
         n_bins: 32
   # fake_ref: reco_jet
   # eff_obj: gen_jet/tau

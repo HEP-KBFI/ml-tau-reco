@@ -12,6 +12,7 @@ from oracleTauBuilder import OracleTauBuilder
 from hpsTauBuilder import HPSTauBuilder
 from endtoend_simple import SimpleDNNTauBuilder
 from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
+from fastCMSTauBuilder import FastCMSTauBuilder
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
@@ -33,6 +34,8 @@ def build_taus(cfg: DictConfig) -> None:
         builder = OracleTauBuilder()
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(verbosity=cfg.verbosity)
+    elif cfg.builder == "FastCMSTau":
+        builder = FastCMSTauBuilder()
     elif cfg.builder == "SimpleDNN":
 
         pytorch_model = torch.load("data/model.pt")
@@ -47,7 +50,11 @@ def build_taus(cfg: DictConfig) -> None:
         os.makedirs(output_dir, exist_ok=True)
         if not os.path.exists(samples_dir):
             raise OSError("Ntuples do not exist: %s" % (samples_dir))
-        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[: cfg.n_files]
+        if cfg.n_files == -1:
+            n_files = None
+        else:
+            n_files = cfg.n_files
+        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)
             pool.starmap(process_single_file, zip(input_paths, repeat(builder), repeat(output_dir)))

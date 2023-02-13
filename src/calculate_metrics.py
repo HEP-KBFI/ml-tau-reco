@@ -9,14 +9,14 @@ src/metrics.py  \
 import os
 import hydra
 import vector
-import numpy as np
 import mplhep
-
-mplhep.style.use(mplhep.styles.CMS)
+import numpy as np
 import awkward as ak
 import plotting as pl
 import matplotlib.pyplot as plt
-from general import load_all_data
+from general import load_all_data, get_reduced_decaymodes
+
+mplhep.style.use(mplhep.styles.CMS)
 
 
 def plot_eff_fake(algorithm_metrics, key, cfg, output_dir, cut):
@@ -64,15 +64,16 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
 
 def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
     output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.png")
-    gen_tau_decaymodes = sig_data.gen_jet_tau_decaymode.to_numpy()
-    reco_tau_decaymodes = sig_data.tau_decaymode.to_numpy()
+    gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
+    reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
     # Mapping of decaymodes needed, not all classes classified, such as [14: 'ThreeProngNPiZero']
     mapping = {
-        0: "\\pi^{\\pm}",
-        1: "\\pi^{\\pm}\\pi^{0}",
-        2: "\\pi^{\\pm}\\pi^{0}\\pi^{0}",
-        10: "\\pi^{\\pm}\\pi^{\\mp}\\pi^{\\pm}",
-        11: "\\pi^{\\pm}\\pi^{\\mp}\\pi^{\\pm}\\pi^{0}",
+        -1: "Jet",
+        0: r"$\pi^{\pm}$",
+        1: r"$\pi^{\pm}\pi^{0}$",
+        2: r"$\pi^{\pm}\pi^{0}\pi^{0}$",
+        10: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}$",
+        11: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}\pi^{0}$",
         15: "Other",
     }
     categories = [value for value in mapping.values()]
@@ -102,8 +103,10 @@ def calculate_eff_fake(data, ref_obj, cfg, tau_classifier_cut):
         bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
 
         ref_var_mask = ref_var_ != -1
-        denominator = ref_var_[ref_var_mask]
-        numerator = ref_var_[ref_var_mask * tau_classifier_mask]
+        ref_var_pt_mask = ref_p4.pt > 20
+        ref_var_eta_mask = abs(ref_p4.eta) < 2.5
+        denominator = ref_var_[ref_var_mask * ref_var_pt_mask * ref_var_eta_mask]
+        numerator = ref_var_[ref_var_mask * tau_classifier_mask * ref_var_pt_mask * ref_var_eta_mask]
         numerator_ = np.histogram(numerator, bins=bin_edges)[0]
         denominator_ = np.histogram(denominator, bins=bin_edges)[0]
         eff_fake = numerator_ / denominator_
@@ -126,10 +129,31 @@ def plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts):
     plt.legend()
     plt.ylabel("Fakerate")
     plt.xlabel("Efficiency")
-    plt.ylim((0.003, 1))
+    plt.ylim((1e-5, 1))
     plt.yscale("log")
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
+
+
+def plot_tauClassifier_correlation(sig_data, output_dir):
+    p4s = vector.awk(
+        ak.zip(
+            {
+                "mass": sig_data["reco_jet_p4s"].tau,
+                "x": sig_data["reco_jet_p4s"].x,
+                "y": sig_data["reco_jet_p4s"].y,
+                "z": sig_data["reco_jet_p4s"].z,
+            }
+        )
+    )
+    tc = sig_data["tauClassifier"]
+    for var in ["eta", "pt", "phi"]:
+        variable = getattr(p4s, var)
+        plt.scatter(variable, tc, alpha=0.3, marker="x")
+        plt.title(var)
+        output_path = os.path.join(output_dir, f"tauClassifier_corr_{var}.png")
+        plt.savefig(output_path, bbox_inches="tight")
+        plt.close("all")
 
 
 @hydra.main(config_path="../config", config_name="metrics", version_base=None)
@@ -144,17 +168,19 @@ def plot_all_metrics(cfg):
     for algorithm in algorithms:
         sig_input_dir = cfg.algorithms[algorithm].sig_ntuples_dir
         bkg_input_dir = cfg.algorithms[algorithm].bkg_ntuples_dir
-        sig_data = load_all_data(sig_input_dir)
-        bkg_data = load_all_data(bkg_input_dir)
+        print(f"Loading signal data for {algorithm} from {sig_input_dir}")
+        sig_data = load_all_data(sig_input_dir, n_files=cfg.plotting.n_files)
+        print(f"Loading background data for {algorithm} from {bkg_input_dir}")
+        bkg_data = load_all_data(bkg_input_dir, n_files=cfg.plotting.n_files)
         efficiencies[algorithm] = {}
         fakerates[algorithm] = {}
         for cut in classifier_cuts:
-            efficiencies[algorithm][cut] = calculate_eff_fake(sig_data, "gen_jet_p4s", cfg, cut)
+            efficiencies[algorithm][cut] = calculate_eff_fake(sig_data, "gen_jet_tau_p4s", cfg, cut)
             fakerates[algorithm][cut] = calculate_eff_fake(bkg_data, "reco_jet_p4s", cfg, cut)
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
         plot_energy_resolution(sig_data, algorithm_output_dir)
-        # plot_decaymode_reconstruction(sig_data, algorithm_output_dir)
+        plot_decaymode_reconstruction(sig_data, algorithm_output_dir)
     plot_eff_fake(efficiencies, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=0.96)
     plot_eff_fake(fakerates, key="fakerates", cfg=cfg, output_dir=output_dir, cut=0.96)
     plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts)
