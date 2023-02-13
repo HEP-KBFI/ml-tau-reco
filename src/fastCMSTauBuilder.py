@@ -137,7 +137,7 @@ class FastCMSTauBuilder(BasicTauBuilder):
     """
 
     def _calcClassifier(self, tauVisPt, jetPt, isBG):
-        isSig = isBG==0
+        isSig = isBG == 0
         survivalProb_SigLoose = np.zeros(len(tauVisPt))
         survivalProb_SigTight = np.zeros(len(tauVisPt))
         for idx in range(len(self._effIDLoose[0])):
@@ -171,17 +171,21 @@ class FastCMSTauBuilder(BasicTauBuilder):
             dTight *= mask
             survivalProb_BkgTight += dTight
         probExp = np.random.rand(len(survivalProb_SigLoose))
-        survivalSigTight = np.logical_and(probExp<survivalProb_SigTight,isSig)
-        survivalSigLoose = np.logical_and(np.logical_and(probExp<survivalProb_SigLoose,isSig),np.logical_not(survivalSigTight))
-        survivalBkgTight = np.logical_and(probExp<survivalProb_BkgTight,isBG)
-        survivalBkgLoose = np.logical_and(np.logical_and(probExp<survivalProb_BkgLoose,isBG),np.logical_not(survivalBkgTight))
-        survivalLoose = np.asarray(np.logical_or(survivalSigLoose,survivalBkgLoose))
-        survivalTight = np.asarray(np.logical_or(survivalSigTight,survivalBkgTight))
+        survivalSigTight = np.logical_and(probExp < survivalProb_SigTight, isSig)
+        survivalSigLoose = np.logical_and(
+            np.logical_and(probExp < survivalProb_SigLoose, isSig), np.logical_not(survivalSigTight)
+        )
+        survivalBkgTight = np.logical_and(probExp < survivalProb_BkgTight, isBG)
+        survivalBkgLoose = np.logical_and(
+            np.logical_and(probExp < survivalProb_BkgLoose, isBG), np.logical_not(survivalBkgTight)
+        )
+        survivalLoose = np.asarray(np.logical_or(survivalSigLoose, survivalBkgLoose))
+        survivalTight = np.asarray(np.logical_or(survivalSigTight, survivalBkgTight))
         scoreLoose = 0.49 * np.ones(len(tauVisPt))
         scoreLoose *= survivalLoose
         scoreTight = 0.98 * np.ones(len(tauVisPt))
         scoreTight *= survivalTight
-        score = scoreLoose+scoreTight+0.01
+        score = scoreLoose + scoreTight + 0.01
         dclass = ak.Array(score)
         return dclass
 
@@ -354,7 +358,9 @@ class FastCMSTauBuilder(BasicTauBuilder):
         genJetP4s = jets["gen_jet_p4s"]
         genVisTauP4s = jets["gen_jet_tau_p4s"]
         tauP4s = self._smearEnergy(genVisTauP4s, genJetP4s, np.asarray(isBG))
-        dclass = self._calcClassifier(self._asP4(jets["gen_jet_tau_p4s"]).pt, self._asP4(jets["reco_jet_p4s"]).pt, np.asarray(isBG))
+        dclass = self._calcClassifier(
+            self._asP4(jets["gen_jet_tau_p4s"]).pt, self._asP4(jets["reco_jet_p4s"]).pt, np.asarray(isBG)
+        )
         dmode_orig = self._conv_dMode(jets["gen_jet_tau_decaymode"])
         dmode_smeared = self._calcDmode(dmode_orig)
         charge_smeared = self._smearCharge(np.asarray(jets["gen_jet_tau_charge"]), isBG, self._asP4(genVisTauP4s).pt)
