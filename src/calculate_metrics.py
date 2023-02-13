@@ -186,6 +186,7 @@ def plot_all_metrics(cfg):
         os.makedirs(algorithm_output_dir, exist_ok=True)
         plot_energy_resolution(sig_data, algorithm_output_dir)
         plot_decaymode_reconstruction(sig_data, algorithm_output_dir)
+    plot_genvistau_gentau_correlation(sig_data, output_dir)
     plot_eff_fake(efficiencies, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=0.96)
     plot_eff_fake(fakerates, key="fakerates", cfg=cfg, output_dir=output_dir, cut=0.96)
     plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts)
@@ -201,7 +202,7 @@ def plot_genvistau_gentau_correlation(sig_data, output_dir):
                 "z": sig_data.gen_jet_tau_p4s.z,
             }
         )
-    ).pt
+    ).pt.to_numpy()
     gen_jet_pt = vector.awk(
         ak.zip(
             {
@@ -211,7 +212,21 @@ def plot_genvistau_gentau_correlation(sig_data, output_dir):
                 "z": sig_data.gen_jet_p4s.z,
             }
         )
-    ).pt
+    ).pt.to_numpy()
+    mask = vis_tau_pt != 0
+    vis_tau_pt_ = vis_tau_pt[mask]
+    gen_jet_pt_ = gen_jet_pt[mask]
+    output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
+    plot_regression_confusion_matrix(
+        y_true=gen_jet_pt_,
+        y_pred=vis_tau_pt_,
+        output_path = 'output_path',
+        left_bin_edge=np.min([vis_tau_pt, gen_jet_pt]),
+        right_bin_edge=np.max([vis_tau_pt, gen_jet_pt]),
+        y_label=r"$p_T^{\tau_{vis}}$",
+        x_label=r"$p_T^{genJet}$",
+        title=""
+    )
 
 
 if __name__ == "__main__":
