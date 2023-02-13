@@ -129,7 +129,7 @@ def plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts):
     plt.legend()
     plt.ylabel("Fakerate")
     plt.xlabel("Efficiency")
-    plt.ylim((0.003, 1))
+    plt.ylim((1e-5, 1))
     plt.yscale("log")
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
