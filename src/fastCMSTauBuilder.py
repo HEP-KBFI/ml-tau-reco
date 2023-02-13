@@ -26,7 +26,7 @@ class FastCMSTauBuilder(BasicTauBuilder):
                 "prob": [0.0003, 0.00265, 0.00205, 0.00205, 0.0013, 0.0009, 0.00075, 0.00045, 0.00035],
             },
             "effIDLooseMap": {
-                "pT_thr": [20, 22, 24, 26, 28, 30, 35, 40, 50, 60, 70, 80, 90, 100, 150, 200],  # CMS Tau 20-001 sig: Fig 13
+                "pT_thr": [0, 22, 24, 26, 28, 30, 35, 40, 50, 60, 70, 80, 90, 100, 150, 200],  # CMS Tau 20-001 sig: Fig 13
                 "prob": [
                     0.297,
                     0.427,
@@ -47,7 +47,7 @@ class FastCMSTauBuilder(BasicTauBuilder):
                 ],
             },
             "effIDTightMap": {
-                "pT_thr": [20, 22, 24, 26, 28, 30, 35, 40, 50, 60, 70, 80, 90, 100, 150, 200],  # CMS Tau 20-001 sig: Fig 13
+                "pT_thr": [0, 22, 24, 26, 28, 30, 35, 40, 50, 60, 70, 80, 90, 100, 150, 200],  # CMS Tau 20-001 sig: Fig 13
                 "prob": [
                     0.207,
                     0.299,
@@ -132,13 +132,12 @@ class FastCMSTauBuilder(BasicTauBuilder):
 
     """
     Fakes the deepJet tau classifier against jets, using the missID rates for jets and sigEff for real taus,
-    the classifier is set to either 0 (not reconstructed), 0.4 (passes loose ID) or 0.8 (passes tight ID),
+    the classifier is set to either 0 (not reconstructed), 0.49 (passes loose ID) or 0.99 (passes tight ID),
     to mimic the ROC of CMS taus.
     """
 
-    def _calcClassifier(self, tauVisPt, jetPt):
-        isSig = tauVisPt > -1
-        isBG = tauVisPt <= -1
+    def _calcClassifier(self, tauVisPt, jetPt, isBG):
+        isSig = isBG==0
         survivalProb_SigLoose = np.zeros(len(tauVisPt))
         survivalProb_SigTight = np.zeros(len(tauVisPt))
         for idx in range(len(self._effIDLoose[0])):
@@ -171,18 +170,18 @@ class FastCMSTauBuilder(BasicTauBuilder):
             dTight = self._missIDLoose[1][idx] * np.ones(mask.shape)
             dTight *= mask
             survivalProb_BkgTight += dTight
-        survivalSigLoose = np.logical_and(np.random.rand(len(survivalProb_SigLoose)) < survivalProb_SigLoose, isSig)
-        survivalSigTight = np.logical_and(np.random.rand(len(survivalProb_SigTight)) < survivalProb_SigTight, isSig)
-        survivalBkgLoose = np.logical_and(np.random.rand(len(survivalProb_BkgLoose)) < survivalProb_BkgLoose, isBG)
-        survivalBkgTight = np.logical_and(np.random.rand(len(survivalProb_BkgTight)) < survivalProb_BkgTight, isBG)
-        survivalLoose = np.asarray(np.logical_or(survivalSigLoose, survivalBkgLoose))
-        survivalTight = np.asarray(np.logical_or(survivalSigTight, survivalBkgTight))
-        survivalOnlyLoose = np.logical_and(survivalLoose, survivalTight == 0)
-        scoreLoose = 0.4 * np.ones(len(tauVisPt))
-        scoreLoose *= survivalOnlyLoose
-        scoreTight = 0.8 * np.ones(len(tauVisPt))
+        probExp = np.random.rand(len(survivalProb_SigLoose))
+        survivalSigTight = np.logical_and(probExp<survivalProb_SigTight,isSig)
+        survivalSigLoose = np.logical_and(np.logical_and(probExp<survivalProb_SigLoose,isSig),np.logical_not(survivalSigTight))
+        survivalBkgTight = np.logical_and(probExp<survivalProb_BkgTight,isBG)
+        survivalBkgLoose = np.logical_and(np.logical_and(probExp<survivalProb_BkgLoose,isBG),np.logical_not(survivalBkgTight))
+        survivalLoose = np.asarray(np.logical_or(survivalSigLoose,survivalBkgLoose))
+        survivalTight = np.asarray(np.logical_or(survivalSigTight,survivalBkgTight))
+        scoreLoose = 0.49 * np.ones(len(tauVisPt))
+        scoreLoose *= survivalLoose
+        scoreTight = 0.98 * np.ones(len(tauVisPt))
         scoreTight *= survivalTight
-        score = scoreLoose + scoreTight
+        score = scoreLoose+scoreTight+0.01
         dclass = ak.Array(score)
         return dclass
 
@@ -233,12 +232,13 @@ class FastCMSTauBuilder(BasicTauBuilder):
                 }
             )
         )
-        return outP4
+        return self._asP4(outP4)
 
     """
     The generator decay mode is given in a more granular classification then we need:
     1p, 1p1p0, 1p2p0, 3p, 3p1p0, other.
     This helper, converts between the two conventions.
+    -> less granular for easier handling.
     """
 
     def _conv_dMode(self, dmode):
@@ -262,6 +262,32 @@ class FastCMSTauBuilder(BasicTauBuilder):
             + np.asarray(mask_3p) * 4.0
             + np.asarray(mask_3p1p0) * 5.0
             + np.asarray(mask_other) * 6.0
+        )
+        return ak.Array(dmode_conv)
+
+    """
+    The generator decay mode is given in a more granular classification then we need:
+    1p, 1p1p0, 1p2p0, 3p, 3p1p0, other.
+    This helper, converts between the two conventions.
+    -> more granular for compatability
+    """
+
+    def _conv_dModeToGranular(self, dmode):
+        mask_notTau = dmode == -1
+        mask_1p = dmode == 1
+        mask_1p1p0 = dmode == 2
+        mask_1p2p0 = dmode == 3
+        mask_3p = dmode == 4
+        mask_3p1p0 = dmode == 5
+        mask_other = dmode == 6
+        dmode_conv = (
+            np.asarray(mask_notTau) * (-1.0)
+            + np.asarray(mask_1p) * 0.0
+            + np.asarray(mask_1p1p0) * 1.0
+            + np.asarray(mask_1p2p0) * 2.0
+            + np.asarray(mask_3p) * 10.0
+            + np.asarray(mask_3p1p0) * 11.0
+            + np.asarray(mask_other) * 15.0
         )
         return ak.Array(dmode_conv)
 
@@ -328,14 +354,14 @@ class FastCMSTauBuilder(BasicTauBuilder):
         genJetP4s = jets["gen_jet_p4s"]
         genVisTauP4s = jets["gen_jet_tau_p4s"]
         tauP4s = self._smearEnergy(genVisTauP4s, genJetP4s, np.asarray(isBG))
-        dclass = self._calcClassifier(self._asP4(jets["gen_jet_tau_p4s"]).pt, self._asP4(jets["reco_jet_p4s"]).pt)
+        dclass = self._calcClassifier(self._asP4(jets["gen_jet_tau_p4s"]).pt, self._asP4(jets["reco_jet_p4s"]).pt, np.asarray(isBG))
         dmode_orig = self._conv_dMode(jets["gen_jet_tau_decaymode"])
         dmode_smeared = self._calcDmode(dmode_orig)
         charge_smeared = self._smearCharge(np.asarray(jets["gen_jet_tau_charge"]), isBG, self._asP4(genVisTauP4s).pt)
         return {
-            "tauP4": tauP4s,
-            "tauSigCandP4s": jets["reco_cand_p4s"],
+            "tau_p4s": tauP4s,
+            "tauSigCand_p4s": jets["reco_cand_p4s"],
             "tauClassifier": dclass,
-            "tauCharge": charge_smeared,
-            "tauDmode": dmode_smeared,
+            "tau_charge": charge_smeared,
+            "tau_decaymode": self._conv_dModeToGranular(dmode_smeared),
         }
