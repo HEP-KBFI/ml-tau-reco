@@ -4,6 +4,7 @@ import vector
 import awkward as ak
 import numpy as np
 import tqdm
+import yaml
 import torch
 import torch_geometric
 import torch.nn as nn
@@ -196,22 +197,23 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         }
 
 
+def get_split_files(config_path, split):
+    with open(config_path, "r") as fi:
+        data = yaml.safe_load(fi)
+        paths = data[split]["paths"]
+        paths = [p.replace("/local/laurits", "./data") for p in paths]
+        return paths
+    
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     outpath = hydra_cfg["runtime"]["output_dir"]
 
-    qcd_files = list(glob(osp.join(cfg.input_dir_QCD, "*.parquet")))
-    zh_files = list(glob(osp.join(cfg.input_dir_ZH_Htautau, "*.parquet")))
-    print("qcd={} zh={}".format(len(qcd_files), len(zh_files)))
-
-    qcd_files_train = qcd_files[: cfg.ntrain]
-    qcd_files_val = qcd_files[cfg.ntrain : cfg.ntrain + cfg.nval]
-    zh_files_train = zh_files[: cfg.ntrain]
-    zh_files_val = zh_files[cfg.ntrain : cfg.ntrain + cfg.nval]
-
-    ds_train = TauJetDataset(qcd_files_train + zh_files_train, cfg.batch_size)
-    ds_val = TauJetDataset(qcd_files_val + zh_files_val, cfg.batch_size)
+    files_train = get_split_files("config/datasets/train.yaml", "train")
+    files_val = get_split_files("config/datasets/validation.yaml", "validation")
+    
+    ds_train = TauJetDataset(files_train, cfg.batch_size)
+    ds_val = TauJetDataset(files_val, cfg.batch_size)
 
     print("Loaded TauJetDataset with {} train steps".format(len(ds_train)))
     print("Loaded TauJetDataset with {} val steps".format(len(ds_val)))
@@ -233,7 +235,7 @@ def main(cfg):
     model = TauEndToEndSimple().to(device=dev)
     print("params={}".format(count_parameters(model)))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.00001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
 
