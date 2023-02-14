@@ -38,7 +38,7 @@ def build_taus(cfg: DictConfig) -> None:
         builder = FastCMSTauBuilder()
     elif cfg.builder == "SimpleDNN":
 
-        pytorch_model = torch.load("data/model.pt")
+        pytorch_model = torch.load("data/model.pt", map_location=torch.device("cpu"))
         assert pytorch_model.__class__ == TauEndToEndSimple
         assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
         builder = SimpleDNNTauBuilder(pytorch_model)

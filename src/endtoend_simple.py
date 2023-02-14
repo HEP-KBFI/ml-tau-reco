@@ -13,12 +13,10 @@ from taujetdataset import TauJetDataset
 
 from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
-from glob import glob
-import os.path as osp
 
 from torch.utils.tensorboard import SummaryWriter
 
-
+#feedforward network that transformes input_dim->output_dim
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
@@ -40,6 +38,8 @@ def ffn(input_dim, output_dim, width, act, dropout):
     )
 
 
+#self-attention layer that transformes [B, N, x] -> [B, N, embedding_dim]
+#by attending the N elements in each batch B
 class SelfAttentionLayer(nn.Module):
     def __init__(self, embedding_dim=32, num_heads=8, width=128, dropout=0.3):
         super(SelfAttentionLayer, self).__init__()
@@ -54,7 +54,9 @@ class SelfAttentionLayer(nn.Module):
 
     def forward(self, x, mask):
 
+        #double check here that mask=True corresponds to what is expected by the MultiheadAttention
         x = x + self.mha(x, x, x, key_padding_mask=mask)[0]
+        #make sure masked elements are 0
         x = x * (~mask.unsqueeze(-1))
         x = self.norm0(x)
         x = x + self.seq(x)
@@ -127,6 +129,7 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
         model.eval()
     nsteps = 0
     njets = 0
+    #loop over batches in data
     for batch in tqdm.tqdm(ds_loader, total=len(ds_loader)):
         batch = batch.to(device=dev)
         pred_istau, pred_visenergy = model(batch)
@@ -203,7 +206,8 @@ def get_split_files(config_path, split):
         paths = data[split]["paths"]
         paths = [p.replace("/local/laurits", "./data") for p in paths]
         return paths
-    
+
+
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
@@ -211,7 +215,7 @@ def main(cfg):
 
     files_train = get_split_files("config/datasets/train.yaml", "train")
     files_val = get_split_files("config/datasets/validation.yaml", "validation")
-    
+
     ds_train = TauJetDataset(files_train, cfg.batch_size)
     ds_val = TauJetDataset(files_val, cfg.batch_size)
 
@@ -235,7 +239,7 @@ def main(cfg):
     model = TauEndToEndSimple().to(device=dev)
     print("params={}".format(count_parameters(model)))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.00001)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
 
