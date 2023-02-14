@@ -498,6 +498,7 @@ def plot_full_entry_multiplicity_matrix(flat_cone_pdgs, output_path, particle_in
     sns.heatmap(pdg_matrix.T, linewidth=0.5, cmap="viridis", annot=True)
     ax.set_yticklabels([particle_info[pdg][0] for pdg in particle_info.keys()])
     ax.set(xticklabels=[])
+    ax.set_xlabel("Taus")
     plt.savefig(output_path, bbox_inches="tight")
 
 

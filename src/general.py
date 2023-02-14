@@ -47,6 +47,7 @@ def get_decaymode(pdg_ids):
         13: 'ThreeProng3PiZero',
         14: 'ThreeProngNPiZero',
         15: 'RareDecayMode'
+        16: 'LeptonicDecay'
     }
     0: [0, 5, 10]
     1: [1, 6, 11]
@@ -56,8 +57,6 @@ def get_decaymode(pdg_ids):
     unique, counts = np.unique(pdg_ids, return_counts=True)
     p_counts = {i: 0 for i in [16, 111, 211, 13, 14, 12, 11, 22]}
     p_counts.update(dict(zip(unique, counts)))
-    if check_rare_decaymode(pdg_ids):
-        return 15
     if np.sum(p_counts[211]) == 1 and p_counts[111] == 0:
         return 0
     elif np.sum(p_counts[211]) == 1 and p_counts[111] == 1:
@@ -88,15 +87,10 @@ def get_decaymode(pdg_ids):
         return 13
     elif np.sum(p_counts[211]) == 3 and p_counts[111] > 3:
         return 14
+    elif np.sum(p_counts[11] + p_counts[13]) > 0:
+        return 16
     else:
         return 15
-
-
-def check_rare_decaymode(pdg_ids):
-    """The common particles in order are tau-neutrino, pi0, pi+, mu,
-    mu-neutrino, electron-neutrino, electron, photon"""
-    common_particles = [16, 111, 211, 22]
-    return sum(np.in1d(pdg_ids, common_particles)) != len(pdg_ids)
 
 
 def get_reduced_decaymodes(decaymodes: np.array):
