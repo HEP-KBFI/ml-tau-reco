@@ -4,6 +4,7 @@ import vector
 import awkward as ak
 import numpy as np
 import tqdm
+import yaml
 import torch
 import torch_geometric
 import torch.nn as nn
@@ -12,12 +13,11 @@ from taujetdataset import TauJetDataset
 
 from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
-from glob import glob
-import os.path as osp
 
 from torch.utils.tensorboard import SummaryWriter
 
 
+# feedforward network that transformes input_dim->output_dim
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
@@ -39,6 +39,8 @@ def ffn(input_dim, output_dim, width, act, dropout):
     )
 
 
+# self-attention layer that transformes [B, N, x] -> [B, N, embedding_dim]
+# by attending the N elements in each batch B
 class SelfAttentionLayer(nn.Module):
     def __init__(self, embedding_dim=32, num_heads=8, width=128, dropout=0.3):
         super(SelfAttentionLayer, self).__init__()
@@ -53,7 +55,9 @@ class SelfAttentionLayer(nn.Module):
 
     def forward(self, x, mask):
 
+        # double check here that mask=True corresponds to what is expected by the MultiheadAttention
         x = x + self.mha(x, x, x, key_padding_mask=mask)[0]
+        # make sure masked elements are 0
         x = x * (~mask.unsqueeze(-1))
         x = self.norm0(x)
         x = x + self.seq(x)
@@ -91,21 +95,14 @@ class TauEndToEndSimple(nn.Module):
         pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
 
         # pad the PF tensors across jets
-        pfs_list = list(torch_geometric.utils.unbatch(pf_encoded, batch.pf_to_jet))
-        pfs_nested = torch.nested.nested_tensor(pfs_list)
-        pfs_padded = torch.nested.to_padded_tensor(pfs_nested, -1)
-
-        f0 = list(torch_geometric.utils.unbatch(batch.jet_pf_features, batch.pf_to_jet))
-        f0 = torch.nested.nested_tensor(f0)
-        f0 = torch.nested.to_padded_tensor(f0, -1)
-        mask = f0[:, :, -1] == -1
+        pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.pf_to_jet, 0.0)
 
         # run a simple self-attention over the PF candidates in each jet
         for mha_layer in self.nn_pf_mha:
-            pfs_padded = mha_layer(pfs_padded, mask)
+            pfs_padded = mha_layer(pfs_padded, ~mask)
 
         # get the encoded PF candidates after attention, undo the padding
-        pf_encoded = torch.cat([pfs_padded[i][~mask[i]] for i in range(pfs_padded.shape[0])])
+        pf_encoded = torch.cat([pfs_padded[i][mask[i]] for i in range(pfs_padded.shape[0])])
         assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # now collapse the PF information in each jet with a global attention layer
@@ -133,6 +130,7 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
         model.eval()
     nsteps = 0
     njets = 0
+    # loop over batches in data
     for batch in tqdm.tqdm(ds_loader, total=len(ds_loader)):
         batch = batch.to(device=dev)
         pred_istau, pred_visenergy = model(batch)
@@ -203,22 +201,27 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         }
 
 
+def get_split_files(config_path, split):
+    with open(config_path, "r") as fi:
+        data = yaml.safe_load(fi)
+        paths = data[split]["paths"]
+
+        # FIXME: this is hardcoded, /local is too slow for GPU training
+        # datasets should be kept in /home or /scratch-persistent for GPU training
+        paths = [p.replace("/local/laurits", "./data") for p in paths]
+        return paths
+
+
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     outpath = hydra_cfg["runtime"]["output_dir"]
 
-    qcd_files = list(glob(osp.join(cfg.input_dir_QCD, "*.parquet")))
-    zh_files = list(glob(osp.join(cfg.input_dir_ZH_Htautau, "*.parquet")))
-    print("qcd={} zh={}".format(len(qcd_files), len(zh_files)))
+    files_train = get_split_files(cfg.train_files, "train")
+    files_val = get_split_files(cfg.validation_files, "validation")
 
-    qcd_files_train = qcd_files[: cfg.ntrain]
-    qcd_files_val = qcd_files[cfg.ntrain : cfg.ntrain + cfg.nval]
-    zh_files_train = zh_files[: cfg.ntrain]
-    zh_files_val = zh_files[cfg.ntrain : cfg.ntrain + cfg.nval]
-
-    ds_train = TauJetDataset(qcd_files_train + zh_files_train, cfg.batch_size)
-    ds_val = TauJetDataset(qcd_files_val + zh_files_val, cfg.batch_size)
+    ds_train = TauJetDataset(files_train, cfg.batch_size)
+    ds_val = TauJetDataset(files_val, cfg.batch_size)
 
     print("Loaded TauJetDataset with {} train steps".format(len(ds_train)))
     print("Loaded TauJetDataset with {} val steps".format(len(ds_val)))
@@ -250,6 +253,7 @@ def main(cfg):
         loss_val = model_loop(model, ds_val_loader, optimizer, False, dev)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
         print("epoch={} loss_train={:.4f} loss_val={:.4f}".format(iepoch, loss_train, loss_val))
+        torch.save(model, "{}/model_{}.pt".format(outpath, iepoch))
 
     model = model.to(device="cpu")
     torch.save(model, "data/model.pt")

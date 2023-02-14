@@ -36,7 +36,7 @@ QCD_FILENAME=reco_p8_ee_qcd_ecm380_*.parquet
 TAU_FILES=( $TAU_FILENAME )
 python3 ../src/test_ntuple_shape.py -f "$TAU_FILES"
 QCD_FILES=( $QCD_FILENAME )
-python3 ../src/test_ntuple_shape.py -f $QCD_FILES
+python3 ../src/test_ntuple_shape.py -f "$QCD_FILES"
 
 cd ..
 ls
@@ -44,8 +44,21 @@ ls
 #Load the dataset in pytorch
 python3 src/taujetdataset.py ./ntuple/
 
-#Train an ultra-simple pytorch model
-python3 src/endtoend_simple.py input_dir_QCD=./ntuple/ input_dir_ZH_Htautau=./ntuple/ epochs=2 ntrain=1 nval=1
+#Prepare training inputs with just one file per split
+cat <<EOF > train.yaml
+train:
+  paths:
+  - ./ntuple/reco_p8_ee_ZH_Htautau_ecm380_1.parquet
+EOF
+
+cat <<EOF > val.yaml
+validation:
+  paths:
+  - ./ntuple/reco_p8_ee_qcd_ecm380_1.parquet
+EOF
+
+#Train a simple pytorch model
+python3 src/endtoend_simple.py epochs=2 train_files=train.yaml validation_files=val.yaml
 
 # run oracle -> oracle.parquet
 mkdir -p oracle
