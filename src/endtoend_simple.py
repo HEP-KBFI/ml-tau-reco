@@ -16,7 +16,8 @@ from basicTauBuilder import BasicTauBuilder
 
 from torch.utils.tensorboard import SummaryWriter
 
-#feedforward network that transformes input_dim->output_dim
+
+# feedforward network that transformes input_dim->output_dim
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
@@ -38,8 +39,8 @@ def ffn(input_dim, output_dim, width, act, dropout):
     )
 
 
-#self-attention layer that transformes [B, N, x] -> [B, N, embedding_dim]
-#by attending the N elements in each batch B
+# self-attention layer that transformes [B, N, x] -> [B, N, embedding_dim]
+# by attending the N elements in each batch B
 class SelfAttentionLayer(nn.Module):
     def __init__(self, embedding_dim=32, num_heads=8, width=128, dropout=0.3):
         super(SelfAttentionLayer, self).__init__()
@@ -54,9 +55,9 @@ class SelfAttentionLayer(nn.Module):
 
     def forward(self, x, mask):
 
-        #double check here that mask=True corresponds to what is expected by the MultiheadAttention
+        # double check here that mask=True corresponds to what is expected by the MultiheadAttention
         x = x + self.mha(x, x, x, key_padding_mask=mask)[0]
-        #make sure masked elements are 0
+        # make sure masked elements are 0
         x = x * (~mask.unsqueeze(-1))
         x = self.norm0(x)
         x = x + self.seq(x)
@@ -129,7 +130,7 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
         model.eval()
     nsteps = 0
     njets = 0
-    #loop over batches in data
+    # loop over batches in data
     for batch in tqdm.tqdm(ds_loader, total=len(ds_loader)):
         batch = batch.to(device=dev)
         pred_istau, pred_visenergy = model(batch)
@@ -213,8 +214,8 @@ def main(cfg):
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     outpath = hydra_cfg["runtime"]["output_dir"]
 
-    files_train = get_split_files("config/datasets/train.yaml", "train")
-    files_val = get_split_files("config/datasets/validation.yaml", "validation")
+    files_train = get_split_files(cfg.train_files, "train")
+    files_val = get_split_files(cfg.validation_files, "validation")
 
     ds_train = TauJetDataset(files_train, cfg.batch_size)
     ds_val = TauJetDataset(files_val, cfg.batch_size)
@@ -249,7 +250,7 @@ def main(cfg):
         loss_val = model_loop(model, ds_val_loader, optimizer, False, dev)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
         print("epoch={} loss_train={:.4f} loss_val={:.4f}".format(iepoch, loss_train, loss_val))
-        torch.save(model, "data/model_{}.pt".format(iepoch))
+        torch.save(model, "{}/model_{}.pt".format(outpath, iepoch))
 
     model = model.to(device="cpu")
     torch.save(model, "data/model.pt")
