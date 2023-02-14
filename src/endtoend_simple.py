@@ -193,11 +193,11 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         tau_cand_p4s = jets["reco_cand_p4s"][:, 0]
 
         return {
-            "tauP4": tauP4,
-            "tauSigCandP4s": tau_cand_p4s,
+            "tau_p4s": tauP4,
+            "tauSigCand_p4s": tau_cand_p4s,
             "tauClassifier": pred_istau,
-            "tauCharge": tauCharges,
-            "tauDmode": dmode,
+            "tau_charge": tauCharges,
+            "tau_decaymode": dmode,
         }
 
 
