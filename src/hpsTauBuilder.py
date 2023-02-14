@@ -44,7 +44,7 @@ class HPSTauBuilder(BasicTauBuilder):
             elif idxJet > 0 and (idxJet % 100) == 0:
                 print("Processing entry %i" % idxJet)
             # CV: enable the following two lines for faster turn-around time when testing
-            # if idxJet > 5:
+            # if idxJet > 10:
             #    continue
 
             event_iso_cands = event_cands[idxJet]
@@ -65,7 +65,13 @@ class HPSTauBuilder(BasicTauBuilder):
                 tau = Tau()
                 tau.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
                 tau.signal_cands = set()
+                tau.signal_gammaCands = set()
                 tau.iso_cands = set()
+                tau.iso_chargedCands = set()
+                tau.iso_gammaCands = set()
+                tau.iso_neutralHadronCands = set()
+                tau.metric_dR = None
+                tau.metric_dEta = None
                 tau.idDiscr = -1.0
                 tau.q = 0.0
                 tau.decayMode = "undefined"

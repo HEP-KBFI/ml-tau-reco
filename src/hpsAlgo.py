@@ -1,35 +1,20 @@
 from functools import cmp_to_key
 import math
 
+from hpsAlgoTools import (
+    comp_angle,
+    comp_deltaEta,
+    comp_deltaTheta,
+    comp_deltaR,
+    comp_pt_sum,
+    selectCandsByDeltaR,
+    selectCandsByPdgId,
+)
 from hpsCombinatoricsGenerator import CombinatoricsGenerator
 from hpsGetParameter import getParameter
 from hpsStrip import Strip
 from hpsStripAlgo import StripAlgo
 from hpsTau import Tau
-
-
-def deltaR(cand1, cand2):
-    dEta = cand1.eta - cand2.eta
-    dPhi = cand1.phi - cand2.phi
-    dR = math.sqrt(dEta * dEta + dPhi * dPhi)
-    return dR
-
-
-def selectCandsByDeltaR(cands, ref, dRmax):
-    selectedCands = []
-    for cand in cands:
-        dR = deltaR(cand, ref)
-        if dR < dRmax:
-            selectedCands.append(cand)
-    return selectedCands
-
-
-def selectCandsByPdgId(cands, pdgIds=[]):
-    selectedCands = []
-    for cand in cands:
-        if cand.abs_pdgId in pdgIds:
-            selectedCands.append(cand)
-    return selectedCands
 
 
 def rank_tau_candidates(tau1, tau2):
@@ -45,18 +30,11 @@ def rank_tau_candidates(tau1, tau2):
         return +1
     if tau1.num_signal_strips < tau2.num_signal_strips:
         return -1
-    if tau1.combinedIso < tau2.combinedIso:
+    if tau1.combinedIso_dR0p5 < tau2.combinedIso_dR0p5:
         return +1
-    if tau1.combinedIso > tau2.combinedIso:
+    if tau1.combinedIso_dR0p5 > tau2.combinedIso_dR0p5:
         return -1
     return 0
-
-
-def compPtSum(cands):
-    pt_sum = 0.0
-    for cand in cands:
-        pt_sum += cand.pt
-    return pt_sum
 
 
 class HPSAlgo:
@@ -91,9 +69,21 @@ class HPSAlgo:
 
         self.matchingConeSize = getParameter(cfg, "matchingConeSize", 1.0e-1)
         self.isolationConeSize = getParameter(cfg, "isolationConeSize", 5.0e-1)
+        coneMetric = getParameter(cfg, "coneMetric", "theta-phi")
+        self.metric_dR = None
+        self.metric_dEta = None
+        if coneMetric == "eta-phi":
+            self.metric_dR = comp_deltaR
+            self.metric_dEta = comp_deltaEta
+        elif coneMetric == "theta-phi":
+            self.metric_dR = comp_angle
+            self.metric_dEta = comp_deltaTheta
+        else:
+            raise RuntimeError("Invalid configuration parameter 'coneMetric' = '%s' !!" % coneMetric)
         if verbosity >= 1:
             print("matchingConeSize = %1.2f" % self.matchingConeSize)
             print("isolationConeSize = %1.2f" % self.isolationConeSize)
+            print("coneMetric = '%s'" % coneMetric)
 
         self.stripAlgo = StripAlgo(cfg["StripAlgo"], verbosity)
 
@@ -152,7 +142,7 @@ class HPSAlgo:
             isOverlap = False
             for cand in cands:
                 if cand.pdgId == cand_to_clean.pdgId and cand.q == cand_to_clean.q:
-                    dR = deltaR(cand, cand_to_clean)
+                    dR = self.metric_dR(cand, cand_to_clean)
                     if dR < dRmatch:
                         isOverlap = True
                         break
@@ -200,7 +190,9 @@ class HPSAlgo:
                     cand.print()
 
         event_iso_cands = self.selectIsolationCands(event_iso_cands)
-        event_iso_cands = selectCandsByDeltaR(event_iso_cands, jet, self.isolationConeSize + self.matchingConeSize)
+        event_iso_cands = selectCandsByDeltaR(
+            event_iso_cands, jet, self.isolationConeSize + self.matchingConeSize, self.metric_dR
+        )
         event_iso_cands = self.cleanCands(event_iso_cands, jet.constituents)
         if self.verbosity >= 2:
             print("#event_iso_cands = %i" % len(event_iso_cands))
@@ -273,24 +265,28 @@ class HPSAlgo:
                     tau_candidate = Tau(chargedCands, cleanedStrips, barcode)
                     tau_candidate.jet = jet
                     tau_candidate.decayMode = decayMode
-                    signalConeSize = max(min(0.10, 3.0 / tau_candidate.pt), 0.05)
+                    tau_candidate.signalConeSize = max(min(0.10, 3.0 / tau_candidate.pt), 0.05)
+                    tau_candidate.metric_dR = self.metric_dR
+                    tau_candidate.metric_dEta = self.metric_dEta
                     passesSignalCone = True
                     for cand in tau_candidate.signal_chargedCands:
-                        if deltaR(tau_candidate, cand) > signalConeSize:
+                        if tau_candidate.metric_dR(tau_candidate, cand) > tau_candidate.signalConeSize:
                             passesSignalCone = False
                             break
                     for strip in tau_candidate.signal_strips:
-                        if deltaR(tau_candidate, strip) > signalConeSize:
+                        if tau_candidate.metric_dR(tau_candidate, strip) > tau_candidate.signalConeSize:
                             passesSignalCone = False
                             break
                     if (
                         abs(round(tau_candidate.q)) == 1
-                        and deltaR(tau_candidate, tau_candidate.jet) < self.matchingConeSize
+                        and tau_candidate.metric_dR(tau_candidate, tau_candidate.jet) < self.matchingConeSize
                         and passesSignalCone
                         and tau_candidate.mass > self.targetedDecayModes[decayMode]["minTauMass"]
                         and tau_candidate.mass < self.targetedDecayModes[decayMode]["maxTauMass"]
                     ):
-                        tau_iso_cands = selectCandsByDeltaR(jet_iso_cands, tau_candidate, self.isolationConeSize)
+                        tau_iso_cands = selectCandsByDeltaR(
+                            jet_iso_cands, tau_candidate, self.isolationConeSize, tau_candidate.metric_dR
+                        )
                         tau_iso_cands = self.cleanCands(tau_iso_cands, tau_candidate.signal_cands)
                         tau_iso_cands.extend(event_iso_cands)
 
@@ -298,16 +294,16 @@ class HPSAlgo:
                         tau_candidate.iso_chargedCands = selectCandsByPdgId(tau_iso_cands, [11, 13, 211])
                         tau_candidate.iso_gammaCands = selectCandsByPdgId(tau_iso_cands, [22])
                         tau_candidate.iso_neutralHadronCands = selectCandsByPdgId(tau_iso_cands, [130, 2112])
-                        tau_candidate.chargedIso = compPtSum(tau_candidate.iso_chargedCands)
-                        tau_candidate.gammaIso = compPtSum(tau_candidate.iso_gammaCands)
-                        tau_candidate.neutralHadronIso = compPtSum(tau_candidate.iso_neutralHadronCands)
+                        tau_candidate.chargedIso_dR0p5 = comp_pt_sum(tau_candidate.iso_chargedCands)
+                        tau_candidate.gammaIso_dR0p5 = comp_pt_sum(tau_candidate.iso_gammaCands)
+                        tau_candidate.neutralHadronIso_dR0p5 = comp_pt_sum(tau_candidate.iso_neutralHadronCands)
                         # CV: don't use neutral hadrons when computing the isolation of the tau
-                        tau_candidate.combinedIso = tau_candidate.chargedIso + tau_candidate.gammaIso
+                        tau_candidate.combinedIso_dR0p5 = tau_candidate.chargedIso_dR0p5 + tau_candidate.gammaIso_dR0p5
 
                         # CV: constant alpha choosen such that idDiscr varies smoothly between 0 and 1
                         #     for typical values of the combined isolation pT-sum
                         alpha = 0.2
-                        tau_candidate.idDiscr = math.exp(-alpha * tau_candidate.combinedIso)
+                        tau_candidate.idDiscr = math.exp(-alpha * tau_candidate.combinedIso_dR0p5)
 
                         if self.verbosity >= 3:
                             tau_candidate.print()
@@ -317,12 +313,18 @@ class HPSAlgo:
                         if self.verbosity >= 4:
                             print("fails preselection:")
                             print(" q = %i" % round(tau_candidate.q))
-                            print(" dR(tau,jet) = %1.2f" % deltaR(tau_candidate, tau_candidate.jet))
-                            print(" signalConeSize = %1.2f" % signalConeSize)
+                            print(" dR(tau,jet) = %1.2f" % tau_candidate.metric_dR(tau_candidate, tau_candidate.jet))
+                            print(" signalConeSize = %1.2f" % tau_candidate.signalConeSize)
                             for idx, cand in enumerate(tau_candidate.signal_chargedCands):
-                                print(" dR(tau,signal_chargedCand #%i) = %1.2f" % (idx, deltaR(tau_candidate, cand)))
+                                print(
+                                    " dR(tau,signal_chargedCand #%i) = %1.2f"
+                                    % (idx, tau_candidate.metric_dR(tau_candidate, cand))
+                                )
                             for idx, strip in enumerate(tau_candidate.signal_chargedCands):
-                                print(" dR(tau,signal_strip #%i) = %1.2f" % (idx, deltaR(tau_candidate, strip)))
+                                print(
+                                    " dR(tau,signal_strip #%i) = %1.2f"
+                                    % (idx, tau_candidate.metric_dR(tau_candidate, strip))
+                                )
                             print(" mass = %1.2f" % tau_candidate.mass)
 
         # CV: sort tau candidates by multiplicity of charged signal candidates,
