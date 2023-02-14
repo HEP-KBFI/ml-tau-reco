@@ -44,6 +44,7 @@ ls
 #Load the dataset in pytorch
 python3 src/taujetdataset.py ./ntuple/
 
+#Prepare training inputs with just one file per split
 cat <<EOF > train.yaml
 train:
   paths:
@@ -51,7 +52,7 @@ train:
 EOF
 
 cat <<EOF > val.yaml
-train:
+validation:
   paths:
   - ./ntuple/reco_p8_ee_qcd_ecm380_1.parquet
 EOF

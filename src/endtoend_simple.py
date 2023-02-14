@@ -205,6 +205,9 @@ def get_split_files(config_path, split):
     with open(config_path, "r") as fi:
         data = yaml.safe_load(fi)
         paths = data[split]["paths"]
+
+        # FIXME: this is hardcoded, /local is too slow for GPU training
+        # datasets should be kept in /home or /scratch-persistent for GPU training
         paths = [p.replace("/local/laurits", "./data") for p in paths]
         return paths
 
