@@ -46,8 +46,9 @@ def plot_gen(signal_arrays, output_dir):
     reco_particles, reco_p4 = nt.calculate_p4("MergedRecoParticles", signal_arrays)
     plot_Z_H_vars(mc_particles, mc_p4, output_dir)
     plot_H_pt(mc_particles, mc_p4, output_dir)
-    plot_tau_vars(mc_particles, mc_p4, output_dir)
-    plot_tau_vis_pt(mc_particles, mc_p4, output_dir)
+    tau_mask, mask_addition = nt.get_hadronically_decaying_hard_tau_masks(mc_particles)
+    plot_tau_vars(mc_particles, mc_p4, tau_mask, mask_addition, output_dir)
+    plot_tau_vis_pt(mc_particles, mc_p4, tau_mask, mask_addition, output_dir)
     qg_jets = plot_quark_gluon_jet_multiplicity(mc_particles, mc_p4, output_dir)
     plot_genjet_vars(qg_jets, output_dir)
     plot_lepton_multiplicities(mc_particles, mc_p4, output_dir)
@@ -61,7 +62,7 @@ def is_qg_jet(jet):
 
 def plot_quark_gluon_jet_multiplicity(mc_particles, mc_p4, output_dir):
     stable_mc_p4, stable_mc_particles = nt.get_stable_mc_particles(mc_particles, mc_p4)
-    gen_jets, gen_jet_constituent_indices = nt.cluster_gen_jets(stable_mc_p4)
+    gen_jets, gen_jet_constituent_indices = nt.cluster_jets(stable_mc_p4)
     events = []
     is_qg_jets = []
     for eidx in range(len(stable_mc_particles.PDG)):
@@ -142,18 +143,15 @@ def plot_H_pt(mc_particles, mc_p4, output_dir):
     )
 
 
-def plot_tau_vis_pt(mc_particles, mc_p4, output_dir):
-    # Currently includes also the non-direct Higgs descantant taus. The ratio of direct and non-direct is rougly 44-1000
-    tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
+def plot_tau_vis_pt(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
     all_events_tau_vis_pts = []
-    for e_idx in range(len(mc_particles.PDG[tau_mask])):
-        daughter_mask = mc_particles.daughters_end[tau_mask][e_idx] < ak.num(mc_particles.daughters_begin[e_idx], axis=0)
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask])
+    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
+        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
         tau_vis_pts = []
         for d_idx in range(n_daughters):
             daughter_indices = range(
-                mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask][d_idx],
-                mc_particles.daughters_end[tau_mask][e_idx][daughter_mask][d_idx],
+                mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
+                mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
             )
             p4s = mc_p4[e_idx][daughter_indices]
             PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
@@ -209,7 +207,7 @@ def plot_genjet_vars(gen_jets, output_dir):
         title="genJet eta",
     )
 
-    gen_jet_theta = ak.from_iter([gjf.theta for gjf in gen_jets_flat])
+    gen_jet_theta = np.rad2deg([gjf.theta for gjf in gen_jets_flat])
     theta_output_path = os.path.join(output_dir, "gen_jet_theta.png")
     pl.plot_histogram(
         entries=gen_jet_theta,
@@ -246,16 +244,9 @@ def plot_Z_H_vars(mc_particles, mc_p4, output_dir):
     )
 
 
-def plot_tau_vars(mc_particles, mc_p4, output_dir):
-    tau_energy = ak.from_iter(
-        [
-            [
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][0]].energy,
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][1]].energy,
-            ]
-            for i in range(len(mc_particles.PDG))
-        ]
-    )
+def plot_tau_vars(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
+    tau_p4 = mc_p4[tau_mask][mask_addition]
+    tau_energy = tau_p4.energy
     tau_energy = ak.flatten(tau_energy, axis=-1)
     energy_output_path = os.path.join(output_dir, "tau_energy.png")
     pl.plot_histogram(
@@ -267,15 +258,7 @@ def plot_tau_vars(mc_particles, mc_p4, output_dir):
         title="tau energy",
     )
 
-    tau_pt = ak.from_iter(
-        [
-            [
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][0]].pt,
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][1]].pt,
-            ]
-            for i in range(len(mc_particles.PDG))
-        ]
-    )
+    tau_pt = tau_p4.pt
     tau_pt = ak.flatten(tau_pt, axis=-1)
     pt_output_path = os.path.join(output_dir, "tau_pt.png")
     pl.plot_histogram(
@@ -287,15 +270,7 @@ def plot_tau_vars(mc_particles, mc_p4, output_dir):
         title="tau pt",
     )
 
-    tau_eta = ak.from_iter(
-        [
-            [
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][0]].eta,
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][1]].eta,
-            ]
-            for i in range(len(mc_particles.PDG))
-        ]
-    )
+    tau_eta = tau_p4.eta
     tau_eta = ak.flatten(tau_eta, axis=-1)
     eta_output_path = os.path.join(output_dir, "tau_eta.png")
     pl.plot_histogram(
@@ -307,15 +282,7 @@ def plot_tau_vars(mc_particles, mc_p4, output_dir):
         title="tau eta",
     )
 
-    tau_theta = ak.from_iter(
-        [
-            [
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][0]].theta,
-                mc_p4[i][ak.where(abs(mc_particles.PDG[i]) == 15)[0][1]].theta,
-            ]
-            for i in range(len(mc_particles.PDG))
-        ]
-    )
+    tau_theta = tau_p4.eta
     tau_theta = ak.flatten(tau_energy, axis=-1)
     theta_output_path = os.path.join(output_dir, "tau_theta.png")
     pl.plot_histogram(
@@ -338,9 +305,10 @@ def plot_tau_vars(mc_particles, mc_p4, output_dir):
 def plot_reco(signal_arrays, output_dir):
     mc_particles, mc_p4 = nt.calculate_p4(p_type="MCParticles", arrs=signal_arrays)
     reco_particles, reco_p4 = nt.calculate_p4(p_type="MergedRecoParticles", arrs=signal_arrays)
-    reco_jets, reco_jet_constituent_indices = nt.cluster_reco_jets(reco_p4)
+    tau_mask, mask_addition = nt.get_hadronically_decaying_hard_tau_masks(mc_particles)
+    reco_jets, reco_jet_constituent_indices = nt.cluster_jets(reco_p4)
     stable_mc_p4, stable_mc_particles = nt.get_stable_mc_particles(mc_particles, mc_p4)
-    gen_jets = nt.cluster_gen_jets(stable_mc_p4)[0]
+    gen_jets = nt.cluster_jets(stable_mc_p4)[0]
     reco_indices, gen_indices = nt.get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
     reco_jets = vector.awk(ak.zip({"energy": reco_jets.t, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z}))
@@ -348,7 +316,8 @@ def plot_reco(signal_arrays, output_dir):
     gen_jets = vector.awk(ak.zip({"energy": gen_jets.t, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z}))
     plot_jet_response(reco_jets, gen_jets, output_dir)
     plot_met_response(stable_mc_p4, reco_p4, output_dir)
-    plot_particle_multiplicity_around_gen_vis_tau(mc_particles, mc_p4, reco_particles, reco_p4, output_dir, cone_radius=0.4)
+    plot_particle_multiplicity_around_gen_vis_tau(
+                    mc_particles, mc_p4, reco_particles, reco_p4, tau_mask, mask_addition, output_dir, cone_radius=0.4)
 
 
 def plot_jet_response(reco_jets, gen_jets, output_dir):
@@ -392,7 +361,7 @@ def plot_met_response(stable_mc_p4, reco_p4, output_dir):
     met_response = reco_met / gen_met
     met_response2 = reco_met - gen_met
     met_response_output_path = os.path.join(output_dir, "met_response.png")
-    met_response_output_path = os.path.join(output_dir, "met_response2.png")
+    met_response_output_path2 = os.path.join(output_dir, "met_response2.png")
     pl.plot_histogram(
         entries=met_response,
         output_path=met_response_output_path,
@@ -411,16 +380,24 @@ def plot_met_response(stable_mc_p4, reco_p4, output_dir):
     )
 
 
-def plot_particle_multiplicity_around_gen_vis_tau(mc_particles, mc_p4, reco_particles, reco_p4, output_dir, cone_radius=0.4):
+def plot_particle_multiplicity_around_gen_vis_tau(
+    mc_particles,
+    mc_p4,
+    reco_particles,
+    reco_p4,
+    tau_mask,
+    mask_addition,
+    output_dir,
+    cone_radius=0.4
+):
+
     stable_mc_p4, stable_mc_particles = nt.get_stable_mc_particles(mc_particles, mc_p4)
-    gen_jets, gen_jet_constituent_indices = nt.cluster_gen_jets(stable_mc_p4)
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
 
     all_cone_gen_particle_pdgs = []
     all_cone_reco_particle_pdgs = []
-    for e_idx in range(len(mc_particles.PDG[tau_mask])):
-        daughter_mask = mc_particles.daughters_end[tau_mask][e_idx] < ak.num(mc_particles.daughters_begin[e_idx], axis=0)
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask])
+    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
+        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
         event_cone_reco_particle_pdgs = []
         event_cone_gen_particle_pdgs = []
         event_reco_particle_PDGs = reco_particles["type"][e_idx]
@@ -429,8 +406,8 @@ def plot_particle_multiplicity_around_gen_vis_tau(mc_particles, mc_p4, reco_part
         event_gen_p4s = stable_mc_p4[e_idx]
         for d_idx in range(n_daughters):
             daughter_indices = range(
-                mc_particles.daughters_begin[tau_mask][e_idx][daughter_mask][d_idx],
-                mc_particles.daughters_end[tau_mask][e_idx][daughter_mask][d_idx],
+                mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
+                mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
             )
             p4s = mc_p4[e_idx][daughter_indices]
             PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
