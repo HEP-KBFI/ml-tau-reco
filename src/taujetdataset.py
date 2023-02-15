@@ -64,6 +64,16 @@ class TauJetDataset(Dataset):
         return pf_features.to(dtype=torch.float32), pf_to_jet.to(dtype=torch.long)
 
     def process_file_data(self, data):
+
+        #shuffle all rows in the files
+        #(reorder jets, pfcandidates and targets with the same permutation)
+        nrows = len(data["reco_jet_p4s"])
+        perm = np.random.permutation(range(nrows))
+        data_shuf = {}
+        for k in data.fields:
+            data_shuf[k] = data[k][perm]
+        data = ak.Record(data_shuf)
+ 
         # collect all jet features
         jet_features = self.get_jet_features(data)
 
@@ -81,7 +91,7 @@ class TauJetDataset(Dataset):
         ret_data = Data(
             jet_features=jet_features,  # (Njet x Nfeat_jet) of jet features
             jet_pf_features=pf_features,  # (Ncand x Nfeat_cand) of PF features
-            pf_to_jet=pf_to_jet,  # (Ncand x 1) index of PF candidate to jet
+            pf_to_jet=pf_to_jet,  # (Ncand x 1) index of each PF candidate to jet
             gen_tau_decaymode=gen_tau_decaymode,  # (Njet x 1) of gen tau decay mode or -1
             gen_tau_vis_energy=gen_tau_vis_energy,  # (Njet x 1) of gen tau visible energy or -1
         )
@@ -90,6 +100,7 @@ class TauJetDataset(Dataset):
     def __getitem__(self, idx):
         # Load the n-th file
         datas = []
+        print("loading {}".format(self.processed_file_names[idx]))
         for fi in self.processed_file_names[idx]:
             datas.append(ak.from_parquet(fi))
         data = {}

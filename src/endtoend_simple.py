@@ -8,6 +8,8 @@ import yaml
 import torch
 import torch_geometric
 import torch.nn as nn
+import sys
+import random
 from torch_geometric.loader import DataLoader
 from taujetdataset import TauJetDataset
 
@@ -20,20 +22,26 @@ from torch.utils.tensorboard import SummaryWriter
 # feedforward network that transformes input_dim->output_dim
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
+        torch.nn.LayerNorm(input_dim),
         nn.Linear(input_dim, width),
         act(),
-        torch.nn.LayerNorm(width),
         nn.Dropout(dropout),
+
+        torch.nn.LayerNorm(width),
         nn.Linear(width, width),
         act(),
-        torch.nn.LayerNorm(width),
         nn.Dropout(dropout),
+
+        torch.nn.LayerNorm(width),
         nn.Linear(width, width),
         act(),
-        torch.nn.LayerNorm(width),
         nn.Dropout(dropout),
+
+        torch.nn.LayerNorm(width),
         nn.Linear(width, width),
         act(),
+        nn.Dropout(dropout),
+        
         torch.nn.LayerNorm(width),
         nn.Linear(width, output_dim),
     )
@@ -49,20 +57,18 @@ class SelfAttentionLayer(nn.Module):
         self.norm0 = torch.nn.LayerNorm(embedding_dim)
         self.norm1 = torch.nn.LayerNorm(embedding_dim)
         self.dropout = torch.nn.Dropout(dropout)
-        self.seq = torch.nn.Sequential(
-            nn.Linear(embedding_dim, width), self.act(), nn.Linear(width, embedding_dim), self.act()
-        )
+        self.seq = ffn(embedding_dim, embedding_dim, width, self.act, dropout)
 
     def forward(self, x, mask):
+        xa = self.mha(x, x, x, key_padding_mask=mask)[0]
+        xa = self.dropout(xa)
+        x = self.norm0(x + xa)
 
-        # double check here that mask=True corresponds to what is expected by the MultiheadAttention
-        x = x + self.mha(x, x, x, key_padding_mask=mask)[0]
+        xa = self.seq(x)
+        x = self.norm1(x + xa)
+        
         # make sure masked elements are 0
         x = x * (~mask.unsqueeze(-1))
-        x = self.norm0(x)
-        x = x + self.seq(x)
-        x = self.norm1(x)
-        x = self.dropout(x)
         return x
 
 
@@ -74,22 +80,22 @@ class TauEndToEndSimple(nn.Module):
 
         self.act = nn.ELU
         self.dropout = 0.3
-        self.width = 256
+        self.width = 128
         self.embedding_dim = 128
 
         self.nn_pf_initialembedding = ffn(6, self.embedding_dim, self.width, self.act, self.dropout)
 
         self.nn_pf_mha = nn.ModuleList()
-        for i in range(3):
+        for i in range(2):
             self.nn_pf_mha.append(
                 SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
             )
 
-        self.nn_pf_ga = AttentionalAggregation(ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
+        # self.nn_pf_ga = AttentionalAggregation(ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
         self.agg = torch_geometric.nn.MeanAggregation()
 
-        self.nn_pred_istau = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
-        self.nn_pred_visenergy = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(4 + self.embedding_dim, 1, self.width, self.act, self.dropout)
+        # self.nn_pred_visenergy = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
 
     def forward(self, batch):
         pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
@@ -106,18 +112,17 @@ class TauEndToEndSimple(nn.Module):
         assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # now collapse the PF information in each jet with a global attention layer
-        jet_encoded1 = self.nn_pf_ga(pf_encoded, batch.pf_to_jet)
         jet_encoded2 = self.agg(pf_encoded, batch.pf_to_jet)
 
         # get the list of per-jet features as a concat of
         # (original_features, multi-head attention features)
-        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2], axis=-1)
+        jet_feats = torch.cat([batch.jet_features, jet_encoded2], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = torch.sigmoid(self.nn_pred_istau(jet_feats)).squeeze(-1)
 
         # run a per-jet NN for visible energy prediction
-        pred_visenergy = self.nn_pred_visenergy(jet_feats).squeeze(-1)
+        pred_visenergy = torch.zeros(jet_feats.shape[0])
 
         return pred_istau, pred_visenergy
 
@@ -131,21 +136,29 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
     nsteps = 0
     njets = 0
     # loop over batches in data
-    for batch in tqdm.tqdm(ds_loader, total=len(ds_loader)):
+    for batch in ds_loader:
         batch = batch.to(device=dev)
         pred_istau, pred_visenergy = model(batch)
         true_visenergy = batch.gen_tau_vis_energy
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
-        loss_energy = torch.nn.functional.mse_loss(pred_visenergy * true_istau, true_visenergy * true_istau)
+        # loss_energy = torch.nn.functional.mse_loss(pred_visenergy * true_istau, true_visenergy * true_istau)
         loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy(pred_istau, true_istau)
 
-        loss = loss_cls + loss_energy
+        loss = loss_cls # + loss_energy
         if is_train:
             loss.backward()
             optimizer.step()
         loss_tot += loss.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
+        print(
+            batch.jet_features.shape[0],
+            batch.jet_pf_features.shape[0],
+            np.max(np.unique(batch.pf_to_jet.cpu().numpy(), return_counts=True)[1]),
+            true_istau.sum().cpu().item(),
+            loss.detach().cpu().item()
+        )
+        sys.stdout.flush()
     return loss_tot / njets
 
 
@@ -206,9 +219,10 @@ def get_split_files(config_path, split):
         data = yaml.safe_load(fi)
         paths = data[split]["paths"]
 
-        # FIXME: this is hardcoded, /local is too slow for GPU training
+        # FIXME: this is currently hardcoded, /local is too slow for GPU training
         # datasets should be kept in /home or /scratch-persistent for GPU training
         paths = [p.replace("/local/laurits", "./data") for p in paths]
+        random.shuffle(paths)
         return paths
 
 
@@ -243,7 +257,7 @@ def main(cfg):
     model = TauEndToEndSimple().to(device=dev)
     print("params={}".format(count_parameters(model)))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.00001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
 
