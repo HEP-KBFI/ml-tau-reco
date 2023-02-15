@@ -186,6 +186,16 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
                 }
             )
         )
+        tauP4 = vector.awk(
+            ak.zip(
+                {
+                    "px": tauP4.x,
+                    "py": tauP4.y,
+                    "pz": tauP4.z,
+                    "tau": tauP4.mass,
+                }
+            )
+        )
         tauCharges = np.zeros(njets)
         dmode = np.zeros(njets)
 
