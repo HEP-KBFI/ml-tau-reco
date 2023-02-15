@@ -455,7 +455,7 @@ def get_hadronically_decaying_hard_tau_masks(mc_particles):
         for d in range(n_daughters):
             parent_idx = mc_particles.parents_begin[tau_mask][i][d]
             initial_tau = parent_idx < len(mc_particles.PDG[i])
-            initial_tau_2 = mc_particles.daughters_begin[tau_mask][i][d] < len(mc_particles.PDG[i])
+            initial_tau_2 = mc_particles.daughters_end[tau_mask][i][d] < len(mc_particles.PDG[i])
             if initial_tau and initial_tau_2:
                 parent_pdg = mc_particles.PDG[i][parent_idx]
                 daughters_idx = range(
