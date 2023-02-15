@@ -305,7 +305,6 @@ def get_matched_gen_tau_property(gen_jets, best_combos, property_, dummy_value=-
             if len(best_combos[event_id]) > 0:
                 if i in best_combos[event_id][:, 1]:
                     value = property_[event_id][mapping[i]]
-                    print(value)
                     gen_jet_info_array.append(value)
                 else:
                     gen_jet_info_array.append(dummy_value)
@@ -384,7 +383,7 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
                 "z": [0.0],
             }
         )
-    )
+    )[0]
     gen_tau_jet_info = {
         "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_energies),
         "gen_jet_tau_decaymode": get_matched_gen_tau_property(gen_jets, best_combos, tau_decaymodes),
