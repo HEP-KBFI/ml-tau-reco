@@ -30,6 +30,8 @@ def plot_eff_fake(algorithm_metrics, key, cfg, output_dir, cut):
         plt.legend()
         plt.xlabel(metric.name)
         plt.ylabel(key)
+        if key == "fakerates":
+            plt.yscale("log")
         plt.title(f"tauClassifier > {cut}")
         plt.savefig(output_path, bbox_inches="tight")
         plt.close("all")
@@ -68,7 +70,6 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
     reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
     # Mapping of decaymodes needed, not all classes classified, such as [14: 'ThreeProngNPiZero']
     mapping = {
-        -1: "Jet",
         0: r"$\pi^{\pm}$",
         1: r"$\pi^{\pm}\pi^{0}$",
         2: r"$\pi^{\pm}\pi^{0}\pi^{0}$",
@@ -76,9 +77,13 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
         11: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}\pi^{0}$",
         15: "Other",
     }
+    gen_tau_mask = gen_tau_decaymodes != -1
+    reco_tau_mask = reco_tau_decaymodes != -1
+    gen_tau_decaymodes_ = gen_tau_decaymodes[gen_tau_mask * reco_tau_mask]
+    reco_tau_decaymodes_ = reco_tau_decaymodes[gen_tau_mask * reco_tau_mask]
     categories = [value for value in mapping.values()]
     pl.plot_classification_confusion_matrix(
-        true_cats=gen_tau_decaymodes, pred_cats=reco_tau_decaymodes, categories=categories, output_path=output_path
+        true_cats=gen_tau_decaymodes_, pred_cats=reco_tau_decaymodes_, categories=categories, output_path=output_path
     )
 
 
@@ -181,9 +186,47 @@ def plot_all_metrics(cfg):
         os.makedirs(algorithm_output_dir, exist_ok=True)
         plot_energy_resolution(sig_data, algorithm_output_dir)
         plot_decaymode_reconstruction(sig_data, algorithm_output_dir)
+    plot_genvistau_gentau_correlation(sig_data, output_dir)
     plot_eff_fake(efficiencies, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=0.96)
     plot_eff_fake(fakerates, key="fakerates", cfg=cfg, output_dir=output_dir, cut=0.96)
     plot_roc(efficiencies, fakerates, cfg, output_dir, classifier_cuts)
+
+
+def plot_genvistau_gentau_correlation(sig_data, output_dir):
+    vis_tau_pt = vector.awk(
+        ak.zip(
+            {
+                "mass": sig_data.gen_jet_tau_p4s.tau,
+                "x": sig_data.gen_jet_tau_p4s.x,
+                "y": sig_data.gen_jet_tau_p4s.y,
+                "z": sig_data.gen_jet_tau_p4s.z,
+            }
+        )
+    ).pt.to_numpy()
+    gen_jet_pt = vector.awk(
+        ak.zip(
+            {
+                "mass": sig_data.gen_jet_p4s.tau,
+                "x": sig_data.gen_jet_p4s.x,
+                "y": sig_data.gen_jet_p4s.y,
+                "z": sig_data.gen_jet_p4s.z,
+            }
+        )
+    ).pt.to_numpy()
+    mask = vis_tau_pt != 0
+    vis_tau_pt_ = vis_tau_pt[mask]
+    gen_jet_pt_ = gen_jet_pt[mask]
+    output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
+    pl.plot_regression_confusion_matrix(
+        y_true=gen_jet_pt_,
+        y_pred=vis_tau_pt_,
+        output_path=output_path,
+        left_bin_edge=np.min([vis_tau_pt, gen_jet_pt]),
+        right_bin_edge=np.max([vis_tau_pt, gen_jet_pt]),
+        y_label=r"$p_T^{\tau_{vis}}$",
+        x_label=r"$p_T^{genJet}$",
+        title="",
+    )
 
 
 if __name__ == "__main__":

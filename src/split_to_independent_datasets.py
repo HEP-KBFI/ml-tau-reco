@@ -22,6 +22,7 @@ def split_to_datasets(cfg: DictConfig) -> None:
     for dataset in ["train", "test", "validation"]:
         output_path = os.path.join(list_dir, f"{dataset}.yaml")
         output_info = {dataset: {"paths": datasets[dataset]}}
+        print(f"Outputting to: {output_path}")
         with open(output_path, "wt") as out_file:
             yaml.dump(output_info, out_file)
 
