@@ -1,5 +1,5 @@
 builder: HPS # Other options would be ['SimpleDNN', 'Oracle']
-output_dir: /local/$USER/CLIC_taus
+output_dir: /local/$USER/CLIC_taus_20230215_v1
 n_files: -1
 verbosity: 0
 use_multiprocessing: True
