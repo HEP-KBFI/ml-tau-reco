@@ -179,8 +179,8 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         tauP4 = vector.awk(
             ak.zip(
                 {
-                    "px": np.zeros(njets),
-                    "py": np.zeros(njets),
+                    "px": np.ones(pred_visenergy.shape) * 25,
+                    "py": np.ones(pred_visenergy.shape) * 25,
                     "pz": np.zeros(njets),
                     "E": pred_visenergy,
                 }
