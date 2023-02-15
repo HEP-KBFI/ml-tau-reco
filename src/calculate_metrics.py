@@ -79,8 +79,8 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
     }
     gen_tau_mask = gen_tau_decaymodes != -1
     reco_tau_mask = reco_tau_decaymodes != -1
-    gen_tau_decaymodes_ = gen_tau_decaymodes[gen_tau_mask*reco_tau_mask]
-    reco_tau_decaymodes_ = reco_tau_decaymodes[gen_tau_mask*reco_tau_mask]
+    gen_tau_decaymodes_ = gen_tau_decaymodes[gen_tau_mask * reco_tau_mask]
+    reco_tau_decaymodes_ = reco_tau_decaymodes[gen_tau_mask * reco_tau_mask]
     categories = [value for value in mapping.values()]
     pl.plot_classification_confusion_matrix(
         true_cats=gen_tau_decaymodes_, pred_cats=reco_tau_decaymodes_, categories=categories, output_path=output_path
@@ -217,15 +217,15 @@ def plot_genvistau_gentau_correlation(sig_data, output_dir):
     vis_tau_pt_ = vis_tau_pt[mask]
     gen_jet_pt_ = gen_jet_pt[mask]
     output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
-    plot_regression_confusion_matrix(
+    pl.plot_regression_confusion_matrix(
         y_true=gen_jet_pt_,
         y_pred=vis_tau_pt_,
-        output_path = 'output_path',
+        output_path=output_path,
         left_bin_edge=np.min([vis_tau_pt, gen_jet_pt]),
         right_bin_edge=np.max([vis_tau_pt, gen_jet_pt]),
         y_label=r"$p_T^{\tau_{vis}}$",
         x_label=r"$p_T^{genJet}$",
-        title=""
+        title="",
     )
 
 

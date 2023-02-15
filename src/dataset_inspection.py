@@ -317,7 +317,8 @@ def plot_reco(signal_arrays, output_dir):
     plot_jet_response(reco_jets, gen_jets, output_dir)
     plot_met_response(stable_mc_p4, reco_p4, output_dir)
     plot_particle_multiplicity_around_gen_vis_tau(
-                    mc_particles, mc_p4, reco_particles, reco_p4, tau_mask, mask_addition, output_dir, cone_radius=0.4)
+        mc_particles, mc_p4, reco_particles, reco_p4, tau_mask, mask_addition, output_dir, cone_radius=0.4
+    )
 
 
 def plot_jet_response(reco_jets, gen_jets, output_dir):
@@ -381,14 +382,7 @@ def plot_met_response(stable_mc_p4, reco_p4, output_dir):
 
 
 def plot_particle_multiplicity_around_gen_vis_tau(
-    mc_particles,
-    mc_p4,
-    reco_particles,
-    reco_p4,
-    tau_mask,
-    mask_addition,
-    output_dir,
-    cone_radius=0.4
+    mc_particles, mc_p4, reco_particles, reco_p4, tau_mask, mask_addition, output_dir, cone_radius=0.4
 ):
 
     stable_mc_p4, stable_mc_particles = nt.get_stable_mc_particles(mc_particles, mc_p4)

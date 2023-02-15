@@ -24,7 +24,9 @@ def save_record_to_file(data: dict, output_path: str) -> None:
     ak.to_parquet(ak.Record(data), output_path)
 
 
-def load_single_file_contents(path: str, tree_path: str = 'events', branches: list = ["MCParticles", "MergedRecoParticles"]) -> ak.Array:
+def load_single_file_contents(
+    path: str, tree_path: str = "events", branches: list = ["MCParticles", "MergedRecoParticles"]
+) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
         arrays = tree.arrays(branches)
@@ -102,8 +104,8 @@ def find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition):
         tau_daughter_indices = []
         for daughter_idx in range(len(mc_particles.daughters_begin[tau_mask][mask_addition][event_idx])):
             daughters = range(
-                    mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][daughter_idx],
-                    mc_particles.daughters_end[tau_mask][mask_addition][event_idx][daughter_idx],
+                mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][daughter_idx],
+                mc_particles.daughters_end[tau_mask][mask_addition][event_idx][daughter_idx],
             )
             tau_daughter_indices.extend(daughters)
         event_tau_daughters_begin = mc_particles.daughters_begin[event_idx]
@@ -139,7 +141,9 @@ def get_event_tau_daughters(
     return all_tau_daughter_indices
 
 
-def get_jet_matched_constituent_gen_energy(arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters):
+def get_jet_matched_constituent_gen_energy(
+    arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters
+):
     maps = []
     for ridx, midx in zip(arrays["idx_reco"], arrays["idx_mc"]):
         maps.append(dict(zip(ridx, midx)))
@@ -453,8 +457,7 @@ def get_hadronically_decaying_hard_tau_masks(mc_particles):
             if initial_tau and initial_tau_2:
                 parent_pdg = mc_particles.PDG[i][parent_idx]
                 daughters_idx = range(
-                    mc_particles.daughters_begin[tau_mask][i][d],
-                    mc_particles.daughters_end[tau_mask][i][d]
+                    mc_particles.daughters_begin[tau_mask][i][d], mc_particles.daughters_end[tau_mask][i][d]
                 )
                 daughter_PDGs = mc_particles.PDG[i][daughters_idx]
                 decaymode = g.get_decaymode(daughter_PDGs)
@@ -467,7 +470,6 @@ def get_hadronically_decaying_hard_tau_masks(mc_particles):
         mask_addition.append(daughter_mask)
     mask_addition = ak.Array(mask_addition)
     return tau_mask, mask_addition
-
 
 
 def process_input_file(arrays: ak.Array):
