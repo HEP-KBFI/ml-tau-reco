@@ -304,13 +304,8 @@ def get_matched_gen_tau_property(gen_jets, best_combos, property_, dummy_value=-
         for i, gen_jet in enumerate(gen_jets[event_id]):
             if len(best_combos[event_id]) > 0:
                 if i in best_combos[event_id][:, 1]:
-                    if type(property_[event_id]) == ak.highlevel.Array:
-                        if len(property_[event_id]) == 0:
-                            value = dummy_value
-                        else:
-                            value = property_[event_id][mapping[i]]
-                    else:
-                        value = property_[event_id]
+                    value = property_[event_id][mapping[i]]
+                    print(value)
                     gen_jet_info_array.append(value)
                 else:
                     gen_jet_info_array.append(dummy_value)
