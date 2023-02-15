@@ -1,5 +1,5 @@
 plotting:
-  output_dir: /local/laurits/CLIC_metrics
+  output_dir: /home/laurits/CLIC_metrics_xyz
   n_files: -1
 algorithms:
   EndToEnd:
@@ -15,19 +15,24 @@ algorithms:
     bkg_ntuples_dir: /foo/bar
     compare: False
   HPS_only:
-    sig_ntuples_dir: /local/laurits/CLIC_taus/HPS/ZH_Htautau
-    bkg_ntuples_dir: /local/laurits/CLIC_taus/HPS/QCD
-    compare: True
+    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/HPS/ZH_Htautau
+    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/HPS/QCD
+    compare: False
   Oracle:
-    sig_ntuples_dir: /local/laurits/CLIC_taus/Oracle/ZH_Htautau
-    bkg_ntuples_dir: /local/laurits/CLIC_taus/Oracle/QCD
+    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
+    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/Oracle/QCD
     compare: True
   FastCMSTau:
-    sig_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/ZH_Htautau
-    bkg_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/QCD
+    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/FastCMSTau/ZH_Htautau
+    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/FastCMSTau/QCD
     compare: True
+  SimpleDNN:
+    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/SimpleDNN/ZH_Htautau
+    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/SimpleDNN/QCD
+    compare: False
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
+  numerator: "pt >= 20 && |eta| < 2.3"
   efficiency:
     variables:
       - name: pt
