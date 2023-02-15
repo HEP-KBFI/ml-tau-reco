@@ -3,7 +3,6 @@ import hydra
 import vector
 import awkward as ak
 import numpy as np
-import tqdm
 import yaml
 import torch
 import torch_geometric
@@ -13,7 +12,7 @@ import random
 from torch_geometric.loader import DataLoader
 from taujetdataset import TauJetDataset
 
-from torch_geometric.nn.aggr import AttentionalAggregation
+# from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
 
 from torch.utils.tensorboard import SummaryWriter
@@ -26,22 +25,18 @@ def ffn(input_dim, output_dim, width, act, dropout):
         nn.Linear(input_dim, width),
         act(),
         nn.Dropout(dropout),
-
         torch.nn.LayerNorm(width),
         nn.Linear(width, width),
         act(),
         nn.Dropout(dropout),
-
         torch.nn.LayerNorm(width),
         nn.Linear(width, width),
         act(),
         nn.Dropout(dropout),
-
         torch.nn.LayerNorm(width),
         nn.Linear(width, width),
         act(),
         nn.Dropout(dropout),
-        
         torch.nn.LayerNorm(width),
         nn.Linear(width, output_dim),
     )
@@ -66,7 +61,7 @@ class SelfAttentionLayer(nn.Module):
 
         xa = self.seq(x)
         x = self.norm1(x + xa)
-        
+
         # make sure masked elements are 0
         x = x * (~mask.unsqueeze(-1))
         return x
@@ -139,12 +134,12 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
     for batch in ds_loader:
         batch = batch.to(device=dev)
         pred_istau, pred_visenergy = model(batch)
-        true_visenergy = batch.gen_tau_vis_energy
+        # true_visenergy = batch.gen_tau_vis_energy
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
         # loss_energy = torch.nn.functional.mse_loss(pred_visenergy * true_istau, true_visenergy * true_istau)
         loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy(pred_istau, true_istau)
 
-        loss = loss_cls # + loss_energy
+        loss = loss_cls  # + loss_energy
         if is_train:
             loss.backward()
             optimizer.step()
@@ -156,7 +151,7 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
             batch.jet_pf_features.shape[0],
             np.max(np.unique(batch.pf_to_jet.cpu().numpy(), return_counts=True)[1]),
             true_istau.sum().cpu().item(),
-            loss.detach().cpu().item()
+            loss.detach().cpu().item(),
         )
         sys.stdout.flush()
     return loss_tot / njets

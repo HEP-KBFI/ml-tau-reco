@@ -65,15 +65,15 @@ class TauJetDataset(Dataset):
 
     def process_file_data(self, data):
 
-        #shuffle all rows in the files
-        #(reorder jets, pfcandidates and targets with the same permutation)
+        # shuffle all rows in the files
+        # (reorder jets, pfcandidates and targets with the same permutation)
         nrows = len(data["reco_jet_p4s"])
         perm = np.random.permutation(range(nrows))
         data_shuf = {}
         for k in data.fields:
             data_shuf[k] = data[k][perm]
         data = ak.Record(data_shuf)
- 
+
         # collect all jet features
         jet_features = self.get_jet_features(data)
 
