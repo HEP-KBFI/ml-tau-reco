@@ -27,9 +27,9 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         fig, ax = plt.subplots(figsize=(12, 12))
         algorithms = eff_fake_data.keys()
         for algorithm in algorithms:
-            eff_fake_numerator = eff_fake_data[algorithm]['numerator']
+            eff_fake_numerator = eff_fake_data[algorithm]["numerator"]
             eff_fake_numerator = eff_fake_numerator[eff_fake_numerator.tauClassifier > cut]
-            eff_fake_denominator = eff_fake_data[algorithm]['denominator']
+            eff_fake_denominator = eff_fake_data[algorithm]["denominator"]
             eff_fake_p4_num = vector.awk(
                 ak.zip(
                     {
@@ -52,10 +52,10 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             )
             eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name)
             eff_fake_var_num = getattr(eff_fake_p4_num, metric.name)
-            bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), num=4)#metric.n_bins+1)
-            denom_hist = Histogram(eff_fake_var_denom, bin_edges, 'denominator')
-            num_hist = Histogram(eff_fake_var_num, bin_edges, 'denominator')
-            eff_fake = num_hist/denom_hist
+            bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), num=4)  # metric.n_bins+1)
+            denom_hist = Histogram(eff_fake_var_denom, bin_edges, "denominator")
+            num_hist = Histogram(eff_fake_var_num, bin_edges, "denominator")
+            eff_fake = num_hist / denom_hist
             plt.plot(eff_fake.bin_centers, eff_fake.data, label=algorithm)
         plt.grid()
         plt.legend()
@@ -238,7 +238,7 @@ def calculate_efficiencies_fakerates(raw_numerator_data, denominator_data, varia
         n_all = len(denominator_data)
     for cut in classifier_cuts:
         n_passing_cuts = len(raw_numerator_data[raw_numerator_data.tauClassifier > cut])
-        eff_fake = n_passing_cuts/n_all
+        eff_fake = n_passing_cuts / n_all
         eff_fakes.append(eff_fake)
     return eff_fakes
 
@@ -267,14 +267,8 @@ def plot_all_metrics(cfg):
         # Also need to calculate workingpoints
         efficiencies[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e)
         fakerates[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_f, denominator_data_f)
-        eff_data[algorithm] = {
-            "numerator": raw_numerator_data_e,
-            "denominator": denominator_data_e
-        }
-        fake_data[algorithm] = {
-            "numerator": raw_numerator_data_f,
-            "denominator": denominator_data_f
-        }
+        eff_data[algorithm] = {"numerator": raw_numerator_data_e, "denominator": denominator_data_e}
+        fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
         plot_energy_resolution(sig_data, algorithm_output_dir)
