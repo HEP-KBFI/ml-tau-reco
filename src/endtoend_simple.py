@@ -75,13 +75,13 @@ class TauEndToEndSimple(nn.Module):
 
         self.act = nn.ELU
         self.dropout = 0.3
-        self.width = 128
-        self.embedding_dim = 128
+        self.width = 512
+        self.embedding_dim = 512
 
         self.nn_pf_initialembedding = ffn(6, self.embedding_dim, self.width, self.act, self.dropout)
 
         self.nn_pf_mha = nn.ModuleList()
-        for i in range(2):
+        for i in range(4):
             self.nn_pf_mha.append(
                 SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
             )
@@ -90,13 +90,13 @@ class TauEndToEndSimple(nn.Module):
         self.agg = torch_geometric.nn.MeanAggregation()
 
         self.nn_pred_istau = ffn(4 + self.embedding_dim, 1, self.width, self.act, self.dropout)
-        # self.nn_pred_visenergy = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
+        self.nn_pred_p4 = ffn(4 + self.embedding_dim, 1, self.width, self.act, self.dropout)
 
     def forward(self, batch):
         pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
 
         # pad the PF tensors across jets
-        pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.pf_to_jet, 0.0)
+        pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.jet_pf_features_batch, 0.0)
 
         # run a simple self-attention over the PF candidates in each jet
         for mha_layer in self.nn_pf_mha:
@@ -107,7 +107,7 @@ class TauEndToEndSimple(nn.Module):
         assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # now collapse the PF information in each jet with a global attention layer
-        jet_encoded2 = self.agg(pf_encoded, batch.pf_to_jet)
+        jet_encoded2 = self.agg(pf_encoded, batch.jet_pf_features_batch)
 
         # get the list of per-jet features as a concat of
         # (original_features, multi-head attention features)
@@ -117,12 +117,12 @@ class TauEndToEndSimple(nn.Module):
         pred_istau = torch.sigmoid(self.nn_pred_istau(jet_feats)).squeeze(-1)
 
         # run a per-jet NN for visible energy prediction
-        pred_visenergy = torch.zeros(jet_feats.shape[0])
+        pred_visenergy = self.nn_pred_p4(jet_feats)
 
         return pred_istau, pred_visenergy
 
 
-def model_loop(model, ds_loader, optimizer, is_train, dev):
+def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
     loss_tot = 0.0
     if is_train:
         model.train()
@@ -134,24 +134,26 @@ def model_loop(model, ds_loader, optimizer, is_train, dev):
     for batch in ds_loader:
         batch = batch.to(device=dev)
         pred_istau, pred_visenergy = model(batch)
-        # true_visenergy = batch.gen_tau_vis_energy
+        true_visenergy = batch.gen_tau_vis_energy
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
-        # loss_energy = torch.nn.functional.mse_loss(pred_visenergy * true_istau, true_visenergy * true_istau)
+        loss_energy = torch.nn.functional.mse_loss(pred_visenergy * true_istau, true_visenergy * true_istau)
         loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy(pred_istau, true_istau)
 
-        loss = loss_cls  # + loss_energy
+        loss = loss_cls + loss_energy
         if is_train:
             loss.backward()
             optimizer.step()
+            scheduler.step()
         loss_tot += loss.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
         print(
             batch.jet_features.shape[0],
             batch.jet_pf_features.shape[0],
-            np.max(np.unique(batch.pf_to_jet.cpu().numpy(), return_counts=True)[1]),
+            np.max(np.unique(batch.jet_pf_features_batch.cpu().numpy(), return_counts=True)[1]),
             true_istau.sum().cpu().item(),
             loss.detach().cpu().item(),
+            scheduler.get_last_lr()
         )
         sys.stdout.flush()
     return loss_tot / njets
@@ -226,7 +228,7 @@ def get_split_files(config_path, split):
 
         # FIXME: this is currently hardcoded, /local is too slow for GPU training
         # datasets should be kept in /home or /scratch-persistent for GPU training
-        paths = [p.replace("/local/laurits", "./data") for p in paths]
+        paths = [p.replace("/scratch-persistent/laurits/", "./data/") for p in paths]
         random.shuffle(paths)
         return paths
 
@@ -239,15 +241,13 @@ def main(cfg):
     files_train = get_split_files(cfg.train_files, "train")
     files_val = get_split_files(cfg.validation_files, "validation")
 
-    ds_train = TauJetDataset(files_train, cfg.batch_size)
-    ds_val = TauJetDataset(files_val, cfg.batch_size)
+    ds_train = TauJetDataset(files_train)
+    ds_val = TauJetDataset(files_val)
 
     print("Loaded TauJetDataset with {} train steps".format(len(ds_train)))
     print("Loaded TauJetDataset with {} val steps".format(len(ds_val)))
-    # note, if batch_size>1, then the pf_to_jet indices will be incorrect and need to be recomputed
-    # therefore, keep batch_size==1 here, and change it only in the TauJetDataset definition!
-    ds_train_loader = DataLoader(ds_train, batch_size=1, shuffle=True)
-    ds_val_loader = DataLoader(ds_val, batch_size=1, shuffle=True)
+    ds_train_loader = DataLoader(ds_train, batch_size=cfg.batch_size, shuffle=True, follow_batch=["jet_pf_features"])
+    ds_val_loader = DataLoader(ds_val, batch_size=cfg.batch_size, shuffle=True, follow_batch=["jet_pf_features"])
 
     assert len(ds_train_loader) > 0
     assert len(ds_val_loader) > 0
@@ -263,13 +263,14 @@ def main(cfg):
     print("params={}".format(count_parameters(model)))
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.0001, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
 
     for iepoch in range(cfg.epochs):
-        loss_train = model_loop(model, ds_train_loader, optimizer, True, dev)
+        loss_train = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
         tensorboard_writer.add_scalar("epoch/train_loss", loss_train, iepoch)
-        loss_val = model_loop(model, ds_val_loader, optimizer, False, dev)
+        loss_val = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
         print("epoch={} loss_train={:.4f} loss_val={:.4f}".format(iepoch, loss_train, loss_val))
         torch.save(model, "{}/model_{}.pt".format(outpath, iepoch))
