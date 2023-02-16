@@ -8,7 +8,6 @@ import torch
 import torch_geometric
 import torch.nn as nn
 import sys
-import random
 from torch_geometric.loader import DataLoader
 from taujetdataset import TauJetDataset
 
@@ -218,11 +217,6 @@ def get_split_files(config_path, split):
     with open(config_path, "r") as fi:
         data = yaml.safe_load(fi)
         paths = data[split]["paths"]
-
-        # FIXME: this is currently hardcoded, /local is too slow for GPU training
-        # datasets should be kept in /home or /scratch-persistent for GPU training
-        paths = [p.replace("/scratch-persistent/laurits/", "./data/") for p in paths]
-        random.shuffle(paths)
         return paths
 
 
