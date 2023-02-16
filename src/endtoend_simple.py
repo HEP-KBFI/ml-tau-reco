@@ -176,12 +176,27 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         assert njets == len(pred_istau)
         assert njets == len(pred_visenergy)
 
+        reco_jet_p4 =  vector.awk(
+            ak.zip(
+                {
+                    "px": jets.reco_jet_p4s.x,
+                    "py": jets.reco_jet_p4s.y,
+                    "pz": jets.reco_jet_p4s.z,
+                    "mass": jets.reco_jet_p4s.tau,
+                }
+            )
+        )
+
+        reco_jet_energy = reco_jet_p4.energy
+        energy_scale_factor = pred_visenergy / reco_jet_energy.to_numpy()
+
+
         tauP4 = vector.awk(
             ak.zip(
                 {
-                    "px": np.ones(pred_visenergy.shape) * 25,
-                    "py": np.ones(pred_visenergy.shape) * 25,
-                    "pz": np.zeros(njets),
+                    "px": energy_scale_factor * reco_jet_p4.x,
+                    "py": energy_scale_factor * reco_jet_p4.y,
+                    "pz": energy_scale_factor * reco_jet_p4.z,
                     "E": pred_visenergy,
                 }
             )

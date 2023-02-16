@@ -17,7 +17,7 @@ algorithms:
   HPS_only:
     sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/HPS/ZH_Htautau
     bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/HPS/QCD
-    compare: False
+    compare: True
   Oracle:
     sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
     bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/Oracle/QCD
@@ -29,7 +29,7 @@ algorithms:
   SimpleDNN:
     sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/SimpleDNN/ZH_Htautau
     bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/SimpleDNN/QCD
-    compare: False
+    compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"

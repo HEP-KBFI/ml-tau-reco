@@ -118,42 +118,6 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
     )
 
 
-def calculate_eff_fake(data, ref_obj, cfg, tau_classifier_cut):
-    ref_p4 = vector.awk(
-        ak.zip(
-            {
-                "mass": data[ref_obj].tau,
-                "x": data[ref_obj].x,
-                "y": data[ref_obj].y,
-                "z": data[ref_obj].z,
-            }
-        )
-    )
-    tau_classifier_mask = data.tauClassifier > tau_classifier_cut
-    # Need to also have some cuts for the generator tau, like abs(eta) > 2.4 and pt > 20.
-    var_eff_fake = {}
-    for variable in cfg.metrics.efficiency.variables:
-        name = variable.name
-        ref_var_ = getattr(ref_p4, name)
-        bin_edges = np.linspace(variable.x_range[0], variable.x_range[1], num=variable.n_bins)
-        bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
-
-        ref_var_mask = ref_var_ != -1
-        ref_var_pt_mask = ref_p4.pt > 20
-        ref_var_eta_mask = abs(ref_p4.eta) < 2.5
-        denominator = ref_var_[ref_var_mask * ref_var_pt_mask * ref_var_eta_mask]
-        numerator = ref_var_[ref_var_mask * tau_classifier_mask * ref_var_pt_mask * ref_var_eta_mask]
-        numerator_ = np.histogram(numerator, bins=bin_edges)[0]
-        denominator_ = np.histogram(denominator, bins=bin_edges)[0]
-        eff_fake = numerator_ / denominator_
-        var_eff_fake[name] = {
-            "x_values": bin_centers,
-            "y_values": eff_fake,
-            "eff_fake": sum(numerator_) / sum(denominator_),
-        }
-    return var_eff_fake
-
-
 def plot_roc(efficiencies, fakerates, output_dir):
     output_path = os.path.join(output_dir, "ROC.png")
     algorithms = efficiencies.keys()
@@ -271,6 +235,7 @@ def plot_all_metrics(cfg):
         fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
+        # Choose only events that pass medium WP
         plot_energy_resolution(sig_data, algorithm_output_dir)
         plot_decaymode_reconstruction(sig_data, algorithm_output_dir)
     cut = 0.5
