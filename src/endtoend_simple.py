@@ -176,7 +176,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         assert njets == len(pred_istau)
         assert njets == len(pred_visenergy)
 
-        reco_jet_p4 =  vector.awk(
+        reco_jet_p4 = vector.awk(
             ak.zip(
                 {
                     "px": jets.reco_jet_p4s.x,
