@@ -24,7 +24,7 @@ class TauJetDataset(Dataset):
         # The order of features in the PF feature tensor
         self.pf_features = ["x", "y", "z", "tau", "charge", "pdg"]
 
-        #just load all data to memory
+        # just load all data to memory
         self.all_data = []
         for fn in self.processed_file_names:
             print(fn)
@@ -78,21 +78,25 @@ class TauJetDataset(Dataset):
 
         gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
         gen_tau_vis_energy = torch.tensor(data["gen_jet_tau_vis_energy"]).to(dtype=torch.float32)
-        # gen_tau_p4 = torch.tensor(data["gen_jet_tau_p4s"]).to(dtype=torch.float32)
-        assert(len(ak.flatten(data["gen_jet_tau_p4s"].x)) == len(gen_tau_decaymode))
+        p4 = data["gen_jet_tau_p4s"]
+        gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.tau], axis=-1)).to(dtype=torch.int32)
+        assert gen_tau_p4.shape[0] == gen_tau_decaymode.shape[0]
 
         # Data object with:
         #   - reco jet (jet_features, jet_pf_features)
         #   - jet PF candidates (jet_pf_features, pf_to_jet)
         #   - generator level target (gen_tau_decaymode, gen_tau_vis_energy)
-        
-        ret_data = [Data(
-            jet_features=jet_features[ijet:ijet+1, :],
-                jet_pf_features=pf_features[pf_to_jet==ijet],
-                gen_tau_decaymode=gen_tau_decaymode[ijet:ijet+1],
-                gen_tau_vis_energy=gen_tau_vis_energy[ijet:ijet+1],
-                # gen_tau_p4=gen_tau_p4[ijet:ijet+1],
-            ) for ijet in range(len(jet_features))]
+
+        ret_data = [
+            Data(
+                jet_features=jet_features[ijet : ijet + 1, :],
+                jet_pf_features=pf_features[pf_to_jet == ijet],
+                gen_tau_decaymode=gen_tau_decaymode[ijet : ijet + 1],
+                gen_tau_vis_energy=gen_tau_vis_energy[ijet : ijet + 1],
+                gen_tau_p4=gen_tau_p4[ijet : ijet + 1],
+            )
+            for ijet in range(len(jet_features))
+        ]
         return ret_data
 
     def __getitem__(self, idx):
