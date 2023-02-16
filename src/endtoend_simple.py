@@ -187,10 +187,20 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         tauP4 = vector.awk(
             ak.zip(
                 {
-                    "px": np.zeros(njets),
-                    "py": np.zeros(njets),
+                    "px": np.ones(pred_visenergy.shape) * 25,
+                    "py": np.ones(pred_visenergy.shape) * 25,
                     "pz": np.zeros(njets),
                     "E": pred_visenergy,
+                }
+            )
+        )
+        tauP4 = vector.awk(
+            ak.zip(
+                {
+                    "px": tauP4.x,
+                    "py": tauP4.y,
+                    "pz": tauP4.z,
+                    "tau": tauP4.mass,
                 }
             )
         )
@@ -201,11 +211,11 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         tau_cand_p4s = jets["reco_cand_p4s"][:, 0]
 
         return {
-            "tauP4": tauP4,
-            "tauSigCandP4s": tau_cand_p4s,
+            "tau_p4s": tauP4,
+            "tauSigCand_p4s": tau_cand_p4s,
             "tauClassifier": pred_istau,
-            "tauCharge": tauCharges,
-            "tauDmode": dmode,
+            "tau_charge": tauCharges,
+            "tau_decaymode": dmode,
         }
 
 

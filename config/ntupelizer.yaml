@@ -9,19 +9,19 @@ samples_to_process:
 samples:
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /local/laurits/CLIC_data/ZH_Htautau
+    output_dir: /scratch-persistent/laurits/CLIC_data_2023021X/ZH_Htautau
   QCD:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_qcd_ecm365
-    output_dir: /local/laurits/CLIC_data/QCD
+    output_dir: /scratch-persistent/laurits/CLIC_data_2023021X/QCD
   TT:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_tt_ecm365
-    output_dir: /local/laurits/CLIC_data/TT
+    output_dir: /scratch-persistent/laurits/CLIC_data_[DATE]/TT
   ZZ_fullhad:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_ZZ_fullhad_ecm365
-    output_dir: /local/laurits/CLIC_data/ZZ_fullhad
+    output_dir: /scratch-persistent/laurits/CLIC_data_[DATE]/ZZ_fullhad
   Z_Ztautau:
     input_dir: /local/joosep/clic_edm4hep/p8_ee_Z_Ztautau_ecm125
-    output_dir: /local/laurits/CLIC_data/Z_Ztautau
+    output_dir: /scratch-persistent/laurits/CLIC_data_[DATE]/Z_Ztautau
 validation:
   output_dir: $HOME/CLIC_ntuple_validation
   validation_samples:
