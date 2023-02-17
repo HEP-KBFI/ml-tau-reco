@@ -33,26 +33,26 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             eff_fake_p4_num = vector.awk(
                 ak.zip(
                     {
-                        "mass": eff_fake_numerator.gen_jet_tau_p4s.tau,
-                        "x": eff_fake_numerator.gen_jet_tau_p4s.x,
-                        "y": eff_fake_numerator.gen_jet_tau_p4s.y,
-                        "z": eff_fake_numerator.gen_jet_tau_p4s.z,
+                        "mass": eff_fake_numerator.reco_jet_p4s.tau,
+                        "x": eff_fake_numerator.reco_jet_p4s.x,
+                        "y": eff_fake_numerator.reco_jet_p4s.y,
+                        "z": eff_fake_numerator.reco_jet_p4s.z,
                     }
                 )
             )
             eff_fake_p4_denom = vector.awk(
                 ak.zip(
                     {
-                        "mass": eff_fake_denominator.gen_jet_tau_p4s.tau,
-                        "x": eff_fake_denominator.gen_jet_tau_p4s.x,
-                        "y": eff_fake_denominator.gen_jet_tau_p4s.y,
-                        "z": eff_fake_denominator.gen_jet_tau_p4s.z,
+                        "mass": eff_fake_denominator.reco_jet_p4s.tau,
+                        "x": eff_fake_denominator.reco_jet_p4s.x,
+                        "y": eff_fake_denominator.reco_jet_p4s.y,
+                        "z": eff_fake_denominator.reco_jet_p4s.z,
                     }
                 )
             )
             eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name)
             eff_fake_var_num = getattr(eff_fake_p4_num, metric.name)
-            bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), num=4)  # metric.n_bins+1)
+            bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), metric.n_bins + 1)
             denom_hist = Histogram(eff_fake_var_denom, bin_edges, "denominator")
             num_hist = Histogram(eff_fake_var_num, bin_edges, "denominator")
             eff_fake = num_hist / denom_hist
