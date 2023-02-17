@@ -1,10 +1,8 @@
-import os
 import yaml
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from glob import glob
 
 from LorentzNetDataset import LorentzNetDataset
 from LorentzNet import LorentzNet
@@ -13,6 +11,7 @@ print("<trainLorentzNet>:")
 
 model_file = "LorentzNet_model.pt"
 
+
 def get_split_files(cfg_filename, split):
     with open(cfg_filename, "r") as cfg_file:
         data = yaml.safe_load(cfg_file)
@@ -20,8 +19,9 @@ def get_split_files(cfg_filename, split):
 
         # FIXME: this is hardcoded, /local is too slow for GPU training
         # datasets should be kept in /home or /scratch-persistent for GPU training
-        #paths = [p.replace("/local/laurits", "./data") for p in paths]
+        # paths = [p.replace("/local/laurits", "./data") for p in paths]
         return paths
+
 
 filelist_train = get_split_files("config/datasets/train.yaml", "train")
 filelist_test = get_split_files("config/datasets/validation.yaml", "validation")
@@ -48,18 +48,19 @@ print("Finished building validation dataset.")
 dataloader_train = DataLoader(dataset_train, batch_size=64, shuffle=True)
 dataloader_test = DataLoader(dataset_test, batch_size=64, shuffle=True)
 
+
 def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     for batch, (X, y) in enumerate(dataloader):
         # Compute prediction and loss
-        scalars = X['scalars'].to(device=dev)
-        x = X['x'].to(device=dev)
+        scalars = X["scalars"].to(device=dev)
+        x = X["x"].to(device=dev)
         y = y.squeeze(dim=1)
-        #print("shape(y) = ", y.shape)
-        #print("y = ", y)
+        # print("shape(y) = ", y.shape)
+        # print("y = ", y)
         pred = model(scalars, x)
-        #print("shape(pred) = ", pred.shape)
-        #print("pred = ", pred)
+        # print("shape(pred) = ", pred.shape)
+        # print("pred = ", pred)
         loss = loss_fn(pred, y)
 
         # Backpropagation
@@ -71,6 +72,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
             loss, current = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
+
 def test_loop(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -78,13 +80,14 @@ def test_loop(dataloader, model, loss_fn):
 
     with torch.no_grad():
         for X, y in dataloader:
-            pred = model(scalars=X['scalars'], x=X['x'])
+            pred = model(scalars=X["scalars"], x=X["x"])
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
     test_loss /= num_batches
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
 
 print("Starting training...")
 epochs = 10
@@ -97,5 +100,3 @@ print("Finished training.")
 print("Saving model to file %s." % model_file)
 torch.save(model.state_dict(), model_file)
 print("Done.")
-
-

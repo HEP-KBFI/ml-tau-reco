@@ -1,11 +1,11 @@
 import awkward as ak
 import math
-import numpy as np
 import vector
 
 import torch
 from torch.utils.data import Dataset
 from LGEB import psi
+
 
 class LorentzNetDataset(Dataset):
     def __init__(self, filelist, max_num_files=-1, add_beams=True):
@@ -49,7 +49,9 @@ class LorentzNetDataset(Dataset):
             print("File %s contains %i entries." % (file, num_jets_in_file))
 
             data_cand_p4s = data["reco_cand_p4s"]
-            cand_p4s = vector.awk(ak.zip({"px": data_cand_p4s.x, "py": data_cand_p4s.y, "pz": data_cand_p4s.z, "mass": data_cand_p4s.tau}))
+            cand_p4s = vector.awk(
+                ak.zip({"px": data_cand_p4s.x, "py": data_cand_p4s.y, "pz": data_cand_p4s.z, "mass": data_cand_p4s.tau})
+            )
 
             data_gen_tau_decaymodes = data["gen_jet_tau_decaymode"]
 
@@ -58,38 +60,41 @@ class LorentzNetDataset(Dataset):
                     print(" Processing entry %i" % idx)
 
                 jet_constituent_p4s = cand_p4s[idx]
-                jet_constituent_p4s = jet_constituent_p4s[:self.max_cands]
-                jet_constituent_p4s_zipped = list(zip(jet_constituent_p4s.energy, jet_constituent_p4s.px, jet_constituent_p4s.py, jet_constituent_p4s.pz))
+                jet_constituent_p4s = jet_constituent_p4s[: self.max_cands]
+                jet_constituent_p4s_zipped = list(
+                    zip(jet_constituent_p4s.energy, jet_constituent_p4s.px, jet_constituent_p4s.py, jet_constituent_p4s.pz)
+                )
                 num_jet_constituents = int(len(jet_constituent_p4s_zipped))
                 x_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
-                x_tensor = torch.nn.functional.pad(x_tensor, (0, 0, 0, self.max_cands - num_jet_constituents), "constant", 0.)
+                x_tensor = torch.nn.functional.pad(
+                    x_tensor, (0, 0, 0, self.max_cands - num_jet_constituents), "constant", 0.0
+                )
 
                 scalars_tensor = psi(torch.tensor(jet_constituent_p4s.mass, dtype=torch.float32)).unsqueeze(-1)
-                scalars_tensor = torch.nn.functional.pad(scalars_tensor, (0, 1, 0, self.max_cands - num_jet_constituents), "constant", 0.)
+                scalars_tensor = torch.nn.functional.pad(
+                    scalars_tensor, (0, 1, 0, self.max_cands - num_jet_constituents), "constant", 0.0
+                )
 
                 if add_beams:
-                    beam_mass = 1.
-                    beam1_p4 = [ math.sqrt(1 + beam_mass**2), 0., 0., +1. ]
-                    beam2_p4 = [ math.sqrt(1 + beam_mass**2), 0., 0., -1. ]
-                    x_beams = torch.tensor([ beam1_p4, beam2_p4 ], dtype=torch.float32)
-                    x_tensor = torch.cat([ x_beams, x_tensor ], dim=0)
+                    beam_mass = 1.0
+                    beam1_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, +1.0]
+                    beam2_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, -1.0]
+                    x_beams = torch.tensor([beam1_p4, beam2_p4], dtype=torch.float32)
+                    x_tensor = torch.cat([x_beams, x_tensor], dim=0)
 
-                    scalars_beams = psi(torch.tensor([ beam_mass, beam_mass ], dtype=torch.float32)).unsqueeze(-1) 
-                    scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.)
-                    scalars_tensor = torch.cat([ scalars_beams, scalars_tensor ], dim=0)
+                    scalars_beams = psi(torch.tensor([beam_mass, beam_mass], dtype=torch.float32)).unsqueeze(-1)
+                    scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.0)
+                    scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
 
-                y_tensor = torch.tensor([ 1 if data_gen_tau_decaymodes[idx] != -1 else 0 ], dtype=torch.long)
+                y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
 
-                ##print("type(x_tensor) = %s" % type(x_tensor))
-                ##print("shape(x_tensor) = ", x_tensor.shape)
-                ##print("x_tensor = ", x_tensor)
-                ##print("type(scalars_tensor) = %s" % type(scalars_tensor))
-                ##print("shape(scalars_tensor) = ", scalars_tensor.shape)
-                ##print("scalars_tensor = ", scalars_tensor)
-                ##print("type(y_tensor) = %s" % type(y_tensor))
-                ##print("shape(y_tensor) = ", y_tensor.shape)
-                ##print("y_tensor = ", y_tensor)
-                ##raise ValueError("STOP.")
+                # print("shape(x_tensor) = ", x_tensor.shape)
+                # print("x_tensor = ", x_tensor)
+                # print("shape(scalars_tensor) = ", scalars_tensor.shape)
+                # print("scalars_tensor = ", scalars_tensor)
+                # print("shape(y_tensor) = ", y_tensor.shape)
+                # print("y_tensor = ", y_tensor)
+                # raise ValueError("STOP.")
 
                 self.scalars_tensors.append(scalars_tensor)
                 self.x_tensors.append(x_tensor)
@@ -108,6 +113,6 @@ class LorentzNetDataset(Dataset):
 
     def __getitem__(self, idx):
         if idx < self.num_jets:
-            return { 'x' : self.x_tensors[idx], 'scalars' : self.scalars_tensors[idx] }, self.y_tensors[idx]
+            return {"x": self.x_tensors[idx], "scalars": self.scalars_tensors[idx]}, self.y_tensors[idx]
         else:
             raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))

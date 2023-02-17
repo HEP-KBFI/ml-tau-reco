@@ -1,11 +1,11 @@
 import torch
 from torch import nn
-from typing import Tuple
 
 from LGEB import LGEB
 
+
 class LorentzNet(nn.Module):
-    r''' Implimentation of LorentzNet.
+    r"""Implimentation of LorentzNet.
 
     Args:
         - `n_scalar` (int): number of input scalars.
@@ -14,24 +14,36 @@ class LorentzNet(nn.Module):
         - `n_layers` (int): number of LGEB layers.
         - `c_weight` (float): weight c in the x_model.
         - `dropout`  (float): dropout rate.
-    '''
-    def __init__(self, n_scalar : int, n_hidden : int, n_class : int = 2, n_layers : int = 6, c_weight : float = 1e-3, dropout : float = 0.) -> None:
+    """
+
+    def __init__(
+        self, n_scalar: int, n_hidden: int, n_class: int = 2, n_layers: int = 6, c_weight: float = 1e-3, dropout: float = 0.0
+    ) -> None:
         super(LorentzNet, self).__init__()
         self.n_hidden = n_hidden
         self.n_layers = n_layers
         self.embedding = nn.Linear(n_scalar, n_hidden)
-        self.LGEBs = nn.ModuleList([LGEB(self.n_hidden, self.n_hidden, self.n_hidden, 
-                                    n_node_attr=n_scalar, dropout=dropout,
-                                    c_weight=c_weight, last_layer=(i==n_layers-1))
-                                    for i in range(n_layers)])
+        self.LGEBs = nn.ModuleList(
+            [
+                LGEB(
+                    self.n_hidden,
+                    self.n_hidden,
+                    self.n_hidden,
+                    n_node_attr=n_scalar,
+                    dropout=dropout,
+                    c_weight=c_weight,
+                    last_layer=(i == n_layers - 1),
+                )
+                for i in range(n_layers)
+            ]
+        )
 
-        self.graph_dec = nn.Sequential(nn.Linear(self.n_hidden, self.n_hidden),
-                                       nn.ReLU(),
-                                       nn.Dropout(dropout),
-                                       nn.Linear(self.n_hidden, n_class)) # classification
+        self.graph_dec = nn.Sequential(
+            nn.Linear(self.n_hidden, self.n_hidden), nn.ReLU(), nn.Dropout(dropout), nn.Linear(self.n_hidden, n_class)
+        )  # classification
 
-    def forward(self, scalars : torch.Tensor, x : torch.Tensor) -> torch.Tensor:
-        #print("<LorentzNet::forward>")
+    def forward(self, scalars: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        # print("<LorentzNet::forward>")
 
         h = self.embedding(scalars)
 
@@ -60,9 +72,6 @@ class LorentzNet(nn.Module):
         h = torch.mean(h, dim=1)
         pred = self.graph_dec(h)
         result = pred.squeeze(0)
-        #print("shape(result) = ", result.shape)
-        #print("result = ", result)
+        # print("shape(result) = ", result.shape)
+        # print("result = ", result)
         return result
-
-
-
