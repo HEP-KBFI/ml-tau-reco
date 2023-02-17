@@ -79,7 +79,7 @@ def test_loop(dataloader, model, loss_fn):
     test_loss, correct = 0, 0
 
     with torch.no_grad():
-        for batch, (X, y) in enumerate(dataloader):            
+        for batch, (X, y) in enumerate(dataloader):
             scalars = X["scalars"]
             x = X["x"].to(device=dev)
             y = y.squeeze(dim=1)
