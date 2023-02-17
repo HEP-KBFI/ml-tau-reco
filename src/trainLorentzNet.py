@@ -54,8 +54,12 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         # Compute prediction and loss
         scalars = X['scalars'].to(device=dev)
         x = X['x'].to(device=dev)
-        y = y.to(device=dev)
+        y = y.squeeze(dim=1)
+        #print("shape(y) = ", y.shape)
+        #print("y = ", y)
         pred = model(scalars, x)
+        #print("shape(pred) = ", pred.shape)
+        #print("pred = ", pred)
         loss = loss_fn(pred, y)
 
         # Backpropagation

@@ -78,7 +78,7 @@ class LorentzNetDataset(Dataset):
                     scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.)
                     scalars_tensor = torch.cat([ scalars_beams, scalars_tensor ], dim=0)
 
-                y_tensor = torch.tensor([ 1. if data_gen_tau_decaymodes[idx] != -1 else 0., ], dtype=torch.float32)
+                y_tensor = torch.tensor([ 1 if data_gen_tau_decaymodes[idx] != -1 else 0 ], dtype=torch.long)
 
                 ##print("type(x_tensor) = %s" % type(x_tensor))
                 ##print("shape(x_tensor) = ", x_tensor.shape)
