@@ -52,7 +52,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             )
             eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name)
             eff_fake_var_num = getattr(eff_fake_p4_num, metric.name)
-            bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), metric.n_bins+1)
+            bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), metric.n_bins + 1)
             denom_hist = Histogram(eff_fake_var_denom, bin_edges, "denominator")
             num_hist = Histogram(eff_fake_var_num, bin_edges, "denominator")
             eff_fake = num_hist / denom_hist
