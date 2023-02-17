@@ -38,11 +38,11 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
 
 print("Starting to build training dataset...")
-dataset_train = LorentzNetDataset(filelist_train, max_num_files=1, add_beams=True)
+dataset_train = LorentzNetDataset(filelist_train, max_num_files=-1, add_beams=True)
 print("Finished building training dataset.")
 
 print("Starting to build validation dataset...")
-dataset_test = LorentzNetDataset(filelist_test, max_num_files=1, add_beams=True)
+dataset_test = LorentzNetDataset(filelist_test, max_num_files=-1, add_beams=True)
 print("Finished building validation dataset.")
 
 dataloader_train = DataLoader(dataset_train, batch_size=64, shuffle=True)
@@ -68,7 +68,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
-        if batch % 100 == 0:
+        if batch % 100 == 0 or batch == (size - 1):
             loss, current = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
@@ -79,8 +79,11 @@ def test_loop(dataloader, model, loss_fn):
     test_loss, correct = 0, 0
 
     with torch.no_grad():
-        for X, y in dataloader:
-            pred = model(scalars=X["scalars"], x=X["x"])
+        for batch, (X, y) in enumerate(dataloader):            
+            scalars = X["scalars"]
+            x = X["x"].to(device=dev)
+            y = y.squeeze(dim=1)
+            pred = model(scalars, x)
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
