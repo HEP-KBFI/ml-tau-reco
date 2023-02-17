@@ -11,7 +11,7 @@ import sys
 from torch_geometric.loader import DataLoader
 from taujetdataset import TauJetDataset
 
-# from torch_geometric.nn.aggr import AttentionalAggregation
+from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
 
 from torch.utils.tensorboard import SummaryWriter
@@ -73,9 +73,9 @@ class TauEndToEndSimple(nn.Module):
         super(TauEndToEndSimple, self).__init__()
 
         self.act = nn.ELU
-        self.dropout = 0.3
-        self.width = 512
-        self.embedding_dim = 512
+        self.dropout = 0.4
+        self.width = 256
+        self.embedding_dim = 256
 
         self.nn_pf_initialembedding = ffn(6, self.embedding_dim, self.width, self.act, self.dropout)
 
@@ -85,11 +85,11 @@ class TauEndToEndSimple(nn.Module):
                 SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
             )
 
-        # self.nn_pf_ga = AttentionalAggregation(ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
+        self.nn_pf_ga = AttentionalAggregation(ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
         self.agg = torch_geometric.nn.MeanAggregation()
 
-        self.nn_pred_istau = ffn(4 + self.embedding_dim, 1, self.width, self.act, self.dropout)
-        self.nn_pred_p4 = ffn(4 + self.embedding_dim, 4, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
+        self.nn_pred_p4 = ffn(4 + 2 * self.embedding_dim, 4, self.width, self.act, self.dropout)
 
     def forward(self, batch):
         pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
@@ -106,23 +106,29 @@ class TauEndToEndSimple(nn.Module):
         assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # now collapse the PF information in each jet with a global attention layer
+        jet_encoded1 = self.nn_pf_ga(pf_encoded, batch.jet_pf_features_batch)
+
+        # also compute a simple mean aggregation
         jet_encoded2 = self.agg(pf_encoded, batch.jet_pf_features_batch)
 
         # get the list of per-jet features as a concat of
         # (original_features, multi-head attention features)
-        jet_feats = torch.cat([batch.jet_features, jet_encoded2], axis=-1)
+        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
-        pred_istau = torch.sigmoid(self.nn_pred_istau(jet_feats)).squeeze(-1)
+        pred_istau = self.nn_pred_istau(jet_feats).squeeze(-1)
 
         # run a per-jet NN for visible energy prediction
-        pred_p4 = self.nn_pred_p4(jet_feats)
+        jet_p4 = batch.jet_features[:, :4]
+        pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
 
         return pred_istau, pred_p4
 
 
 def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
-    loss_tot = 0.0
+    loss_cls_tot = 0.0
+    loss_p4_tot = 0.0
+
     if is_train:
         model.train()
     else:
@@ -130,32 +136,45 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
     nsteps = 0
     njets = 0
     # loop over batches in data
+
+    class_true = []
+    class_pred = []
     for batch in ds_loader:
         batch = batch.to(device=dev)
         pred_istau, pred_p4 = model(batch)
         true_p4 = batch.gen_tau_p4
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
-        loss_p4 = torch.nn.functional.mse_loss(pred_p4 * true_istau.unsqueeze(-1), true_p4 * true_istau.unsqueeze(-1))
-        loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy(pred_istau, true_istau)
+        pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
+        loss_p4 = torch.nn.functional.huber_loss(pred_p4[true_istau == 1], true_p4[true_istau == 1])
+        loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy_with_logits(pred_istau, true_istau)
 
         loss = loss_cls + loss_p4
         if is_train:
             loss.backward()
             optimizer.step()
             scheduler.step()
-        loss_tot += loss.detach().cpu().item()
+        else:
+            class_true.append(true_istau.cpu().numpy())
+            class_pred.append(torch.sigmoid(pred_istau).detach().cpu().numpy())
+        loss_cls_tot += loss_cls.detach().cpu().item()
+        loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
         print(
-            batch.jet_features.shape[0],
-            batch.jet_pf_features.shape[0],
-            np.max(np.unique(batch.jet_pf_features_batch.cpu().numpy(), return_counts=True)[1]),
-            true_istau.sum().cpu().item(),
-            loss.detach().cpu().item(),
-            scheduler.get_last_lr(),
+            "jets={jets} pfs={pfs} max_pfs={max_pfs} ntau={ntau} loss={loss:.2f} lr={lr:.2E}".format(
+                jets=batch.jet_features.shape[0],
+                pfs=batch.jet_pf_features.shape[0],
+                max_pfs=np.max(np.unique(batch.jet_pf_features_batch.cpu().numpy(), return_counts=True)[1]),
+                ntau=true_istau.sum().cpu().item(),
+                loss=loss.detach().cpu().item(),
+                lr=scheduler.get_last_lr()[0],
+            )
         )
         sys.stdout.flush()
-    return loss_tot / njets
+    if not is_train:
+        class_true = np.concatenate(class_true)
+        class_pred = np.concatenate(class_pred)
+    return loss_cls_tot / njets, loss_p4_tot / njets, (class_true, class_pred)
 
 
 def count_parameters(model):
@@ -178,6 +197,8 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         ds = TauJetDataset()
         data_obj = ds.process_file_data(jets)
         pred_istau, pred_p4 = self.model(data_obj)
+
+        pred_istau = torch.sigmoid(pred_istau)
 
         pred_istau = pred_istau.detach().numpy()
         pred_p4 = pred_p4.detach().numpy()
@@ -249,19 +270,33 @@ def main(cfg):
     model = TauEndToEndSimple().to(device=dev)
     print("params={}".format(count_parameters(model)))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.000001)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=0.0001, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
+        optimizer, max_lr=0.000001, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
     )
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
 
     for iepoch in range(cfg.epochs):
-        loss_train = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
-        tensorboard_writer.add_scalar("epoch/train_loss", loss_train, iepoch)
-        loss_val = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev)
-        tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
-        print("epoch={} loss_train={:.4f} loss_val={:.4f}".format(iepoch, loss_train, loss_val))
+        loss_cls_train, loss_p4_train, _ = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
+        tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
+        tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
+        tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
+
+        loss_cls_val, loss_p4_val, retvals = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev)
+
+        tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
+        tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
+        tensorboard_writer.add_scalar("epoch/val_loss", loss_cls_val + loss_p4_val, iepoch)
+
+        tensorboard_writer.add_scalar("epoch/lr", scheduler.get_last_lr()[0], iepoch)
+        tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
+
+        print(
+            "epoch={} cls={:.4f}/{:.4f} p4={:.4f}/{:.4f}".format(
+                iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val
+            )
+        )
         torch.save(model, "{}/model_{}.pt".format(outpath, iepoch))
 
     model = model.to(device="cpu")

@@ -77,22 +77,20 @@ class TauJetDataset(Dataset):
         pf_features, pf_to_jet = self.get_pf_features(jet_features, data)
 
         gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
-        gen_tau_vis_energy = torch.tensor(data["gen_jet_tau_vis_energy"]).to(dtype=torch.float32)
         p4 = data["gen_jet_tau_p4s"]
-        gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.tau], axis=-1)).to(dtype=torch.int32)
+        gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.tau], axis=-1)).to(dtype=torch.float32)
         assert gen_tau_p4.shape[0] == gen_tau_decaymode.shape[0]
 
         # Data object with:
         #   - reco jet (jet_features, jet_pf_features)
         #   - jet PF candidates (jet_pf_features, pf_to_jet)
-        #   - generator level target (gen_tau_decaymode, gen_tau_vis_energy)
+        #   - generator level target (gen_tau_decaymode, gen_tau_p4)
 
         ret_data = [
             Data(
                 jet_features=jet_features[ijet : ijet + 1, :],
                 jet_pf_features=pf_features[pf_to_jet == ijet],
                 gen_tau_decaymode=gen_tau_decaymode[ijet : ijet + 1],
-                gen_tau_vis_energy=gen_tau_vis_energy[ijet : ijet + 1],
                 gen_tau_p4=gen_tau_p4[ijet : ijet + 1],
             )
             for ijet in range(len(jet_features))
@@ -113,5 +111,4 @@ if __name__ == "__main__":
         batch = ds[ibatch]
         print(ibatch, batch.jet_features.shape, batch.jet_pf_features.shape)
         assert batch.jet_features.shape[0] == batch.gen_tau_decaymode.shape[0]
-        assert batch.jet_features.shape[0] == batch.gen_tau_vis_energy.shape[0]
         assert batch.jet_features.shape[0] == batch.gen_tau_p4.shape[0]
