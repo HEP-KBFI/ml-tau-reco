@@ -9,6 +9,7 @@ import torch_geometric
 import torch.nn as nn
 import sys
 from torch_geometric.loader import DataLoader
+from torch_geometric.data.batch import Batch
 from taujetdataset import TauJetDataset
 
 from torch_geometric.nn.aggr import AttentionalAggregation
@@ -73,9 +74,9 @@ class TauEndToEndSimple(nn.Module):
         super(TauEndToEndSimple, self).__init__()
 
         self.act = nn.ELU
-        self.dropout = 0.4
-        self.width = 256
-        self.embedding_dim = 256
+        self.dropout = 0.2
+        self.width = 128
+        self.embedding_dim = 128
 
         self.nn_pf_initialembedding = ffn(6, self.embedding_dim, self.width, self.act, self.dropout)
 
@@ -195,13 +196,13 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
 
     def processJets(self, jets):
         ds = TauJetDataset()
-        data_obj = ds.process_file_data(jets)
+        data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
         pred_istau, pred_p4 = self.model(data_obj)
 
         pred_istau = torch.sigmoid(pred_istau)
-
-        pred_istau = pred_istau.detach().numpy()
-        pred_p4 = pred_p4.detach().numpy()
+        pred_istau = pred_istau.contiguous().detach().numpy()
+        # to solve "ValueError: ndarray is not contiguous"
+        pred_p4 = np.asfortranarray(pred_p4.detach().contiguous().numpy())
 
         njets = len(jets["reco_jet_p4s"]["x"])
         assert njets == len(pred_istau)
@@ -213,7 +214,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
                     "px": pred_p4[:, 0],
                     "py": pred_p4[:, 1],
                     "pz": pred_p4[:, 2],
-                    "tau": pred_p4[:, 3],
+                    "mass": pred_p4[:, 3],
                 }
             )
         )
@@ -223,8 +224,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         dmode = np.zeros(njets)
 
         # as a dummy placeholder, just return the first PFCand for each jet
-        tau_cand_p4s = jets["reco_cand_p4s"][:, 0]
-
+        tau_cand_p4s = jets["reco_cand_p4s"][:, 0:1]
         return {
             "tau_p4s": tauP4,
             "tauSigCand_p4s": tau_cand_p4s,
