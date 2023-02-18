@@ -19,7 +19,6 @@ class CellGrid():
         self.nCellsPhi = nCellsPhi
         self.cellSizeEta = cellSizeEta
         self.cellSizePhi = cellSizePhi
-        self.nTotal = nCellsEta * nCellsPhi
 
     def MaxEtaIndex(self):
         return int(self.nCellsEta/2.)
@@ -41,12 +40,6 @@ class CellGrid():
         shiftedPhi = int(cellIndex.phival()) + self.MaxPhiIndex()
         return shiftedEta * self.nCellsPhi + shiftedPhi
 
-    def GetnTotal(self):
-        return self.nTotal
-
-    def at(self, cellIndex):
-        return self.cells[self.GetFlatIndex(cellIndex)]
-        
     def TryCellIndex(self, vars, maxval, size):
         absvars = np.absolute(vars)
         maskabsvars = ak.mask(absvars, absvars < maxval)
