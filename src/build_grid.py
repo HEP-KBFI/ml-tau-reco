@@ -132,11 +132,7 @@ class GridBuilder(BasicTauBuilder):
                         list_part_info_alljet = list_part_info_perjet
                     else:
                         list_part_info_alljet = np.concatenate((list_part_info_perjet, list_part_info_alljet))
-                    print('*******list_part_info_alljet ', list_part_info_alljet, '\t', list_part_info_alljet.shape, '\t', idx)
                 list_ak = ak.from_numpy(list_part_info_alljet)
                 write_info.update({f'{cone}_{part}_block': list_ak})
                 assert(list_part_info_alljet.shape[0] == pow(self._builderConfig[cone]['n_cells'], 2) * len(part_var_list[part]) * len(reco_tau_p4))
         return write_info
-
-#build = GridBuilder()
-#build.processJets(ak.from_parquet('hps/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_437.parquet'))
