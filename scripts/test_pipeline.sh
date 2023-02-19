@@ -78,7 +78,7 @@ python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_H
 
 #run GridBuilder
 mkdir -p grid
-python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=Grid use_multiprocessing=False output_dir=grid samples.ZH_Htautau.input_dir=hps/HPS/ZH_Htautau/
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] builder=Grid use_multiprocessing=False output_dir=grid samples.ZH_Htautau.output_dir=hps/HPS/ZH_Htautau/
 
 #run simple DNN reco
 mkdir -p simplednn

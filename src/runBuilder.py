@@ -49,8 +49,7 @@ def build_taus(cfg: DictConfig) -> None:
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     for sample in cfg.samples_to_process:
         output_dir = os.path.join(algo_output_dir, sample)
-        samples_dir = cfg.samples[sample].input_dir
-        print('*********** ', output_dir, '\t', samples_dir)
+        samples_dir = cfg.samples[sample].output_dir
         os.makedirs(output_dir, exist_ok=True)
         if not os.path.exists(samples_dir):
             raise OSError("Ntuples do not exist: %s" % (samples_dir))
