@@ -7,8 +7,38 @@ from torch.utils.data import Dataset
 from LGEB import psi
 
 
+def buildLorentzNetTensors(jet_constituent_p4s, max_cands, add_beams):
+    jet_constituent_p4s = jet_constituent_p4s[: max_cands]
+    jet_constituent_p4s_zipped = list(
+        zip(jet_constituent_p4s.energy, jet_constituent_p4s.px, jet_constituent_p4s.py, jet_constituent_p4s.pz)
+    )
+    num_jet_constituents = int(len(jet_constituent_p4s_zipped))
+    x_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
+    x_tensor = torch.nn.functional.pad(
+        x_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0
+    )
+
+    scalars_tensor = psi(torch.tensor(jet_constituent_p4s.mass, dtype=torch.float32)).unsqueeze(-1)
+    scalars_tensor = torch.nn.functional.pad(
+        scalars_tensor, (0, 1, 0, max_cands - num_jet_constituents), "constant", 0.0
+    )
+
+    if add_beams:
+        beam_mass = 1.0
+        beam1_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, +1.0]
+        beam2_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, -1.0]
+        x_beams = torch.tensor([beam1_p4, beam2_p4], dtype=torch.float32)
+        x_tensor = torch.cat([x_beams, x_tensor], dim=0)
+
+        scalars_beams = psi(torch.tensor([beam_mass, beam_mass], dtype=torch.float32)).unsqueeze(-1)
+        scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.0)
+        scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
+    
+    return x_tensor, scalars_tensor
+
+
 class LorentzNetDataset(Dataset):
-    def __init__(self, filelist, max_num_files=-1, add_beams=True):
+    def __init__(self, filelist, max_num_files=-1, max_cands=50, add_beams=True):
 
         print("<LorentzNetDataset::LorentzNetDataset>:")
         print(" #files = %i" % len(filelist))
@@ -33,8 +63,8 @@ class LorentzNetDataset(Dataset):
             print("Restricting the size of the dataset to %i files." % len(filelist))
 
         self.filelist = filelist
+        self.max_cands = max_cands
         self.add_beams = add_beams
-        self.max_cands = 50
 
         self.x_tensors = []
         self.scalars_tensors = []
@@ -60,41 +90,8 @@ class LorentzNetDataset(Dataset):
                     print(" Processing entry %i" % idx)
 
                 jet_constituent_p4s = cand_p4s[idx]
-                jet_constituent_p4s = jet_constituent_p4s[: self.max_cands]
-                jet_constituent_p4s_zipped = list(
-                    zip(jet_constituent_p4s.energy, jet_constituent_p4s.px, jet_constituent_p4s.py, jet_constituent_p4s.pz)
-                )
-                num_jet_constituents = int(len(jet_constituent_p4s_zipped))
-                x_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
-                x_tensor = torch.nn.functional.pad(
-                    x_tensor, (0, 0, 0, self.max_cands - num_jet_constituents), "constant", 0.0
-                )
-
-                scalars_tensor = psi(torch.tensor(jet_constituent_p4s.mass, dtype=torch.float32)).unsqueeze(-1)
-                scalars_tensor = torch.nn.functional.pad(
-                    scalars_tensor, (0, 1, 0, self.max_cands - num_jet_constituents), "constant", 0.0
-                )
-
-                if add_beams:
-                    beam_mass = 1.0
-                    beam1_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, +1.0]
-                    beam2_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, -1.0]
-                    x_beams = torch.tensor([beam1_p4, beam2_p4], dtype=torch.float32)
-                    x_tensor = torch.cat([x_beams, x_tensor], dim=0)
-
-                    scalars_beams = psi(torch.tensor([beam_mass, beam_mass], dtype=torch.float32)).unsqueeze(-1)
-                    scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.0)
-                    scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
-
+                x_tensor, scalars_tensor = buildLorentzNetTensors(jet_constituent_p4s, self.max_cands, self.add_beams)
                 y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
-
-                # print("shape(x_tensor) = ", x_tensor.shape)
-                # print("x_tensor = ", x_tensor)
-                # print("shape(scalars_tensor) = ", scalars_tensor.shape)
-                # print("scalars_tensor = ", scalars_tensor)
-                # print("shape(y_tensor) = ", y_tensor.shape)
-                # print("y_tensor = ", y_tensor)
-                # raise ValueError("STOP.")
 
                 self.scalars_tensors.append(scalars_tensor)
                 self.x_tensors.append(x_tensor)
@@ -103,6 +100,8 @@ class LorentzNetDataset(Dataset):
             print("Closing file %s." % file)
 
             self.num_jets += num_jets_in_file
+
+        print("Dataset contains %i entries." % self.num_jets)
 
         assert len(self.x_tensors) == self.num_jets
         assert len(self.scalars_tensors) == self.num_jets

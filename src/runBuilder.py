@@ -13,6 +13,7 @@ from hpsTauBuilder import HPSTauBuilder
 from endtoend_simple import SimpleDNNTauBuilder
 from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 from fastCMSTauBuilder import FastCMSTauBuilder
+from LorentzNetTauBuilder import LorentzNetTauBuilder
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
@@ -37,11 +38,12 @@ def build_taus(cfg: DictConfig) -> None:
     elif cfg.builder == "FastCMSTau":
         builder = FastCMSTauBuilder()
     elif cfg.builder == "SimpleDNN":
-
         pytorch_model = torch.load("data/model.pt", map_location=torch.device("cpu"))
         assert pytorch_model.__class__ == TauEndToEndSimple
         assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
         builder = SimpleDNNTauBuilder(pytorch_model)
+    elif cfg.builder == "LorentzNet":        
+        builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
     builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     for sample in cfg.samples_to_process:
