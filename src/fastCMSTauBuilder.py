@@ -167,7 +167,7 @@ class FastCMSTauBuilder(BasicTauBuilder):
             dLoose = self._missIDLoose[1][idx] * np.ones(mask.shape)
             dLoose *= mask
             survivalProb_BkgLoose += dLoose
-            dTight = self._missIDLoose[1][idx] * np.ones(mask.shape)
+            dTight = self._missIDTight[1][idx] * np.ones(mask.shape)
             dTight *= mask
             survivalProb_BkgTight += dTight
         probExp = np.random.rand(len(survivalProb_SigLoose))
