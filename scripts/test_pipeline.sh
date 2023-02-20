@@ -12,7 +12,9 @@ if [ ! -d "$INFILE_TAU_DIR" ]; then
     wget --directory-prefix ZH_Htautau -q --no-check-certificate -nc https://jpata.web.cern.ch/jpata/mlpf/clic_edm4hep/reco_p8_ee_ZH_Htautau_ecm380_1.root
     INFILE_TAU_DIR=$PWD/ZH_Htautau
 else
-    INFILE_TAU_DIR=/local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380
+    mkdir -p root_input/p8_ee_ZH_Htautau_ecm380
+    cp /local/joosep/clic_edm4hep/p8_ee_ZH_Htautau_ecm380/reco_p8_ee_ZH_Htautau_ecm380_1.root root_input/p8_ee_ZH_Htautau_ecm380/
+    INFILE_TAU_DIR=$PWD/root_input/p8_ee_ZH_Htautau_ecm380
 fi;
 
 INFILE_QCD_DIR=/local/joosep/clic_edm4hep/p8_ee_qcd_ecm380
@@ -20,7 +22,9 @@ if [ ! -d "$INFILE_QCD_DIR" ]; then
     wget --directory-prefix QCD -q --no-check-certificate -nc https://jpata.web.cern.ch/jpata/mlpf/clic_edm4hep/reco_p8_ee_qcd_ecm380_1.root
     INFILE_QCD_DIR=$PWD/QCD
 else
-    INFILE_QCD_DIR=/local/joosep/clic_edm4hep/p8_ee_qcd_ecm380
+    mkdir -p root_input/p8_ee_qcd_ecm380
+    cp /local/joosep/clic_edm4hep/p8_ee_qcd_ecm380/reco_p8_ee_qcd_ecm380_1.root root_input/p8_ee_qcd_ecm380/
+    INFILE_QCD_DIR=$PWD/root_input/p8_ee_qcd_ecm380
 fi;
 
 
@@ -30,8 +34,8 @@ python3 ../src/edm4hep_to_ntuple.py samples_to_process=[QCD] samples.QCD.input_d
 
 find . -type f -name "*.parquet"
 
-TAU_FILENAME=reco_p8_ee_ZH_Htautau_ecm380_*.parquet
-QCD_FILENAME=reco_p8_ee_qcd_ecm380_*.parquet
+TAU_FILENAME=reco_p8_ee_ZH_Htautau_ecm380_1.parquet
+QCD_FILENAME=reco_p8_ee_qcd_ecm380_1.parquet
 
 TAU_FILES=( $TAU_FILENAME )
 python3 ../src/test_ntuple_shape.py -f "$TAU_FILES"
@@ -71,6 +75,10 @@ python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_H
 #run HPS -> hps.parquet
 mkdir -p hps
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=HPS use_multiprocessing=False output_dir=hps
+
+#run GridBuilder
+mkdir -p grid
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] builder=Grid use_multiprocessing=False output_dir=grid samples.ZH_Htautau.output_dir=hps/HPS/ZH_Htautau/
 
 #run simple DNN reco
 mkdir -p simplednn

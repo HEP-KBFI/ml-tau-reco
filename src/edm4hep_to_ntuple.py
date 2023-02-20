@@ -280,7 +280,7 @@ def map_pdgid_to_candid(pdgid, charge):
     if pdgid == 0:
         return 0
     # photon, electron, muon
-    if pdgid in [22, 11, 13, 15]:
+    if abs(pdgid) in [22, 11, 13, 15]:
         return pdgid
     # charged hadron
     if abs(charge) > 0:

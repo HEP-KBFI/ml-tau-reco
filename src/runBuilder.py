@@ -10,6 +10,7 @@ from omegaconf import DictConfig
 from itertools import repeat
 from oracleTauBuilder import OracleTauBuilder
 from hpsTauBuilder import HPSTauBuilder
+from build_grid import GridBuilder
 from endtoend_simple import SimpleDNNTauBuilder
 from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 from fastCMSTauBuilder import FastCMSTauBuilder
@@ -34,6 +35,8 @@ def build_taus(cfg: DictConfig) -> None:
         builder = OracleTauBuilder()
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(verbosity=cfg.verbosity)
+    elif cfg.builder == "Grid":
+        builder = GridBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "FastCMSTau":
         builder = FastCMSTauBuilder()
     elif cfg.builder == "SimpleDNN":
