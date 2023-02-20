@@ -35,7 +35,7 @@ def build_taus(cfg: DictConfig) -> None:
         builder = OracleTauBuilder()
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(verbosity=cfg.verbosity)
-    elif cfg.builder == 'Grid':
+    elif cfg.builder == "Grid":
         builder = GridBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "FastCMSTau":
         builder = FastCMSTauBuilder()
