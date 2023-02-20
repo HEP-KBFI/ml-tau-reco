@@ -1,0 +1,12 @@
+{
+    "GridAlgo": {
+        "inner_grid": {
+            "n_cells": 11,
+            "cell_size": 0.02
+        },
+        "outer_grid": {
+            "n_cells": 21,
+            "cell_size": 0.05
+        }
+    }
+}
