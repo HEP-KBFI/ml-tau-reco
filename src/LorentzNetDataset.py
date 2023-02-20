@@ -8,20 +8,16 @@ from LGEB import psi
 
 
 def buildLorentzNetTensors(jet_constituent_p4s, max_cands, add_beams):
-    jet_constituent_p4s = jet_constituent_p4s[: max_cands]
+    jet_constituent_p4s = jet_constituent_p4s[:max_cands]
     jet_constituent_p4s_zipped = list(
         zip(jet_constituent_p4s.energy, jet_constituent_p4s.px, jet_constituent_p4s.py, jet_constituent_p4s.pz)
     )
     num_jet_constituents = int(len(jet_constituent_p4s_zipped))
     x_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
-    x_tensor = torch.nn.functional.pad(
-        x_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0
-    )
+    x_tensor = torch.nn.functional.pad(x_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
 
     scalars_tensor = psi(torch.tensor(jet_constituent_p4s.mass, dtype=torch.float32)).unsqueeze(-1)
-    scalars_tensor = torch.nn.functional.pad(
-        scalars_tensor, (0, 1, 0, max_cands - num_jet_constituents), "constant", 0.0
-    )
+    scalars_tensor = torch.nn.functional.pad(scalars_tensor, (0, 1, 0, max_cands - num_jet_constituents), "constant", 0.0)
 
     if add_beams:
         beam_mass = 1.0
@@ -33,7 +29,7 @@ def buildLorentzNetTensors(jet_constituent_p4s, max_cands, add_beams):
         scalars_beams = psi(torch.tensor([beam_mass, beam_mass], dtype=torch.float32)).unsqueeze(-1)
         scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.0)
         scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
-    
+
     return x_tensor, scalars_tensor
 
 

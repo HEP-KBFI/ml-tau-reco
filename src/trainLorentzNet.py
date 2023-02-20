@@ -54,7 +54,7 @@ def train_loop(dataloader, model, dev, loss_fn, optimizer):
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
-def test_loop(dataloader, model, dev, loss_fn): 
+def test_loop(dataloader, model, dev, loss_fn):
     print("<test_loop>:")
     print("current time:", datetime.datetime.now())
     size = len(dataloader.dataset)
@@ -74,6 +74,7 @@ def test_loop(dataloader, model, dev, loss_fn):
     test_loss /= num_batches
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
 
 @hydra.main(config_path="../config", config_name="trainLorentzNet", version_base=None)
 def trainLorentzNet(train_cfg: DictConfig) -> None:
@@ -100,20 +101,24 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     else:
         raise RuntimeError("Failed to read config file %s !!")
 
-    n_scalar  = LorentzNet_cfg['n_scalar']
-    n_hidden  = LorentzNet_cfg['n_hidden']
-    n_class   = LorentzNet_cfg['n_class']
-    dropout   = LorentzNet_cfg['dropout']
-    n_layers  = LorentzNet_cfg['n_layers']
-    c_weight  = LorentzNet_cfg['c_weight']
-    max_cands = LorentzNet_cfg['max_cands']
-    add_beams = LorentzNet_cfg['add_beams']
+    n_scalar = LorentzNet_cfg["n_scalar"]
+    n_hidden = LorentzNet_cfg["n_hidden"]
+    n_class = LorentzNet_cfg["n_class"]
+    dropout = LorentzNet_cfg["dropout"]
+    n_layers = LorentzNet_cfg["n_layers"]
+    c_weight = LorentzNet_cfg["c_weight"]
+    max_cands = LorentzNet_cfg["max_cands"]
+    add_beams = LorentzNet_cfg["add_beams"]
 
     print("Building model...")
     model = LorentzNet(
-        n_scalar=n_scalar, n_hidden=n_hidden, n_class=n_class,
-        dropout=dropout, n_layers=n_layers, c_weight=c_weight,
-        verbosity=train_cfg.verbosity
+        n_scalar=n_scalar,
+        n_hidden=n_hidden,
+        n_class=n_class,
+        dropout=dropout,
+        n_layers=n_layers,
+        c_weight=c_weight,
+        verbosity=train_cfg.verbosity,
     ).to(device=dev)
     print("Finished building model:")
     print(model)
@@ -122,11 +127,15 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
 
     print("Starting to build training dataset...")
-    dataset_train = LorentzNetDataset(filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams)
+    dataset_train = LorentzNetDataset(
+        filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams
+    )
     print("Finished building training dataset.")
 
     print("Starting to build validation dataset...")
-    dataset_test = LorentzNetDataset(filelist_test, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams)
+    dataset_test = LorentzNetDataset(
+        filelist_test, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams
+    )
     print("Finished building validation dataset.")
 
     dataloader_train = DataLoader(dataset_train, batch_size=train_cfg.batch_size, shuffle=True)

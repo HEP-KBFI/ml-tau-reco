@@ -45,7 +45,7 @@ def build_taus(cfg: DictConfig) -> None:
         assert pytorch_model.__class__ == TauEndToEndSimple
         assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
         builder = SimpleDNNTauBuilder(pytorch_model)
-    elif cfg.builder == "LorentzNet":        
+    elif cfg.builder == "LorentzNet":
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
     builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)

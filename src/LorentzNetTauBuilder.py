@@ -10,6 +10,7 @@ from basicTauBuilder import BasicTauBuilder
 from LorentzNet import LorentzNet
 from LorentzNetDataset import buildLorentzNetTensors
 
+
 class LorentzNetTauBuilder(BasicTauBuilder):
     def __init__(self, cfgFileName="./config/LorentzNet_cfg.json", verbosity=0):
         print("<LorentzNetTauBuilder::LorentzNetTauBuilder>:")
@@ -27,19 +28,23 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         else:
             raise RuntimeError("Failed to read config file %s !!")
 
-        self.n_scalar  = self._builderConfig['n_scalar']
-        self.n_hidden  = self._builderConfig['n_hidden']
-        self.n_class   = self._builderConfig['n_class']
-        self.dropout   = self._builderConfig['dropout']
-        self.n_layers  = self._builderConfig['n_layers']
-        self.c_weight  = self._builderConfig['c_weight']
-        self.max_cands = self._builderConfig['max_cands']
-        self.add_beams = self._builderConfig['add_beams']
+        self.n_scalar = self._builderConfig["n_scalar"]
+        self.n_hidden = self._builderConfig["n_hidden"]
+        self.n_class = self._builderConfig["n_class"]
+        self.dropout = self._builderConfig["dropout"]
+        self.n_layers = self._builderConfig["n_layers"]
+        self.c_weight = self._builderConfig["c_weight"]
+        self.max_cands = self._builderConfig["max_cands"]
+        self.add_beams = self._builderConfig["add_beams"]
 
         self.model = LorentzNet(
-            n_scalar=self.n_scalar, n_hidden=self.n_hidden, n_class=self.n_class, 
-            dropout=self.dropout, n_layers=self.n_layers, c_weight=self.c_weight,
-            verbosity=verbosity 
+            n_scalar=self.n_scalar,
+            n_hidden=self.n_hidden,
+            n_class=self.n_class,
+            dropout=self.dropout,
+            n_layers=self.n_layers,
+            c_weight=self.c_weight,
+            verbosity=verbosity,
         )
         self.model.load_state_dict(torch.load("data/LorentzNet_model_2023Feb20.pt", map_location=torch.device("cpu")))
         self.model.eval()
@@ -48,7 +53,7 @@ class LorentzNetTauBuilder(BasicTauBuilder):
 
     def processJets(self, data):
         print("<LorentzNetTauBuilder::processJets>:")
-        
+
         num_jets = len(data["reco_jet_p4s"])
 
         data_cand_p4s = data["reco_cand_p4s"]
@@ -73,16 +78,16 @@ class LorentzNetTauBuilder(BasicTauBuilder):
             if self.verbosity >= 3:
                 print("jet #%i: tauClassifier = %1.3f" % (idx, pred))
             tauClassifier.append(pred)
-            
+
         assert num_jets == len(tauClassifier)
 
         tau_p4s = vector.awk(
             ak.zip(
                 {
-                    "px": data["reco_jet_p4s"].x, 
-                    "py": data["reco_jet_p4s"].y, 
-                    "pz": data["reco_jet_p4s"].z, 
-                    "mass": data["reco_jet_p4s"].tau
+                    "px": data["reco_jet_p4s"].x,
+                    "py": data["reco_jet_p4s"].y,
+                    "pz": data["reco_jet_p4s"].z,
+                    "mass": data["reco_jet_p4s"].tau,
                 }
             )
         )
@@ -95,5 +100,5 @@ class LorentzNetTauBuilder(BasicTauBuilder):
             "tauSigCand_p4s": tauSigCand_p4s,
             "tauClassifier": tauClassifier,
             "tau_charge": tauCharges,
-            "tau_decaymode": tau_decaymode
+            "tau_decaymode": tau_decaymode,
         }

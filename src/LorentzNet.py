@@ -17,7 +17,15 @@ class LorentzNet(nn.Module):
     """
 
     def __init__(
-        self, n_scalar: int, n_hidden: int, n_class: int=2, n_layers: int=6, c_weight: float=1e-3, dropout: float=0.0, verbosity: int=0) -> None:
+        self,
+        n_scalar: int,
+        n_hidden: int,
+        n_class: int = 2,
+        n_layers: int = 6,
+        c_weight: float = 1e-3,
+        dropout: float = 0.0,
+        verbosity: int = 0,
+    ) -> None:
         if verbosity >= 2:
             print("<LorentzNet::LorentzNet>:")
             print(" n_scalar = %i" % n_scalar)
@@ -55,7 +63,7 @@ class LorentzNet(nn.Module):
         # print("<LorentzNet::forward>")
         # print("shape(x) = ", x.shape)
         # print("shape(scalars) = ", scalars.shape)
-        
+
         h = self.embedding(scalars)
         # print("shape(h) = ", h.shape)
 
