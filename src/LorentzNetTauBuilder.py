@@ -61,24 +61,28 @@ class LorentzNetTauBuilder(BasicTauBuilder):
             ak.zip({"px": data_cand_p4s.x, "py": data_cand_p4s.y, "pz": data_cand_p4s.z, "mass": data_cand_p4s.tau})
         )
 
-        tauClassifier = []
-
+        x_tensors = []
+        scalars_tensors = []
         for idx in range(num_jets):
             if self.verbosity >= 2 and (idx % 100) == 0:
                 print("Processing entry %i" % idx)
 
             jet_constituent_p4s = cand_p4s[idx]
-
             x_tensor, scalars_tensor = buildLorentzNetTensors(jet_constituent_p4s, self.max_cands, self.add_beams)
-            x_tensor = torch.unsqueeze(x_tensor, dim=0)
-            scalars_tensor = torch.unsqueeze(scalars_tensor, dim=0)
-            pred = self.model(x_tensor, scalars_tensor)
-            pred = torch.softmax(pred, dim=0)
-            pred = pred[0]
-            if self.verbosity >= 3:
-                print("jet #%i: tauClassifier = %1.3f" % (idx, pred))
-            tauClassifier.append(pred)
+            x_tensors.append(x_tensor)
+            scalars_tensors.append(scalars_tensor)
+        x_tensor = torch.stack(x_tensors, dim=0)
+        scalars_tensor = torch.stack(scalars_tensors, dim=0)
+        if self.verbosity >= 4:
+            print("shape(x_tensor) = ", x_tensor.shape)
+            print("shape(scalars_tensor) = ", scalars_tensor.shape)
 
+        pred = self.model(x_tensor, scalars_tensor)
+        pred = torch.softmax(pred, dim=1)
+        if self.verbosity >= 4:
+            print("shape(pred) = ", pred.shape)
+            print("pred = ", pred)
+        tauClassifier = list(pred[:, 1].detach().numpy())
         assert num_jets == len(tauClassifier)
 
         tau_p4s = vector.awk(
