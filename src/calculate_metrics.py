@@ -218,9 +218,13 @@ def plot_all_metrics(cfg):
     for algorithm in algorithms:
         sig_input_dir = os.path.expandvars(cfg.algorithms[algorithm].sig_ntuples_dir)
         bkg_input_dir = os.path.expandvars(cfg.algorithms[algorithm].bkg_ntuples_dir)
-        sig_paths = [os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if 'ZH_Htautau' in path]
+        sig_paths = [
+            os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
+        ]
         sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
-        bkg_paths = [os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if 'QCD' in path]
+        bkg_paths = [
+            os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
+        ]
         bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
         numerator_mask_e, denominator_mask_e = get_data_masks(sig_data, ref_obj="gen_jet_tau_p4s")
         numerator_mask_f, denominator_mask_f = get_data_masks(bkg_data, ref_obj="gen_jet_p4s")
