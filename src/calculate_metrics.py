@@ -15,7 +15,7 @@ import awkward as ak
 import plotting as pl
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
-from general import load_all_data, get_reduced_decaymodes, load_data_from_paths
+from general import get_reduced_decaymodes, load_data_from_paths
 
 mplhep.style.use(mplhep.styles.CMS)
 

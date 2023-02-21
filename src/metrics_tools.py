@@ -48,13 +48,13 @@ class Histogram:
     """Initializes the histogram"""
 
     def __init__(
-            self,
-            data: np.array,
-            bin_edges: np.array,
-            histogram_data_type: str,
-            binned: bool = False,
-            uncertainties: np.array=True
-) -> None:
+        self,
+        data: np.array,
+        bin_edges: np.array,
+        histogram_data_type: str,
+        binned: bool = False,
+        uncertainties: np.array = True,
+    ) -> None:
         self.data = data
         self.histogram_data_type = histogram_data_type
         self.bin_edges = bin_edges
@@ -68,10 +68,10 @@ class Histogram:
                 self.uncertainties = uncertainties
             else:
                 raise AssertionError(
-                    f"Incorrect number of entries for uncertainties {len(uncertainties)} != {len(binned_data)}"
+                    f"Incorrect number of entries for uncertainties {len(uncertainties)} != {len(self.binned_data)}"
                 )
         elif (type(uncertainties) == bool) and uncertainties:
-            self.uncertainties = 1/np.sqrt(self.binned_data)
+            self.uncertainties = 1 / np.sqrt(self.binned_data)
         else:
             raise AssertionError("Unknown input for uncertainties")
 
@@ -96,12 +96,12 @@ class Histogram:
         if (other.bin_edges).all() != (self.bin_edges).all():
             raise ArithmeticError("The bins of two histograms do not match, cannot divide them.")
         result = np.nan_to_num(self.binned_data / other.binned_data, copy=True, nan=0.0, posinf=None, neginf=None)
-        rel_uncertainties = (other.uncertainties/other.binned_data) + (self.uncertainties/self.binned_data)
+        rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)
         return Histogram(result, self.bin_edges, "Efficiency", binned=True, uncertainties=rel_uncertainties)
 
     def __mul__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
             raise ArithmeticError("The bins of two histograms do not match, cannot multiply them.")
         result = self.binned_data * other.binned_data
-        rel_uncertainties = (other.uncertainties/other.binned_data) + (self.uncertainties/self.binned_data)
+        rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)
         return Histogram(result, self.bin_edges, "Multiplicity", binned=True, uncertainties=rel_uncertainties)
