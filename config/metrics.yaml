@@ -1,11 +1,12 @@
+tauClassifierCut: 0.5
 plotting:
-  output_dir: /home/laurits/CLIC_metrics_xyz
+  output_dir: /home/laurits/CLIC_metrics_20220223
   n_files: -1
 algorithms:
-  EndToEnd:
-    sig_ntuples_dir: /foo/bar
-    bkg_ntuples_dir: /foo/bar
-    compare: False
+  LorentzNet:
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb20/LorentzNet/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb20/LorentzNet/QCD
+    compare: True
   HPS_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
@@ -14,21 +15,25 @@ algorithms:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
     compare: False
-  HPS_only:
-    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/HPS/ZH_Htautau
-    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/HPS/QCD
+  HPS:
+    sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
     compare: True
+  HPS_wo_quality_cuts:
+    sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
+    compare: False
   Oracle:
-    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
-    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/Oracle/QCD
-    compare: True
+    sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/QCD
+    compare: False
   FastCMSTau:
-    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/FastCMSTau/ZH_Htautau
-    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/FastCMSTau/QCD
+    sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/FastCMSTau/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/FastCMSTau/QCD
     compare: True
   SimpleDNN:
-    sig_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/SimpleDNN/ZH_Htautau
-    bkg_ntuples_dir: /local/$USER/CLIC_taus_20230215_v1/SimpleDNN/QCD
+    sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_20/SimpleDNN/ZH_Htautau/
+    bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_20/SimpleDNN/QCD/
     compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
@@ -46,3 +51,6 @@ metrics:
         n_bins: 32
   # fake_ref: reco_jet
   # eff_obj: gen_jet/tau
+defaults:
+  - datasets: datasets
+  - _self_

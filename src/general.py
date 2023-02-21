@@ -30,6 +30,28 @@ def load_all_data(input_dir: str, n_files: int = None) -> ak.Array:
     return input_data
 
 
+def load_data_from_paths(input_paths: list, n_files: int = None) -> ak.Array:
+    """Loads all .parquet files from a given directory
+
+    Args:
+        input_dir : list
+            The .parquet files where the data is loaded
+        n_files : int
+            Number of files to load from the given input directory.
+            By default all will be loaded [default: None]
+
+    Returns:
+        input_data : ak.Array
+            The concatenated data from all the loaded files
+    """
+    input_data = []
+    for file_path in input_paths[:n_files]:
+        print(f"Loading from {file_path}")
+        input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
+    input_data = ak.concatenate(input_data)
+    return input_data
+
+
 def get_decaymode(pdg_ids):
     """Tau decaymodes are the following:
     decay_mode_mapping = {
