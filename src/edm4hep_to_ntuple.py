@@ -17,6 +17,7 @@ import awkward as ak
 import multiprocessing
 from itertools import repeat
 from omegaconf import DictConfig
+from lifeTimeTools import trimmed_track_info_z0_d0
 
 
 def save_record_to_file(data: dict, output_path: str) -> None:
@@ -25,7 +26,7 @@ def save_record_to_file(data: dict, output_path: str) -> None:
 
 
 def load_single_file_contents(
-    path: str, tree_path: str = "events", branches: list = ["MCParticles", "MergedRecoParticles"]
+    path: str, tree_path: str = "events", branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1"]
 ) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
@@ -490,6 +491,14 @@ def process_input_file(arrays: ak.Array):
     gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_lifetime_infos = ak.from_iter([trimmed_track_info_z0_d0(arrays, i) for i in range(len(reco_jets))])
+    event_d0 = ak.from_iter(event_lifetime_infos[i][:, 0] for i in range(len(reco_jets)))
+    event_z0 = ak.from_iter(event_lifetime_infos[i][:, 1] for i in range(len(reco_jets)))
+    event_per_jet_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_per_jet_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    ## Dummy values for sigma_z0 and sigma_d0 as per request to be always 0.035
+    dummy_uncert_d0_z0 = ak.ones_like(event_per_jet_d0) * 0.035
+    ##
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
         "event_reco_cand_p4s": vector.awk(
@@ -508,6 +517,10 @@ def process_input_file(arrays: ak.Array):
         "event_reco_cand_charge": ak.from_iter(
             [[reco_particles["charge"][j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
+        "event_particle_d0": event_per_jet_d0,
+        "event_particle_z0": event_per_jet_z0,
+        "event_particle_sigma_d0": dummy_uncert_d0_z0,
+        "event_particle_sigma_z0": dummy_uncert_d0_z0,
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_charge": get_jet_constituent_charges(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_cand_pdg": get_jet_constituent_pdgs(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
