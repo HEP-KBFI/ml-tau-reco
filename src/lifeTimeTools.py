@@ -188,3 +188,37 @@ def findTrackPCAs(
             )
             impacts[ili] = np.array([dxy, dz, d3, d0, z0, pca])
     return impacts
+
+
+def trimmed_track_info_z0_d0(
+    frame,
+    ev,
+    recoParticleCollection="MergedRecoParticles",
+    trackCollection="SiTracks_Refitted_1",
+    debug=-1
+):
+    partTickleTrackLink_b = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_begin"]
+    partTickleTrackLink_e = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_end"]
+    partTickleTrackLink = []
+    for ili, part_trkidx in enumerate(partTickleTrackLink_b):
+        if part_trkidx == partTickleTrackLink_e[ili]:
+            partTickleTrackLink.append(-1)  # no track / neutral
+    else:
+        partTickleTrackLink.append(part_trkidx)
+    impacts = [-1000, -1000] * np.ones((len(partTickleTrackLink), 2))
+    for ili, part_trkidx in enumerate(partTickleTrackLink):
+        # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
+        # i.e track 0 is present at idx 0-3 for different track states, 1 at 4-7, and so on -> multiply by 4
+        si_trkidx = part_trkidx * 4
+        if part_trkidx < 0:
+            if debug >= 0:
+                print("Found no SiTrack for particle! Maybe neutral?")
+        elif si_trkidx < 0 or si_trkidx >= len(frame[trackCollection][ev][trackCollection + ".location"]):
+            print("Warning, invalid track indx, please check!")
+        else:
+            if debug >= 0:
+                print("Found SiTrack for particle!")
+            d0 = frame[trackCollection][ev][trackCollection + ".D0"][si_trkidx]
+            z0 = frame[trackCollection][ev][trackCollection + ".Z0"][si_trkidx]
+            impacts[ili] = np.array([d0, z0])
+    return impacts
