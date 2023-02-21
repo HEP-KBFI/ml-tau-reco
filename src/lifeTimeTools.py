@@ -191,11 +191,7 @@ def findTrackPCAs(
 
 
 def trimmed_track_info_z0_d0(
-    frame,
-    ev,
-    recoParticleCollection="MergedRecoParticles",
-    trackCollection="SiTracks_Refitted_1",
-    debug=-1
+    frame, ev, recoParticleCollection="MergedRecoParticles", trackCollection="SiTracks_Refitted_1", debug=-1
 ):
     partTickleTrackLink_b = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_begin"]
     partTickleTrackLink_e = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_end"]
