@@ -14,10 +14,9 @@ def chunks(lst, n):
 
 
 class TauJetDataset(Dataset):
-    def __init__(self, filelist=[], files_per_batch=5):
+    def __init__(self, filelist=[]):
 
-        self.files_per_batch = files_per_batch
-        self.filelist = list(chunks(filelist, self.files_per_batch))
+        self.filelist = filelist
 
         # The order of features in the jet feature tensor
         self.reco_jet_features = ["x", "y", "z", "tau"]
@@ -25,12 +24,19 @@ class TauJetDataset(Dataset):
         # The order of features in the PF feature tensor
         self.pf_features = ["x", "y", "z", "tau", "charge", "pdg"]
 
+        # just load all data to memory
+        self.all_data = []
+        for fn in self.processed_file_names:
+            print(fn)
+            data = ak.from_parquet(fn)
+            self.all_data += self.process_file_data(data)
+
     @property
     def processed_file_names(self):
         return self.filelist
 
     def __len__(self):
-        return len(self.processed_file_names)
+        return len(self.all_data)
 
     def get_jet_features(self, data: ak.Record) -> torch.Tensor:
         jets = {}
@@ -71,33 +77,28 @@ class TauJetDataset(Dataset):
         pf_features, pf_to_jet = self.get_pf_features(jet_features, data)
 
         gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
-        gen_tau_vis_energy = torch.tensor(data["gen_jet_tau_vis_energy"]).to(dtype=torch.float32)
+        p4 = data["gen_jet_tau_p4s"]
+        gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.tau], axis=-1)).to(dtype=torch.float32)
+        assert gen_tau_p4.shape[0] == gen_tau_decaymode.shape[0]
 
         # Data object with:
         #   - reco jet (jet_features, jet_pf_features)
         #   - jet PF candidates (jet_pf_features, pf_to_jet)
-        #   - generator level target (gen_tau_decaymode, gen_tau_vis_energy)
+        #   - generator level target (gen_tau_decaymode, gen_tau_p4)
 
-        ret_data = Data(
-            jet_features=jet_features,  # (Njet x Nfeat_jet) of jet features
-            jet_pf_features=pf_features,  # (Ncand x Nfeat_cand) of PF features
-            pf_to_jet=pf_to_jet,  # (Ncand x 1) index of PF candidate to jet
-            gen_tau_decaymode=gen_tau_decaymode,  # (Njet x 1) of gen tau decay mode or -1
-            gen_tau_vis_energy=gen_tau_vis_energy,  # (Njet x 1) of gen tau visible energy or -1
-        )
+        ret_data = [
+            Data(
+                jet_features=jet_features[ijet : ijet + 1, :],
+                jet_pf_features=pf_features[pf_to_jet == ijet],
+                gen_tau_decaymode=gen_tau_decaymode[ijet : ijet + 1],
+                gen_tau_p4=gen_tau_p4[ijet : ijet + 1],
+            )
+            for ijet in range(len(jet_features))
+        ]
         return ret_data
 
     def __getitem__(self, idx):
-        # Load the n-th file
-        datas = []
-        for fi in self.processed_file_names[idx]:
-            datas.append(ak.from_parquet(fi))
-        data = {}
-        for k in datas[0].fields:
-            data[k] = ak.concatenate([d[k] for d in datas])
-        data = ak.Record(data)
-        ret_data = self.process_file_data(data)
-        return ret_data
+        return self.all_data[idx]
 
 
 if __name__ == "__main__":
@@ -108,8 +109,6 @@ if __name__ == "__main__":
     # treat each input file like a batch
     for ibatch in range(len(ds)):
         batch = ds[ibatch]
-        n_tau = torch.sum(batch.gen_tau_decaymode != -1)
-        print(ibatch, batch.jet_features.shape, batch.jet_pf_features.shape, batch.pf_to_jet.shape, n_tau)
+        print(ibatch, batch.jet_features.shape, batch.jet_pf_features.shape)
         assert batch.jet_features.shape[0] == batch.gen_tau_decaymode.shape[0]
-        assert batch.jet_features.shape[0] == batch.gen_tau_vis_energy.shape[0]
-        assert batch.jet_pf_features.shape[0] == batch.pf_to_jet.shape[0]
+        assert batch.jet_features.shape[0] == batch.gen_tau_p4.shape[0]
