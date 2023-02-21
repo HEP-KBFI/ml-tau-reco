@@ -199,8 +199,8 @@ def trimmed_track_info_z0_d0(
     for ili, part_trkidx in enumerate(partTickleTrackLink_b):
         if part_trkidx == partTickleTrackLink_e[ili]:
             partTickleTrackLink.append(-1)  # no track / neutral
-    else:
-        partTickleTrackLink.append(part_trkidx)
+        else:
+            partTickleTrackLink.append(part_trkidx)
     impacts = [-1000, -1000] * np.ones((len(partTickleTrackLink), 2))
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here

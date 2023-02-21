@@ -497,7 +497,7 @@ def process_input_file(arrays: ak.Array):
     event_per_jet_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_per_jet_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     ## Dummy values for sigma_z0 and sigma_d0 as per request to be always 0.035
-    dummy_uncert_d0_z0 = ak.ones_like(event_d0) * 0.035
+    dummy_uncert_d0_z0 = ak.ones_like(event_per_jet_d0) * 0.035
     ##
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
