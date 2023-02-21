@@ -60,9 +60,9 @@ def calculate_p4(p_type: str, arrs: ak.Array):
 def cluster_jets(particles_p4):
     jetdef = fastjet.JetDefinition2Param(fastjet.ee_genkt_algorithm, 0.4, -1)
     cluster = fastjet.ClusterSequence(particles_p4, jetdef)
-    jets = vector.awk(cluster.inclusive_jets(min_pt=2.0))
+    jets = vector.awk(cluster.inclusive_jets(min_pt=20.0))
     jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
-    constituent_index = cluster.constituent_index(min_pt=2.0)
+    constituent_index = cluster.constituent_index(min_pt=20.0)
     return jets, constituent_index
 
 

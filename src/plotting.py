@@ -1,10 +1,10 @@
 import numpy as np
 import mplhep as hep
-
-hep.style.use(hep.styles.CMS)
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from sklearn.metrics import confusion_matrix
+
+hep.style.use(hep.styles.CMS)
 
 
 def plot_roc_curve(
@@ -193,13 +193,19 @@ def plot_histogram(
         bin_diff = np.min(np.diff(np.unique(entries)))
         left_of_first_bin = np.min(entries) - float(bin_diff) / 2
         right_of_last_bin = np.max(entries) + float(bin_diff) / 2
-        ax.hist(entries, np.arange(left_of_first_bin, right_of_last_bin + bin_diff, bin_diff), label=title)
+        hist, bin_edges = np.histogram(
+            entries,
+            bins=np.arange(left_of_first_bin, right_of_last_bin + bin_diff, bin_diff)
+        )
     else:
-        bin_edges = np.linspace(left_bin_edge, right_bin_edge, num=n_bins + 1)
-        ax.hist(entries, bins=bin_edges, label=title)
+        hist, bin_edges = np.histogram(
+            entries,
+            bins=np.linspace(left_bin_edge, right_bin_edge, num=n_bins + 1)
+        )
+    hep.histplot(hist, bin_edges, yerr=True, label=title)
     plt.xlabel(x_label, fontdict={"size": 20})
     plt.ylabel(y_label, fontdict={"size": 20})
-    plt.grid(True, which="both")
+    # plt.grid(True, which="both")
     plt.yscale("log")
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
     plt.savefig(output_path, bbox_inches="tight")

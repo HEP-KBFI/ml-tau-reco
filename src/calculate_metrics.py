@@ -15,7 +15,7 @@ import awkward as ak
 import plotting as pl
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
-from general import load_all_data, get_reduced_decaymodes
+from general import load_all_data, get_reduced_decaymodes, load_data_from_paths
 
 mplhep.style.use(mplhep.styles.CMS)
 
@@ -33,33 +33,34 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             eff_fake_p4_num = vector.awk(
                 ak.zip(
                     {
-                        "mass": eff_fake_numerator.reco_jet_p4s.tau,
-                        "x": eff_fake_numerator.reco_jet_p4s.x,
-                        "y": eff_fake_numerator.reco_jet_p4s.y,
-                        "z": eff_fake_numerator.reco_jet_p4s.z,
+                        "mass": eff_fake_numerator.gen_jet_p4s.tau,
+                        "x": eff_fake_numerator.gen_jet_p4s.x,
+                        "y": eff_fake_numerator.gen_jet_p4s.y,
+                        "z": eff_fake_numerator.gen_jet_p4s.z,
                     }
                 )
             )
             eff_fake_p4_denom = vector.awk(
                 ak.zip(
                     {
-                        "mass": eff_fake_denominator.reco_jet_p4s.tau,
-                        "x": eff_fake_denominator.reco_jet_p4s.x,
-                        "y": eff_fake_denominator.reco_jet_p4s.y,
-                        "z": eff_fake_denominator.reco_jet_p4s.z,
+                        "mass": eff_fake_denominator.gen_jet_p4s.tau,
+                        "x": eff_fake_denominator.gen_jet_p4s.x,
+                        "y": eff_fake_denominator.gen_jet_p4s.y,
+                        "z": eff_fake_denominator.gen_jet_p4s.z,
                     }
                 )
             )
-            eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name)
-            eff_fake_var_num = getattr(eff_fake_p4_num, metric.name)
+            eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name).to_numpy()
+            eff_fake_var_num = getattr(eff_fake_p4_num, metric.name).to_numpy()
             bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), metric.n_bins + 1)
             denom_hist = Histogram(eff_fake_var_denom, bin_edges, "denominator")
-            num_hist = Histogram(eff_fake_var_num, bin_edges, "denominator")
+            num_hist = Histogram(eff_fake_var_num, bin_edges, "numerator")
             eff_fake = num_hist / denom_hist
             plt.plot(eff_fake.bin_centers, eff_fake.data, label=algorithm)
+            # plt.errorbar(eff_fake.bin_centers, eff_fake.data, yerr=eff_fake.uncertainties, label=algorithm)
         plt.grid()
         plt.legend()
-        plt.xlabel(metric.name)
+        plt.xlabel(f"gen_jet_{metric.name}")
         plt.ylabel(key)
         if key == "fakerates":
             plt.yscale("log")
@@ -68,7 +69,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         plt.close("all")
 
 
-def plot_energy_resolution(sig_data, algorithm_output_dir):
+def plot_energy_resolution(sig_data, algorithm_output_dir, full_numerator_mask):
     output_path = os.path.join(algorithm_output_dir, "energy_resolution.png")
     gen_tau_vis_energies = sig_data.gen_jet_tau_vis_energy
     reco_tau_energies = vector.awk(
@@ -81,25 +82,24 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
             }
         )
     ).energy
-    gen_tau_vis_energies = gen_tau_vis_energies.to_numpy()
-    reco_tau_energies = reco_tau_energies.to_numpy()
+    gen_tau_vis_energies = gen_tau_vis_energies.to_numpy()[full_numerator_mask]
+    reco_tau_energies = reco_tau_energies.to_numpy()[full_numerator_mask]
     pl.plot_regression_confusion_matrix(
         y_true=gen_tau_vis_energies,
         y_pred=reco_tau_energies,
         output_path=output_path,
-        left_bin_edge=np.min([gen_tau_vis_energies, reco_tau_energies]),
-        right_bin_edge=np.max([gen_tau_vis_energies, reco_tau_energies]),
+        left_bin_edge=np.min(gen_tau_vis_energies),
+        right_bin_edge=np.max(gen_tau_vis_energies),
         y_label="Reconstructed tau energy",
         x_label="GenTau vis energy",
         title="Energy resolution",
     )
 
 
-def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
+def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, full_numerator_mask):
     output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.png")
     gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
     reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
-    # Mapping of decaymodes needed, not all classes classified, such as [14: 'ThreeProngNPiZero']
     mapping = {
         0: r"$\pi^{\pm}$",
         1: r"$\pi^{\pm}\pi^{0}$",
@@ -108,10 +108,8 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir):
         11: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}\pi^{0}$",
         15: "Other",
     }
-    gen_tau_mask = gen_tau_decaymodes != -1
-    reco_tau_mask = reco_tau_decaymodes != -1
-    gen_tau_decaymodes_ = gen_tau_decaymodes[gen_tau_mask * reco_tau_mask]
-    reco_tau_decaymodes_ = reco_tau_decaymodes[gen_tau_mask * reco_tau_mask]
+    gen_tau_decaymodes_ = gen_tau_decaymodes[full_numerator_mask]
+    reco_tau_decaymodes_ = reco_tau_decaymodes[full_numerator_mask]
     categories = [value for value in mapping.values()]
     pl.plot_classification_confusion_matrix(
         true_cats=gen_tau_decaymodes_, pred_cats=reco_tau_decaymodes_, categories=categories, output_path=output_path
@@ -220,12 +218,12 @@ def plot_all_metrics(cfg):
     for algorithm in algorithms:
         sig_input_dir = os.path.expandvars(cfg.algorithms[algorithm].sig_ntuples_dir)
         bkg_input_dir = os.path.expandvars(cfg.algorithms[algorithm].bkg_ntuples_dir)
-        print(f"Loading signal data for {algorithm} from {sig_input_dir}")
-        sig_data = load_all_data(sig_input_dir, n_files=cfg.plotting.n_files)
-        print(f"Loading background data for {algorithm} from {bkg_input_dir}")
-        bkg_data = load_all_data(bkg_input_dir, n_files=cfg.plotting.n_files)
+        sig_paths = [os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if 'ZH_Htautau' in path]
+        sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
+        bkg_paths = [os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if 'QCD' in path]
+        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
         numerator_mask_e, denominator_mask_e = get_data_masks(sig_data, ref_obj="gen_jet_tau_p4s")
-        numerator_mask_f, denominator_mask_f = get_data_masks(bkg_data, ref_obj="reco_jet_p4s")
+        numerator_mask_f, denominator_mask_f = get_data_masks(bkg_data, ref_obj="gen_jet_p4s")
         raw_numerator_data_e, denominator_data_e = sig_data[numerator_mask_e], sig_data[denominator_mask_e]
         raw_numerator_data_f, denominator_data_f = bkg_data[numerator_mask_f], bkg_data[denominator_mask_f]
         # Also need to calculate workingpoints
@@ -235,16 +233,15 @@ def plot_all_metrics(cfg):
         fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
-        plot_energy_resolution(sig_data, algorithm_output_dir)
-        plot_decaymode_reconstruction(sig_data, algorithm_output_dir)
-    cut = 0.5
-    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=cut)
-    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=cut)
-    plot_genvistau_gentau_correlation(sig_data, output_dir)
+        plot_energy_resolution(sig_data, algorithm_output_dir, numerator_mask_e)
+        plot_decaymode_reconstruction(sig_data, algorithm_output_dir, numerator_mask_e)
+    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
+    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
+    plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e)
     plot_roc(efficiencies, fakerates, output_dir)
 
 
-def plot_genvistau_gentau_correlation(sig_data, output_dir):
+def plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e):
     vis_tau_pt = vector.awk(
         ak.zip(
             {
@@ -265,9 +262,8 @@ def plot_genvistau_gentau_correlation(sig_data, output_dir):
             }
         )
     ).pt.to_numpy()
-    mask = vis_tau_pt != 0
-    vis_tau_pt_ = vis_tau_pt[mask]
-    gen_jet_pt_ = gen_jet_pt[mask]
+    vis_tau_pt_ = vis_tau_pt[denominator_mask_e]
+    gen_jet_pt_ = gen_jet_pt[denominator_mask_e]
     output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
     pl.plot_regression_confusion_matrix(
         y_true=gen_jet_pt_,
