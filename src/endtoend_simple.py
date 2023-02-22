@@ -270,9 +270,9 @@ def main(cfg):
     model = TauEndToEndSimple().to(device=dev)
     print("params={}".format(count_parameters(model)))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.000001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=0.000001, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
+        optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
     )
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
