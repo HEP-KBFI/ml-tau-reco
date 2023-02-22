@@ -7,8 +7,8 @@ are taken from:
 Math for finding the PCA from:
 [2] https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
 
-Author: Torben Lange (KBFI)
-Date: 20.02.2022
+Author: Torben Lange (KBFI), Laurits Tani (KBFI)
+Date: 22.02.2022
 """
 
 import numpy as np
@@ -323,8 +323,11 @@ def findTrackPCAs(
             partTickleTrackLink.append(-1)  # no track / neutral
     else:
         partTickleTrackLink.append(part_trkidx)
-    impacts = [-1, -1000, -1, -1000, -1000, -1000, -1000, -1000] * np.ones((len(partTickleTrackLink), 8))
-    impacts_error = [-1, -1000, -1, -1000, -1000, -1000, -1000, -1000] * np.ones((len(partTickleTrackLink), 8))
+    impacts = [-1, -1000, -1, -1000, -1000] * np.ones((len(partTickleTrackLink), 5))
+    impacts_error = [-1, -1000, -1, -1000, -1000] * np.ones((len(partTickleTrackLink), 5))
+    pvs = [-1000, -1000, -100] * np.ones((len(partTickleTrackLink), 3))
+    pcas = [-1000, -1000, -100] * np.ones((len(partTickleTrackLink), 3))
+    pcas_error = [-1000, -1000, -100] * np.ones((len(partTickleTrackLink), 3))
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
         # i.e track 0 is present at idx 0-3 for different track states, 1 at 4-7, and so on -> multiply by 4
@@ -380,11 +383,41 @@ def findTrackPCAs(
                 + 4 * (vertex[1] - pca[1]) * (vertex[1] - pca[1]) * pca_error[1] * pca_error[1]
                 + 4 * (vertex[2] - pca[2]) * (vertex[2] - pca[2]) * pca_error[2] * pca_error[2]
             )
-            impacts[ili] = np.array([dxy, dz, d3, d0, z0, pca[0], pca[1], pca[2]])
-            impacts_error[ili] = np.array(
-                [dxy_error, dz_error, d3_error, d0_error, z0_error, pca_error[0], pca_error[1], pca_error[2]]
-            )
-    return impacts, impacts_error
+            impacts[ili] = np.array([dxy, dz, d3, d0, z0])
+            pcas[ili] = np.array(pca)
+            pcas_error[ili] = np.array(pca_error)
+            pvs[ili] = np.array(vertex)
+            impacts_error[ili] = np.array([dxy_error, dz_error, d3_error, d0_error, z0_error])
+    return impacts, impacts_error, pcas, pcas_error, pvs
+
+
+"""
+Helper to project the impact parameters of the track on the direction jet axis.
+(Following BTV-11-002)
+"""
+
+
+def calculateImpactParameterSigns(ips, pca, pv, jetp4):
+    ip_direction = [ips[0] - pv[0], ips[1] - pv[1], ips[2] - pv[2]]
+    ip_direction /= math.sqrt(
+        ip_direction[0] * ip_direction[0] + ip_direction[1] * ip_direction[1] + ip_direction[2] * ip_direction[2]
+    )
+    jet_direction = [jetp4["x"], jetp4["y"], jetp4["z"]]
+    jet_direction /= math.sqrt(
+        jet_direction[0] * jet_direction[0] + jet_direction[1] * jet_direction[1] + jet_direction[2] * jet_direction[2]
+    )
+    sign = np.sign(
+        ip_direction[0] * jet_direction[0] + ip_direction[1] * jet_direction[1] + ip_direction[2] * jet_direction[2]
+    )
+    newips = []
+    for ip in ips:
+        newips.append(sign * abs(ip))
+    return newips
+
+
+"""
+Dummy function to allow the use of impact parameters while the vertex collection is not available.
+"""
 
 
 def trimmed_track_info_z0_d0(
