@@ -25,6 +25,19 @@ def calcX0(xr, phi0, d0):
 
 
 """
+Helper calulating the error of the PCA to the refference point, see [1] for mor details.
+"""
+
+
+def calcX0_error(xr, phi0, d0, phi0_error, d0_error):
+    alpha = 0.5 * math.pi - phi0
+    return math.sqrt(
+        math.cos(alpha) * math.cos(alpha) * d0_error * d0_error
+        + math.sin(alpha) * d0 * math.sin(alpha) * d0 * phi0_error * phi0_error
+    )
+
+
+"""
 Helper calulating the PCA to the refference point, see [1] for mor details.
 """
 
@@ -32,6 +45,19 @@ Helper calulating the PCA to the refference point, see [1] for mor details.
 def calcY0(yr, phi0, d0):
     alpha = 0.5 * math.pi - phi0
     return yr - math.sin(alpha) * d0
+
+
+"""
+Helper calulating the error of the PCA to the refference point, see [1] for mor details.
+"""
+
+
+def calcY0_error(yr, phi0, d0, phi0_error, d0_error):
+    alpha = 0.5 * math.pi - phi0
+    return math.sqrt(
+        math.sin(alpha) * math.sin(alpha) * d0_error * d0_error
+        + math.cos(alpha) * d0 * math.cos(alpha) * d0 * phi0_error * phi0_error
+    )
 
 
 """
@@ -47,12 +73,48 @@ def calcY(xr, yr, phi0, d0, x):
 
 
 """
+Helper calulating the error of the Y component corresponding to a given X for a linear interpolation of the track
+around the refference point.
+"""
+
+
+def calcY_error(xr, yr, phi0, d0, x, phi0_error, d0_error):
+    x0 = calcX0(xr, phi0, d0)
+    x0_error = calcX0_error(xr, phi0, d0, phi0_error, d0_error)
+    y0_error = calcY0_error(yr, phi0, d0, phi0_error, d0_error)
+    return math.sqrt(
+        y0_error * y0_error
+        + math.tan(phi0) * math.tan(phi0) * x0_error * x0_error
+        + (x - x0)
+        / (math.cos(phi0) * math.cos(phi0))
+        * (x - x0)
+        / (math.cos(phi0) * math.cos(phi0))
+        * phi0_error
+        * phi0_error
+    )
+
+
+"""
 Helper calculating the arc length of the track in the xy plane, needed to calculate the z component.
 """
 
 
 def calcS(x, x0, y, y0, omega):
     return math.sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * np.sign(omega)
+
+
+"""
+Helper calculating the error of the arc length of the track in the xy plane, needed to calculate the z component.
+"""
+
+
+def calcS_error(x, x0, y, y0, omega, x0_error, y_error, y0_error):
+    return math.sqrt(
+        ((x - x0) / calcS(x, x0, y, y0, omega)) * ((x - x0) / calcS(x, x0, y, y0, omega)) * x0_error * x0_error
+        + ((y - y0) / calcS(x, x0, y, y0, omega))
+        * ((y - y0) / calcS(x, x0, y, y0, omega))
+        * (y_error * y_error + y0_error * y0_error)
+    )
 
 
 """
@@ -70,6 +132,23 @@ def calcZ(x, y, pr, d0, z0, phi0, tanL, omega):
 
 
 """
+Helper calulating the error on the Z component corresponding to a given X and Y for a linear interpolation of the track
+around the refference point. See Eq. 10 in [1].
+"""
+
+
+def calcZ_error(x, y, pr, d0, z0, phi0, tanL, omega, y_error, d0_error, z0_error, phi0_error, tanL_error):
+    xr, yr, zr = pr
+    x0 = calcX0(xr, phi0, d0)
+    y0 = calcY0(yr, phi0, d0)
+    s = calcS(x, x0, y, y0, omega)
+    x0_error = calcX0_error(xr, phi0, d0, phi0_error, d0_error)
+    y0_error = calcY0_error(yr, phi0, d0, phi0_error, d0_error)
+    s_error = calcS_error(x, x0, y, y0, omega, x0_error, y_error, y0_error)
+    return math.sqrt(s * s * tanL_error * tanL_error + tanL * tanL * s_error * s_error + z0_error * z0_error)
+
+
+"""
 Helper, calculating the full coordinates of a point on the linear extrapolation of a track around its
 refference point for a given X using the previous helper functions.
 """
@@ -80,6 +159,20 @@ def calcP(x, pr, d0, z0, phi0, tanL, omega):
     y = calcY(xr, yr, phi0, d0, x)
     z = calcZ(x, y, pr, d0, z0, phi0, tanL, omega)
     return [x, y, z]
+
+
+"""
+Helper, calculating the error on thefull coordinates of a point on the linear extrapolation of a track around its
+refference point for a given X using the previous helper functions. As we parametrize in X, the error on X is 0.
+"""
+
+
+def calcP_error(x, pr, d0, z0, phi0, tanL, omega, d0_error, z0_error, phi0_error, tanL_error):
+    xr, yr, zr = pr
+    y = calcY(xr, yr, phi0, d0, x)
+    y_error = calcY_error(xr, yr, phi0, d0, x, phi0_error, d0_error)
+    z_error = calcZ_error(x, y, pr, d0, z0, phi0, tanL, omega, y_error, d0_error, z0_error, phi0_error, tanL_error)
+    return [0, y_error, z_error]
 
 
 """
@@ -95,6 +188,29 @@ def calcV(p1, p2, t):
     yn = y1 + (y2 - y1) * t
     zn = z1 + (z2 - z1) * t
     return [xn, yn, zn]
+
+
+"""
+Helper for the error on linear extrapolation of a track using an interpolation between two points
+based on a parameter t. Used to find the PCA to the PV. See [2] for more details.
+"""
+
+
+def calcV_error(p1, p2, t, p1_error, p2_error, t_error):
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+    x1_error, y1_error, z1_error = p1_error
+    x2_error, y2_error, z2_error = p2_error
+    xn_error = math.sqrt(
+        x1_error * x1_error + t * t * (x1_error * x1_error + x2_error * x2_error) + t_error * t_error * (x2 - x1) * (x2 - x1)
+    )
+    yn_error = math.sqrt(
+        y1_error * y1_error + t * t * (y1_error * y1_error + y2_error * y2_error) + t_error * t_error * (y2 - y1) * (y2 - y1)
+    )
+    zn_error = math.sqrt(
+        z1_error * z1_error + t * t * (z1_error * z1_error + z2_error * z2_error) + t_error * t_error * (z2 - z1) * (z2 - z1)
+    )
+    return [xn_error, yn_error, zn_error]
 
 
 """
@@ -114,6 +230,42 @@ def calcTPCA(p0, p1, p2):
 
 
 """
+Helper, calculating the error on the parameter value of t, for the PCA to the PV using a linear
+extrapolation for two points on the assumed track parametrized in t (see calcV).
+Formula taken from Eq. 3 in [2].
+"""
+
+
+def calcTPCA_error(p0, p1, p2, p0_error, p1_error, p2_error):
+    x0, y0, z0 = p0
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+    x0_error, y0_error, z0_error = p0_error
+    x1_error, y1_error, z1_error = p1_error
+    x2_error, y2_error, z2_error = p2_error
+    # -x1*x1 +x1(x2+x0) -x0x2 + ...
+    num = (x1 - x0) * (x2 - x1) + (y1 - y0) * (y2 - y1) + (z1 - z0) * (z2 - z1)
+    den = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) * (z2 - z1)
+    num_error = math.sqrt(
+        (x1 - x2) * (x1 - x2) * x0_error * x0_error
+        + (-2 * x1 + x2 + x0) * (-2 * x1 + x2 + x0) * x1_error * x1_error
+        + (x1 - x0) * (x1 - x0) * x2_error * x2_error
+        + (y1 - y2) * (y1 - y2) * y0_error * y0_error
+        + (-2 * y1 + y2 + y0) * (-2 * y1 + y2 + y0) * y1_error * y1_error
+        + (y1 - y0) * (y1 - y0) * y2_error * y2_error
+        + (z1 - z2) * (z1 - z2) * z0_error * z0_error
+        + (-2 * z1 + z2 + z0) * (-2 * z1 + z2 + z0) * z1_error * z1_error
+        + (z1 - z0) * (z1 - z0) * z2_error * z2_error
+    )
+    den_error = math.sqrt(
+        (2 * x2 - 2 * x1) * (2 * x2 - 2 * x1) * (x1_error * x1_error + x2_error * x2_error)
+        + (2 * y2 - 2 * y1) * (2 * y2 - 2 * y1) * (y1_error * y1_error + y2_error * y2_error)
+        + (2 * z2 - 2 * z1) * (2 * z2 - 2 * z1) * (z1_error * z1_error + z2_error * z2_error)
+    )
+    return math.sqrt(num_error * num_error / (den * den) + num * num * den_error * den_error / (den * den * den * den))
+
+
+"""
 Helper calculating the PCA of the linear extrapolated track to the PV.
 For more details see [2].
 """
@@ -124,6 +276,22 @@ def calcPCA(pr, d0, z0, phi0, tanL, omega, vertex):
     p2 = calcP(pr[0] - 0.01, pr, d0, z0, phi0, tanL, omega)
     tPCA = calcTPCA(vertex, p1, p2)
     return calcV(p1, p2, tPCA)
+
+
+"""
+Helper calculating the error on the PCA of the linear extrapolated track to the PV.
+For more details see [2].
+"""
+
+
+def calcPCA_error(pr, d0, z0, phi0, tanL, omega, vertex, d0_error, z0_error, phi0_error, tanL_error):
+    p1 = calcP(pr[0] + 0.01, pr, d0, z0, phi0, tanL, omega)
+    p2 = calcP(pr[0] - 0.01, pr, d0, z0, phi0, tanL, omega)
+    tPCA = calcTPCA(vertex, p1, p2)
+    p1_error = calcP_error(pr[0] + 0.01, pr, d0, z0, phi0, tanL, omega, d0_error, z0_error, phi0_error, tanL_error)
+    p2_error = calcP_error(pr[0] - 0.01, pr, d0, z0, phi0, tanL, omega, d0_error, z0_error, phi0_error, tanL_error)
+    tPCA_error = calcTPCA_error(vertex, p1, p2, [0.0, 0.0, 0.0], p1_error, p2_error)
+    return calcV_error(p1, p2, tPCA, p1_error, p2_error, tPCA_error)
 
 
 """
@@ -155,7 +323,8 @@ def findTrackPCAs(
             partTickleTrackLink.append(-1)  # no track / neutral
     else:
         partTickleTrackLink.append(part_trkidx)
-    impacts = [-1, -1000, -1, -1000, -1000] * np.ones((len(partTickleTrackLink), 5))
+    impacts = [-1, -1000, -1, -1000, -1000, -1000, -1000, -1000] * np.ones((len(partTickleTrackLink), 8))
+    impacts_error = [-1, -1000, -1, -1000, -1000, -1000, -1000, -1000] * np.ones((len(partTickleTrackLink), 8))
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
         # i.e track 0 is present at idx 0-3 for different track states, 1 at 4-7, and so on -> multiply by 4
@@ -177,17 +346,45 @@ def findTrackPCAs(
             z0 = frame[trackCollection][ev][trackCollection + ".Z0"][si_trkidx]
             phi0 = frame[trackCollection][ev][trackCollection + ".phi"][si_trkidx]
             tanL = frame[trackCollection][ev][trackCollection + ".tanLambda"][si_trkidx]
-            omega = frame[trackCollection][ev][trackCollection + ".omega"][si_trkidx]
+            # use omega to determine the track "direction", as omega is curvature correct for charge
+            omega = (
+                frame[trackCollection][ev][trackCollection + ".omega"][si_trkidx]
+                * frame[recoParticleCollection][ev][recoParticleCollection + ".charge"][ili]
+            )
+            # declared with 21 entries but only has 15 as expected
+            cov = frame[trackCollection][ev][trackCollection + ".covMatrix[21]"][si_trkidx]
+            """ following:
+                https://github.com/iLCSoft/ILDPerformance/blob/master/tracking/src/DDDiagnostics.cc#L777-L803
+                We only use the sign of omega, error not needed
+            """
+            d0_error = cov[0]
+            z0_error = cov[9]
+            phi0_error = cov[2]
+            tanL_error = cov[14]
             pca = calcPCA(pr, d0, z0, phi0, tanL, omega, vertex)
+            pca_error = calcPCA(pr, d0, z0, phi0, tanL, omega, vertex, d0_error, z0_error, phi0_error, tanL_error)
             dz = vertex[2] - pca[2]
+            dz_error = math.sqrt(pca_error[2] * pca_error[2])
             dxy = math.sqrt((vertex[0] - pca[0]) * (vertex[0] - pca[0]) + (vertex[1] - pca[1]) * (vertex[1] - pca[1]))
+            dxy_error = math.sqrt(
+                4 * (vertex[0] - pca[0]) * (vertex[0] - pca[0]) * pca_error[0] * pca_error[0]
+                + 4 * (vertex[1] - pca[1]) * (vertex[1] - pca[1]) * pca_error[1] * pca_error[1]
+            )
             d3 = math.sqrt(
                 (vertex[0] - pca[0]) * (vertex[0] - pca[0])
                 + (vertex[1] - pca[1]) * (vertex[1] - pca[1])
                 + (vertex[2] - pca[2]) * (vertex[2] - pca[2])
             )
-            impacts[ili] = np.array([dxy, dz, d3, d0, z0, pca])
-    return impacts
+            d3_error = math.sqrt(
+                4 * (vertex[0] - pca[0]) * (vertex[0] - pca[0]) * pca_error[0] * pca_error[0]
+                + 4 * (vertex[1] - pca[1]) * (vertex[1] - pca[1]) * pca_error[1] * pca_error[1]
+                + 4 * (vertex[2] - pca[2]) * (vertex[2] - pca[2]) * pca_error[2] * pca_error[2]
+            )
+            impacts[ili] = np.array([dxy, dz, d3, d0, z0, pca[0], pca[1], pca[2]])
+            impacts_error[ili] = np.array(
+                [dxy_error, dz_error, d3_error, d0_error, z0_error, pca_error[0], pca_error[1], pca_error[2]]
+            )
+    return impacts, impacts_error
 
 
 def trimmed_track_info_z0_d0(
