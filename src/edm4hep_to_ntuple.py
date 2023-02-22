@@ -250,17 +250,10 @@ def get_jet_constituent_p4s(reco_p4, constituent_idx, num_ptcls_per_jet):
     return vector.awk(ak.zip({"x": ret.x, "y": ret.y, "z": ret.z, "mass": ret.tau}))
 
 
-def get_jet_constituent_pdgs(reco_particle_pdg, constituent_idx, num_ptcls_per_jet):
-    reco_pdg_flat = reco_particle_pdg[ak.flatten(constituent_idx, axis=-1)]
+def get_jet_constituent_property(property_, constituent_idx, num_ptcls_per_jet):
+    reco_property_flat = property_[ak.flatten(constituent_idx, axis=-1)]
     return ak.from_iter(
-        [ak.unflatten(reco_pdg_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
-    )
-
-
-def get_jet_constituent_charges(reco_particles, constituent_idx, num_ptcls_per_jet):
-    reco_charge_flat = reco_particles["charge"][ak.flatten(constituent_idx, axis=-1)]
-    return ak.from_iter(
-        [ak.unflatten(reco_charge_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
+        [ak.unflatten(reco_property_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
     )
 
 
@@ -494,10 +487,10 @@ def process_input_file(arrays: ak.Array):
     event_lifetime_infos = ak.from_iter([trimmed_track_info_z0_d0(arrays, i) for i in range(len(reco_jets))])
     event_d0 = ak.from_iter(event_lifetime_infos[i][:, 0] for i in range(len(reco_jets)))
     event_z0 = ak.from_iter(event_lifetime_infos[i][:, 1] for i in range(len(reco_jets)))
-    event_per_jet_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_per_jet_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_d0 = get_jet_constituent_property(event_d0, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_z0 = get_jet_constituent_property(event_z0, reco_jet_constituent_indices, num_ptcls_per_jet)
     ## Dummy values for sigma_z0 and sigma_d0 as per request to be always 0.035
-    dummy_uncert_d0_z0 = ak.ones_like(event_per_jet_d0) * 0.035
+    dummy_uncert_d0_z0 = ak.ones_like(reco_cand_d0) * 0.035
     ##
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
@@ -517,16 +510,18 @@ def process_input_file(arrays: ak.Array):
         "event_reco_cand_charge": ak.from_iter(
             [[reco_particles["charge"][j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
-        "event_particle_d0": event_per_jet_d0,
-        "event_particle_z0": event_per_jet_z0,
-        "event_particle_sigma_d0": dummy_uncert_d0_z0,
-        "event_particle_sigma_z0": dummy_uncert_d0_z0,
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
-        "reco_cand_charge": get_jet_constituent_charges(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
-        "reco_cand_pdg": get_jet_constituent_pdgs(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
+        "reco_cand_charge": get_jet_constituent_property(
+            reco_particles["charge"], reco_jet_constituent_indices, num_ptcls_per_jet
+        ),
+        "reco_cand_pdg": get_jet_constituent_property(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
+        "reco_cand_d0": reco_cand_d0,
+        "reco_cand_z0": reco_cand_z0,
+        "reco_cand_sigma_d0": dummy_uncert_d0_z0,
+        "reco_cand_sigma_z0": dummy_uncert_d0_z0,
         "gen_jet_p4s": vector.awk(ak.zip({"mass": gen_jets.mass, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z})),
         "gen_jet_tau_decaymode": gen_tau_jet_info["gen_jet_tau_decaymode"],
         "gen_jet_tau_vis_energy": gen_tau_jet_info["gen_jet_tau_vis_energy"],
