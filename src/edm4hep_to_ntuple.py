@@ -511,13 +511,15 @@ def process_input_file(arrays: ak.Array):
             [[reco_particles["charge"][j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
-        "reco_cand_charge": get_jet_constituent_property(reco_particles['charge'], reco_jet_constituent_indices, num_ptcls_per_jet),
+        "reco_cand_charge": get_jet_constituent_property(
+            reco_particles["charge"], reco_jet_constituent_indices, num_ptcls_per_jet
+        ),
         "reco_cand_pdg": get_jet_constituent_property(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
-        "reco_cand_d0": event_per_jet_d0,
-        "reco_cand_z0": event_per_jet_z0,
+        "reco_cand_d0": reco_cand_d0,
+        "reco_cand_z0": reco_cand_z0,
         "reco_cand_sigma_d0": dummy_uncert_d0_z0,
         "reco_cand_sigma_z0": dummy_uncert_d0_z0,
         "gen_jet_p4s": vector.awk(ak.zip({"mass": gen_jets.mass, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z})),
