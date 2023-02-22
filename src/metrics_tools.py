@@ -47,7 +47,14 @@ class GeneralCut:
 class Histogram:
     """Initializes the histogram"""
 
-    def __init__(self, data: np.array, bin_edges: np.array, histogram_data_type: str, binned=False) -> None:
+    def __init__(
+        self,
+        data: np.array,
+        bin_edges: np.array,
+        histogram_data_type: str,
+        binned: bool = False,
+        uncertainties: np.array = True,
+    ) -> None:
         self.data = data
         self.histogram_data_type = histogram_data_type
         self.bin_edges = bin_edges
@@ -56,6 +63,17 @@ class Histogram:
             self.binned_data = np.histogram(data, bins=bin_edges)[0]
         else:
             self.binned_data = data
+        if (type(uncertainties) == np.array) or (type(uncertainties) == np.ndarray):
+            if len(uncertainties) == len(self.binned_data):
+                self.uncertainties = uncertainties
+            else:
+                raise AssertionError(
+                    f"Incorrect number of entries for uncertainties {len(uncertainties)} != {len(self.binned_data)}"
+                )
+        elif (type(uncertainties) == bool) and uncertainties:
+            self.uncertainties = 1 / np.sqrt(self.binned_data)
+        else:
+            raise AssertionError("Unknown input for uncertainties")
 
     def calculate_bin_centers(self, edges: list) -> np.array:
         bin_widths = [edges[i + 1] - edges[i] for i in range(len(edges) - 1)]
@@ -68,7 +86,8 @@ class Histogram:
         if (other.bin_edges).all() != (self.bin_edges).all():
             raise ArithmeticError("The bins of two histograms do not match, cannot sum them.")
         result = self.binned_data + other.binned_data
-        return Histogram(result, self.bin_edges, "Sum", binned=True)
+        uncertainties = self.uncertainties + other.uncertainties
+        return Histogram(result, self.bin_edges, "Sum", binned=True, uncertainties=uncertainties)
 
     def __str__(self):
         return f"{self.histogram_data_type} histogram"
@@ -77,10 +96,12 @@ class Histogram:
         if (other.bin_edges).all() != (self.bin_edges).all():
             raise ArithmeticError("The bins of two histograms do not match, cannot divide them.")
         result = np.nan_to_num(self.binned_data / other.binned_data, copy=True, nan=0.0, posinf=None, neginf=None)
-        return Histogram(result, self.bin_edges, "Efficiency", binned=True)
+        rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)
+        return Histogram(result, self.bin_edges, "Efficiency", binned=True, uncertainties=rel_uncertainties)
 
     def __mul__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
             raise ArithmeticError("The bins of two histograms do not match, cannot multiply them.")
         result = self.binned_data * other.binned_data
-        return Histogram(result, self.bin_edges, "Multiplicity", binned=True)
+        rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)
+        return Histogram(result, self.bin_edges, "Multiplicity", binned=True, uncertainties=rel_uncertainties)

@@ -2,6 +2,7 @@ tree_path: events
 branches:
   - MCParticles
   - MergedRecoParticles
+  - SiTracks_Refitted_1
 test_run: False
 samples_to_process:
   - ZH_Htautau
