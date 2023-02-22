@@ -487,10 +487,13 @@ def process_input_file(arrays: ak.Array):
     event_lifetime_infos = ak.from_iter([trimmed_track_info_z0_d0(arrays, i) for i in range(len(reco_jets))])
     event_d0 = ak.from_iter(event_lifetime_infos[i][:, 0] for i in range(len(reco_jets)))
     event_z0 = ak.from_iter(event_lifetime_infos[i][:, 1] for i in range(len(reco_jets)))
+    event_per_jet_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_per_jet_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     reco_cand_d0 = get_jet_constituent_property(event_d0, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_z0 = get_jet_constituent_property(event_z0, reco_jet_constituent_indices, num_ptcls_per_jet)
     ## Dummy values for sigma_z0 and sigma_d0 as per request to be always 0.035
     dummy_uncert_d0_z0 = ak.ones_like(reco_cand_d0) * 0.035
+    event_dummy_uncert_d0_z0 = ak.ones_like(event_per_jet_d0) * 0.035
     ##
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
@@ -518,6 +521,10 @@ def process_input_file(arrays: ak.Array):
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
+        "event_reco_cand_d0": event_per_jet_d0,
+        "event_reco_cand_z0": event_per_jet_z0,
+        "event_cand_sigma_d0": event_dummy_uncert_d0_z0,
+        "event_cand_sigma_z0": event_dummy_uncert_d0_z0,
         "reco_cand_d0": reco_cand_d0,
         "reco_cand_z0": reco_cand_z0,
         "reco_cand_sigma_d0": dummy_uncert_d0_z0,
