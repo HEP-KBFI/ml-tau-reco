@@ -69,21 +69,21 @@ class HPSAlgo:
 
         self.matchingConeSize = getParameter(cfg, "matchingConeSize", 1.0e-1)
         self.isolationConeSize = getParameter(cfg, "isolationConeSize", 5.0e-1)
-        coneMetric = getParameter(cfg, "coneMetric", "theta-phi")
-        self.metric_dR = None
-        self.metric_dEta = None
-        if coneMetric == "eta-phi":
-            self.metric_dR = comp_deltaR
-            self.metric_dEta = comp_deltaEta
-        elif coneMetric == "theta-phi":
-            self.metric_dR = comp_angle
-            self.metric_dEta = comp_deltaTheta
+        metric = getParameter(cfg, "metric", "theta-phi")
+        self.metric_dR_or_angle = None
+        self.metric_dEta_or_dTheta = None
+        if metric == "eta-phi":
+            self.metric_dR_or_angle = comp_deltaR
+            self.metric_dEta_or_dTheta = comp_deltaEta
+        elif metric == "theta-phi":
+            self.metric_dR_or_angle = comp_angle
+            self.metric_dEta_or_dTheta = comp_deltaTheta
         else:
-            raise RuntimeError("Invalid configuration parameter 'coneMetric' = '%s' !!" % coneMetric)
+            raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
         if verbosity >= 1:
             print("matchingConeSize = %1.2f" % self.matchingConeSize)
             print("isolationConeSize = %1.2f" % self.isolationConeSize)
-            print("coneMetric = '%s'" % coneMetric)
+            print("metric = '%s'" % metric)
 
         self.stripAlgo = StripAlgo(cfg["StripAlgo"], verbosity)
 
@@ -142,7 +142,7 @@ class HPSAlgo:
             isOverlap = False
             for cand in cands:
                 if cand.pdgId == cand_to_clean.pdgId and cand.q == cand_to_clean.q:
-                    dR = self.metric_dR(cand, cand_to_clean)
+                    dR = self.metric_dR_or_angle(cand, cand_to_clean)
                     if dR < dRmatch:
                         isOverlap = True
                         break
@@ -191,7 +191,7 @@ class HPSAlgo:
 
         event_iso_cands = self.selectIsolationCands(event_iso_cands)
         event_iso_cands = selectCandsByDeltaR(
-            event_iso_cands, jet, self.isolationConeSize + self.matchingConeSize, self.metric_dR
+            event_iso_cands, jet, self.isolationConeSize + self.matchingConeSize, self.metric_dR_or_angle
         )
         event_iso_cands = self.cleanCands(event_iso_cands, jet.constituents)
         if self.verbosity >= 2:
@@ -266,26 +266,26 @@ class HPSAlgo:
                     tau_candidate.jet = jet
                     tau_candidate.decayMode = decayMode
                     tau_candidate.signalConeSize = max(min(0.10, 3.0 / tau_candidate.pt), 0.05)
-                    tau_candidate.metric_dR = self.metric_dR
-                    tau_candidate.metric_dEta = self.metric_dEta
+                    tau_candidate.metric_dR_or_angle = self.metric_dR_or_angle
+                    tau_candidate.metric_dEta_or_dTheta = self.metric_dEta_or_dTheta
                     passesSignalCone = True
                     for cand in tau_candidate.signal_chargedCands:
-                        if tau_candidate.metric_dR(tau_candidate, cand) > tau_candidate.signalConeSize:
+                        if tau_candidate.metric_dR_or_angle(tau_candidate, cand) > tau_candidate.signalConeSize:
                             passesSignalCone = False
                             break
                     for strip in tau_candidate.signal_strips:
-                        if tau_candidate.metric_dR(tau_candidate, strip) > tau_candidate.signalConeSize:
+                        if tau_candidate.metric_dR_or_angle(tau_candidate, strip) > tau_candidate.signalConeSize:
                             passesSignalCone = False
                             break
                     if (
                         abs(round(tau_candidate.q)) == 1
-                        and tau_candidate.metric_dR(tau_candidate, tau_candidate.jet) < self.matchingConeSize
+                        and tau_candidate.metric_dR_or_angle(tau_candidate, tau_candidate.jet) < self.matchingConeSize
                         and passesSignalCone
                         and tau_candidate.mass > self.targetedDecayModes[decayMode]["minTauMass"]
                         and tau_candidate.mass < self.targetedDecayModes[decayMode]["maxTauMass"]
                     ):
                         tau_iso_cands = selectCandsByDeltaR(
-                            jet_iso_cands, tau_candidate, self.isolationConeSize, tau_candidate.metric_dR
+                            jet_iso_cands, tau_candidate, self.isolationConeSize, tau_candidate.metric_dR_or_angle
                         )
                         tau_iso_cands = self.cleanCands(tau_iso_cands, tau_candidate.signal_cands)
                         tau_iso_cands.extend(event_iso_cands)
@@ -313,17 +313,19 @@ class HPSAlgo:
                         if self.verbosity >= 4:
                             print("fails preselection:")
                             print(" q = %i" % round(tau_candidate.q))
-                            print(" dR(tau,jet) = %1.2f" % tau_candidate.metric_dR(tau_candidate, tau_candidate.jet))
+                            print(
+                                " dR(tau,jet) = %1.2f" % tau_candidate.metric_dR_or_angle(tau_candidate, tau_candidate.jet)
+                            )
                             print(" signalConeSize = %1.2f" % tau_candidate.signalConeSize)
                             for idx, cand in enumerate(tau_candidate.signal_chargedCands):
                                 print(
                                     " dR(tau,signal_chargedCand #%i) = %1.2f"
-                                    % (idx, tau_candidate.metric_dR(tau_candidate, cand))
+                                    % (idx, tau_candidate.metric_dR_or_angle(tau_candidate, cand))
                                 )
                             for idx, strip in enumerate(tau_candidate.signal_chargedCands):
                                 print(
                                     " dR(tau,signal_strip #%i) = %1.2f"
-                                    % (idx, tau_candidate.metric_dR(tau_candidate, strip))
+                                    % (idx, tau_candidate.metric_dR_or_angle(tau_candidate, strip))
                                 )
                             print(" mass = %1.2f" % tau_candidate.mass)
 
