@@ -36,7 +36,7 @@ def train_loop(dataloader, model, dev, loss_fn, optimizer):
     for batch, (X, y) in enumerate(dataloader):
         # Compute prediction and loss
         x = X["x"].to(device=dev)
-        v = X["v"].to(device=dev) 
+        v = X["v"].to(device=dev)
         mask = X["mask"].to(device=dev)
         y = y.squeeze(dim=1).to(device=dev)
         # print("shape(y) = ", y.shape)
@@ -102,7 +102,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         ParticleTransformer_cfg = json.load(jsonFile)
         if "ParticleTransformer" not in ParticleTransformer_cfg.keys():
             raise RuntimeError("Failed to parse config file %s !!")
-        LorentzNet_cfg = ParticleTransformer_cfg["ParticleTransformer"]
+        ParticleTransformer_cfg = ParticleTransformer_cfg["ParticleTransformer"]
         for key, value in ParticleTransformer_cfg.items():
             print(" %s = " % key, value)
         jsonFile.close()
@@ -114,12 +114,12 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     print("Building model...")
     model = ParticleTransformer(
-        input_dim = 17,
+        input_dim=17,
         num_classes=2,
         use_pre_activation_pair=False,
         for_inference=False,
         use_amp=False,
-        metric=coneMetric,
+        metric=metric,
         verbosity=train_cfg.verbosity,
     ).to(device=dev)
     print("Finished building model:")
@@ -129,9 +129,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
 
     print("Starting to build training dataset...")
-    dataset_train = ParticleTransformerDataset(
-        filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands
-    )
+    dataset_train = ParticleTransformerDataset(filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands)
     print("Finished building training dataset.")
 
     print("Starting to build validation dataset...")
@@ -149,11 +147,11 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         train_loop(dataloader_train, model, dev, loss_fn, optimizer)
         if dev == "cuda":
             dev_id = torch.cuda.current_device()
-            run_command('nvidia-smi --id=%i' % dev_id)
+            run_command("nvidia-smi --id=%i" % dev_id)
         test_loop(dataloader_test, model, dev, loss_fn)
         if dev == "cuda":
             dev_id = torch.cuda.current_device()
-            run_command('nvidia-smi --id=%i' % dev_id)
+            run_command("nvidia-smi --id=%i" % dev_id)
     print("Finished training.")
 
     print("Saving model to file %s." % train_cfg.model_file)
