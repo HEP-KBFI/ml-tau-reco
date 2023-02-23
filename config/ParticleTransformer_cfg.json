@@ -1,0 +1,6 @@
+{
+    "ParticleTransformer": {
+        "max_cands": 50,
+        "metric": "theta-phi"
+    }
+}
