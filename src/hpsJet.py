@@ -106,10 +106,10 @@ def readJets(data):
     # jet_constituent_d0errs = data["reco_cand_d0err"]
     # jet_constituent_dzs = data["reco_cand_dz"]
     # jet_constituent_dzerrs = data["reco_cand_dzerr"]
-    jet_constituent_d0s = data["reco_cand_charge"]
-    jet_constituent_d0errs = data["reco_cand_charge"]
-    jet_constituent_dzs = data["reco_cand_charge"]
-    jet_constituent_dzerrs = data["reco_cand_charge"]
+    jet_constituent_d0s = jet_constituent_qs
+    jet_constituent_d0errs = jet_constituent_qs
+    jet_constituent_dzs = jet_constituent_qs
+    jet_constituent_dzerrs = jet_constituent_qs
     jets = buildJets(
         jet_p4s,
         jet_constituent_p4s,

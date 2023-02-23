@@ -41,6 +41,12 @@ def buildCands(cand_p4s, cand_pdgIds, cand_qs, cand_d0s, cand_d0errs, cand_dzs, 
         and len(cand_d0errs) == len(cand_dzs)
         and len(cand_dzs) == len(cand_dzerrs)
     ):
+        # print("len(cand_p4s) = %i" % len(cand_p4s))
+        # print("len(cand_pdgIds) = %i" % len(cand_pdgIds))
+        # print("len(cand_d0s) = %i" % len(cand_d0s))
+        # print("len(cand_d0errs) = %i" % len(cand_d0errs))
+        # print("len(cand_dzs) = %i" % len(cand_dzs))
+        # print("len(cand_dzerrs) = %i" % len(cand_dzerrs))
         raise ValueError("Length of arrays for candidate for p4 and other features don't match !!")
     cands = []
     num_cands = len(cand_p4s)
@@ -67,10 +73,10 @@ def readCands(data):
     # event_cand_d0errs = data["event_reco_cand_d0err"]
     # event_cand_dzs = data["event_reco_cand_dz"]
     # event_cand_dzerrs = data["event_reco_cand_dzerr"]
-    event_cand_d0s = data["event_reco_cand_charge"]
-    event_cand_d0errs = data["event_reco_cand_charge"]
-    event_cand_dzs = data["event_reco_cand_charge"]
-    event_cand_dzerrs = data["event_reco_cand_charge"]
+    event_cand_d0s = event_cand_qs
+    event_cand_d0errs = event_cand_qs
+    event_cand_dzs = event_cand_qs
+    event_cand_dzerrs = event_cand_qs
     if not (
         len(event_cand_p4s) == len(event_cand_pdgIds)
         and len(event_cand_pdgIds) == len(event_cand_qs)
@@ -79,7 +85,7 @@ def readCands(data):
         and len(event_cand_d0errs) == len(event_cand_dzs)
         and len(event_cand_dzs) == len(event_cand_dzerrs)
     ):
-        raise ValueError("Length of arrays for candidate p4 and other features  don't match !!")
+        raise ValueError("Length of arrays for candidate p4 and other features don't match !!")
     event_cands = []
     num_jets = len(event_cand_p4s)
     for idx in range(num_jets):
@@ -87,10 +93,10 @@ def readCands(data):
             event_cand_p4s[idx],
             event_cand_pdgIds[idx],
             event_cand_qs[idx],
-            event_cand_d0s,
-            event_cand_d0errs,
-            event_cand_dzs,
-            event_cand_dzerrs,
+            event_cand_d0s[idx],
+            event_cand_d0errs[idx],
+            event_cand_dzs[idx],
+            event_cand_dzerrs[idx],
         )
         event_cands.append(jet_cands)
     return event_cands
