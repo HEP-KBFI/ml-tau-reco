@@ -70,8 +70,8 @@ class HPSTauBuilder(BasicTauBuilder):
                 tau.iso_chargedCands = set()
                 tau.iso_gammaCands = set()
                 tau.iso_neutralHadronCands = set()
-                tau.metric_dR = None
-                tau.metric_dEta = None
+                tau.metric_dR_or_angle = None
+                tau.metric_dEta_or_dTheta = None
                 tau.idDiscr = -1.0
                 tau.q = 0.0
                 tau.decayMode = "undefined"
