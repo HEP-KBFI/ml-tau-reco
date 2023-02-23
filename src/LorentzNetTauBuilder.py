@@ -63,21 +63,27 @@ class LorentzNetTauBuilder(BasicTauBuilder):
 
         x_tensors = []
         scalars_tensors = []
+        node_mask_tensors = []
         for idx in range(num_jets):
             if self.verbosity >= 2 and (idx % 100) == 0:
                 print("Processing entry %i" % idx)
 
             jet_constituent_p4s = cand_p4s[idx]
-            x_tensor, scalars_tensor = buildLorentzNetTensors(jet_constituent_p4s, self.max_cands, self.add_beams)
+            x_tensor, scalars_tensor, node_mask_tensor = buildLorentzNetTensors(
+                jet_constituent_p4s, self.max_cands, self.add_beams
+            )
             x_tensors.append(x_tensor)
             scalars_tensors.append(scalars_tensor)
+            node_mask_tensors.append(node_mask_tensor)
         x_tensor = torch.stack(x_tensors, dim=0)
         scalars_tensor = torch.stack(scalars_tensors, dim=0)
+        node_mask_tensor = torch.stack(node_mask_tensors, dim=0)
         if self.verbosity >= 4:
             print("shape(x_tensor) = ", x_tensor.shape)
             print("shape(scalars_tensor) = ", scalars_tensor.shape)
+            print("shape(node_mask) = ", node_mask_tensor.shape)
 
-        pred = self.model(x_tensor, scalars_tensor)
+        pred = self.model(x_tensor, scalars_tensor, node_mask_tensor)
         pred = torch.softmax(pred, dim=1)
         if self.verbosity >= 4:
             print("shape(pred) = ", pred.shape)

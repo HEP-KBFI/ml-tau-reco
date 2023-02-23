@@ -5,6 +5,7 @@ import hydra
 import json
 from omegaconf import DictConfig
 import os
+import subprocess
 import yaml
 
 import torch
@@ -34,12 +35,13 @@ def train_loop(dataloader, model, dev, loss_fn, optimizer):
     model.train()
     for batch, (X, y) in enumerate(dataloader):
         # Compute prediction and loss
-        scalars = X["scalars"].to(device=dev)
         x = X["x"].to(device=dev)
+        scalars = X["scalars"].to(device=dev)
+        mask = X["mask"].to(device=dev)
         y = y.squeeze(dim=1).to(device=dev)
         # print("shape(y) = ", y.shape)
         # print("y = ", y)
-        pred = model(x, scalars)
+        pred = model(x, scalars, mask)
         # print("shape(pred) = ", pred.shape)
         # print("pred = ", pred)
         loss = loss_fn(pred, y)
@@ -64,16 +66,22 @@ def test_loop(dataloader, model, dev, loss_fn):
     model.eval()
     with torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
-            scalars = X["scalars"].to(device=dev)
             x = X["x"].to(device=dev)
+            scalars = X["scalars"].to(device=dev)
+            mask = X["mask"].to(device=dev)
             y = y.squeeze(dim=1).to(device=dev)
-            pred = model(x, scalars)
+            pred = model(x, scalars, mask)
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
     test_loss /= num_batches
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+
+def run_command(cmd):
+    result = subprocess.run(cmd.split(" "), stdout=subprocess.PIPE, universal_newlines=True)
+    print(result.stdout)
 
 
 @hydra.main(config_path="../config", config_name="trainLorentzNet", version_base=None)
@@ -145,7 +153,13 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     for t in range(train_cfg.num_epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train_loop(dataloader_train, model, dev, loss_fn, optimizer)
+        if dev == "cuda":
+            dev_id = torch.cuda.current_device()
+            run_command("nvidia-smi --id=%i" % dev_id)
         test_loop(dataloader_test, model, dev, loss_fn)
+        if dev == "cuda":
+            dev_id = torch.cuda.current_device()
+            run_command("nvidia-smi --id=%i" % dev_id)
     print("Finished training.")
 
     print("Saving model to file %s." % train_cfg.model_file)

@@ -19,6 +19,9 @@ def buildLorentzNetTensors(jet_constituent_p4s, max_cands, add_beams):
     scalars_tensor = psi(torch.tensor(jet_constituent_p4s.mass, dtype=torch.float32)).unsqueeze(-1)
     scalars_tensor = torch.nn.functional.pad(scalars_tensor, (0, 1, 0, max_cands - num_jet_constituents), "constant", 0.0)
 
+    node_mask_tensor = torch.ones(num_jet_constituents, dtype=torch.float32)
+    node_mask_tensor = torch.nn.functional.pad(node_mask_tensor, (0, max_cands - num_jet_constituents), "constant", 0.0)
+
     if add_beams:
         beam_mass = 1.0
         beam1_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, +1.0]
@@ -30,7 +33,12 @@ def buildLorentzNetTensors(jet_constituent_p4s, max_cands, add_beams):
         scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.0)
         scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
 
-    return x_tensor, scalars_tensor
+        node_mask_beams = torch.ones(2, dtype=torch.float32)
+        node_mask_tensor = torch.cat([node_mask_beams, node_mask_tensor], dim=0)
+
+    node_mask_tensor = torch.unsqueeze(node_mask_tensor, dim=-1)
+
+    return x_tensor, scalars_tensor, node_mask_tensor
 
 
 class LorentzNetDataset(Dataset):
@@ -64,6 +72,7 @@ class LorentzNetDataset(Dataset):
 
         self.x_tensors = []
         self.scalars_tensors = []
+        self.node_mask_tensors = []
         self.y_tensors = []
 
         self.num_jets = 0
@@ -86,11 +95,14 @@ class LorentzNetDataset(Dataset):
                     print(" Processing entry %i" % idx)
 
                 jet_constituent_p4s = cand_p4s[idx]
-                x_tensor, scalars_tensor = buildLorentzNetTensors(jet_constituent_p4s, self.max_cands, self.add_beams)
+                x_tensor, scalars_tensor, node_mask_tensor = buildLorentzNetTensors(
+                    jet_constituent_p4s, self.max_cands, self.add_beams
+                )
                 y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
 
-                self.scalars_tensors.append(scalars_tensor)
                 self.x_tensors.append(x_tensor)
+                self.scalars_tensors.append(scalars_tensor)
+                self.node_mask_tensors.append(node_mask_tensor)
                 self.y_tensors.append(y_tensor)
 
             print("Closing file %s." % file)
@@ -101,6 +113,7 @@ class LorentzNetDataset(Dataset):
 
         assert len(self.x_tensors) == self.num_jets
         assert len(self.scalars_tensors) == self.num_jets
+        assert len(self.node_mask_tensors) == self.num_jets
         assert len(self.y_tensors) == self.num_jets
 
     def __len__(self):
@@ -108,6 +121,10 @@ class LorentzNetDataset(Dataset):
 
     def __getitem__(self, idx):
         if idx < self.num_jets:
-            return {"x": self.x_tensors[idx], "scalars": self.scalars_tensors[idx]}, self.y_tensors[idx]
+            return {
+                "x": self.x_tensors[idx],
+                "scalars": self.scalars_tensors[idx],
+                "mask": self.node_mask_tensors[idx],
+            }, self.y_tensors[idx]
         else:
             raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))
