@@ -33,7 +33,9 @@ class TauJetDatasetWithGrid:
         muon_block_features = self.get_part_block_features(data, "mu")
         charged_cand_block_features = self.get_part_block_features(data, "charged_cand")
         neutral_cand_block_features = self.get_part_block_features(data, "neutral_cand")
-        charged_neutral_features = self.get_concatenated_part_block_features(charged_cand_block_features, neutral_cand_block_features)
+        charged_neutral_features = self.get_concatenated_part_block_features(
+            charged_cand_block_features, neutral_cand_block_features
+        )
         ret_data = [
             Data(
                 tau_features=tau_features[itau : itau + 1, :],
@@ -42,7 +44,7 @@ class TauJetDatasetWithGrid:
                 inner_grid_mu_block=muon_block_features["inner_grid"][itau : itau + 1, :],
                 outer_grid_mu_block=muon_block_features["outer_grid"][itau : itau + 1, :],
                 inner_grid_charged_neutral_block=charged_neutral_features["inner_grid"][itau : itau + 1, :],
-                outer_grid_charged_neutral_block=charged_neutral_features["outer_grid"][itau : itau + 1, :]
+                outer_grid_charged_neutral_block=charged_neutral_features["outer_grid"][itau : itau + 1, :],
             )
             for itau in range(len(tau_features))
         ]
