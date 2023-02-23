@@ -10,7 +10,7 @@
         },
         "matchingConeSize": 1.0e-1,
         "isolationConeSize": 5.0e-1,
-        "coneMetric": "theta-phi",
+        "metric": "theta-phi",
         "StripAlgo": {
             "useGammas": true,
             "minGammaPtSeed": 1.0,
