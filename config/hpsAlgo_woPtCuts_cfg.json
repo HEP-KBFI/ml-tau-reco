@@ -1,8 +1,8 @@
 {
     "HPSAlgo": {
         "signalCands": {
-            "minChargedHadronPt": -1.0, 
-            "minElectronPt": -1.0, 
+            "minChargedHadronPt": -1.0,
+            "minElectronPt": -1.0,
             "minMuonPt": 1.0e6
         },
         "isolationCands": {
