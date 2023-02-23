@@ -63,10 +63,14 @@ def readCands(data):
     event_cand_p4s = read_event_cand_p4s(data["event_reco_cand_p4s"])
     event_cand_pdgIds = data["event_reco_cand_pdg"]
     event_cand_qs = data["event_reco_cand_charge"]
-    event_cand_d0s = data["event_reco_cand_d0"]
-    event_cand_d0errs = data["event_reco_cand_d0err"]
-    event_cand_dzs = data["event_reco_cand_dz"]
-    event_cand_dzerrs = data["event_reco_cand_dzerr"]
+    # event_cand_d0s = data["event_reco_cand_d0"]
+    # event_cand_d0errs = data["event_reco_cand_d0err"]
+    # event_cand_dzs = data["event_reco_cand_dz"]
+    # event_cand_dzerrs = data["event_reco_cand_dzerr"]
+    event_cand_d0s = data["event_reco_cand_charge"]
+    event_cand_d0errs = data["event_reco_cand_charge"]
+    event_cand_dzs = data["event_reco_cand_charge"]
+    event_cand_dzerrs = data["event_reco_cand_charge"]
     if not (
         len(event_cand_p4s) == len(event_cand_pdgIds)
         and len(event_cand_pdgIds) == len(event_cand_qs)
