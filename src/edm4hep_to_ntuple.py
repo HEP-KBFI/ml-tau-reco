@@ -28,7 +28,7 @@ def save_record_to_file(data: dict, output_path: str) -> None:
 def load_single_file_contents(
     path: str,
     tree_path: str = "events",
-    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"]
+    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"],
 ) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
