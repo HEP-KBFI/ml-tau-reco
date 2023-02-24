@@ -328,7 +328,8 @@ def findTrackPCAs(
         else:
             partTickleTrackLink.append(part_trkidx)
     impacts_pcas_pvs = [-1, -1000, -1, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000] * np.ones(
-        (len(partTickleTrackLink), 11))
+        (len(partTickleTrackLink), 11)
+    )
     impacts_pcas_errors = [-1, -1000, -1, -1000, -1000, -1000, -1000, -100] * np.ones((len(partTickleTrackLink), 8))
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
@@ -412,4 +413,3 @@ def calculateImpactParameterSigns(ips, pca, pv, jetp4):
     for ip in ips:
         newips.append(sign * abs(ip))
     return newips
-

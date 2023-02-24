@@ -557,7 +557,9 @@ def process_input_file(arrays: ak.Array):
     reco_cand_z0_err = get_jet_constituent_property(event_z0_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_PCA_p1_err = get_jet_constituent_property(event_PCA_p1_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_PCA_p2_err = get_jet_constituent_property(event_PCA_p2_err, reco_jet_constituent_indices, num_ptcls_per_jet)
-    reco_cand_PCA_tPCA_err = get_jet_constituent_property(event_PCA_tPCA_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PCA_tPCA_err = get_jet_constituent_property(
+        event_PCA_tPCA_err, reco_jet_constituent_indices, num_ptcls_per_jet
+    )
 
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
@@ -663,7 +665,9 @@ def process_all_input_files(cfg: DictConfig) -> None:
         input_paths = glob.glob(input_wcp)[:n_files]
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)
-            pool.starmap(process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(output_dir)))
+            pool.starmap(
+                process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(output_dir))
+            )
         else:
             for path in input_paths:
                 process_single_file(path, cfg.tree_path, cfg.branches, output_dir)
