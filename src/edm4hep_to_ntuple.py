@@ -501,9 +501,15 @@ def process_input_file(arrays: ak.Array):
     event_reco_cand_d3 = ak.from_iter([[event_d3[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_reco_cand_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_reco_cand_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_reco_cand_PCA_p1 = ak.from_iter([[event_PCA_p1[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_reco_cand_PCA_p2 = ak.from_iter([[event_PCA_p2[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_reco_cand_PCA_tPCA = ak.from_iter([[event_PCA_tPCA[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PCA_p1 = ak.from_iter(
+        [[event_PCA_p1[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+    )
+    event_reco_cand_PCA_p2 = ak.from_iter(
+        [[event_PCA_p2[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+    )
+    event_reco_cand_PCA_tPCA = ak.from_iter(
+        [[event_PCA_tPCA[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+    )
 
     reco_cand_dxy = get_jet_constituent_property(event_dxy, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_dz = get_jet_constituent_property(event_dz, reco_jet_constituent_indices, num_ptcls_per_jet)

@@ -151,8 +151,8 @@ def findTrackPCAs(
     particles_ = frame[recoParticleCollection]
     particles = ak.Record({k.replace(f"{recoParticleCollection}.", ""): particles_[k] for k in particles_.fields})
     reco_particle_mask = particles["type"] != 0
-    partTickleTrackLink_b = particles["tracks_begin"][ev]
-    partTickleTrackLink_e = particles["tracks_end"][ev]
+    partTickleTrackLink_b = particles["tracks_begin"][reco_particle_mask][ev]
+    partTickleTrackLink_e = particles["tracks_end"][reco_particle_mask][ev]
     partTickleTrackLink = []
     for ili, part_trkidx in enumerate(partTickleTrackLink_b):
         if part_trkidx == partTickleTrackLink_e[ili]:
