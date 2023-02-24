@@ -13,6 +13,7 @@ Date: 20.02.2022
 
 import numpy as np
 import math
+import awkward as ak
 
 """
 Helper calulating the PCA to the refference point, see [1] for mor details.
@@ -147,8 +148,11 @@ def findTrackPCAs(
         frame[vertexCollection][ev][vertexCollection + ".position.y"][0],
         frame[vertexCollection][ev][vertexCollection + ".position.z"][0],
     ]
-    partTickleTrackLink_b = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_begin"]
-    partTickleTrackLink_e = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_end"]
+    particles_ = frame[recoParticleCollection]
+    particles = ak.Record({k.replace(f"{recoParticleCollection}.", ""): particles_[k] for k in particles_.fields})
+    reco_particle_mask = particles["type"] != 0
+    partTickleTrackLink_b = particles["tracks_begin"][reco_particle_mask][ev]
+    partTickleTrackLink_e = particles["tracks_end"][reco_particle_mask][ev]
     partTickleTrackLink = []
     for ili, part_trkidx in enumerate(partTickleTrackLink_b):
         if part_trkidx == partTickleTrackLink_e[ili]:
