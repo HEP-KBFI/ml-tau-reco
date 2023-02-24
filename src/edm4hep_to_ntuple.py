@@ -17,7 +17,7 @@ import awkward as ak
 import multiprocessing
 from itertools import repeat
 from omegaconf import DictConfig
-from lifeTimeTools import trimmed_track_info_z0_d0
+from lifeTimeTools import findTrackPCAs
 
 
 def save_record_to_file(data: dict, output_path: str) -> None:
@@ -26,7 +26,9 @@ def save_record_to_file(data: dict, output_path: str) -> None:
 
 
 def load_single_file_contents(
-    path: str, tree_path: str = "events", branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1"]
+    path: str,
+    tree_path: str = "events",
+    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"]
 ) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
@@ -484,9 +486,24 @@ def process_input_file(arrays: ak.Array):
     gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_lifetime_infos = ak.from_iter([trimmed_track_info_z0_d0(arrays, i) for i in range(len(reco_jets))])
-    event_d0 = ak.from_iter(event_lifetime_infos[i][:, 0] for i in range(len(reco_jets)))
-    event_z0 = ak.from_iter(event_lifetime_infos[i][:, 1] for i in range(len(reco_jets)))
+    event_lifetime_infos = ak.from_iter([findTrackPCAs(arrays, i) for i in range(len(reco_jets))])
+    event_dxy = ak.from_iter(event_lifetime_infos[i][:, 0] for i in range(len(reco_jets)))
+    event_dz = ak.from_iter(event_lifetime_infos[i][:, 1] for i in range(len(reco_jets)))
+    event_d3 = ak.from_iter(event_lifetime_infos[i][:, 2] for i in range(len(reco_jets)))
+    event_d0 = ak.from_iter(event_lifetime_infos[i][:, 3] for i in range(len(reco_jets)))
+    event_z0 = ak.from_iter(event_lifetime_infos[i][:, 4] for i in range(len(reco_jets)))
+    event_PCA_p1 = ak.from_iter(event_lifetime_infos[i][:, 5] for i in range(len(reco_jets)))
+    event_PCA_p2 = ak.from_iter(event_lifetime_infos[i][:, 6] for i in range(len(reco_jets)))
+    event_PCA_tPCA = ak.from_iter(event_lifetime_infos[i][:, 7] for i in range(len(reco_jets)))
+
+    reco_cand_dxy = ak.from_iter([[event_dxy[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_dz = ak.from_iter([[event_dz[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_d3 = ak.from_iter([[event_d3[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_PCA_p1 = ak.from_iter([[event_PCA_p1[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_PCA_p2 = ak.from_iter([[event_PCA_p2[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    reco_cand_PCA_tPCA = ak.from_iter([[event_PCA_tPCA[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_per_jet_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_per_jet_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     reco_cand_d0 = get_jet_constituent_property(event_d0, reco_jet_constituent_indices, num_ptcls_per_jet)
@@ -525,8 +542,14 @@ def process_input_file(arrays: ak.Array):
         "event_reco_cand_z0": event_per_jet_z0,
         "event_cand_sigma_d0": event_dummy_uncert_d0_z0,
         "event_cand_sigma_z0": event_dummy_uncert_d0_z0,
+        "reco_cand_dxy": reco_cand_dxy,
+        "reco_cand_dz": reco_cand_dz,
+        "reco_cand_d3": reco_cand_d3,
         "reco_cand_d0": reco_cand_d0,
         "reco_cand_z0": reco_cand_z0,
+        "reco_cand_PCA_p1": reco_cand_PCA_p1,
+        "reco_cand_PCA_p2": reco_cand_PCA_p2,
+        "reco_cand_PCA_tPCA": reco_cand_PCA_tPCA,
         "reco_cand_sigma_d0": dummy_uncert_d0_z0,
         "reco_cand_sigma_z0": dummy_uncert_d0_z0,
         "gen_jet_p4s": vector.awk(ak.zip({"mass": gen_jets.mass, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z})),
