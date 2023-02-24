@@ -1,3 +1,4 @@
+use_multiprocessing: True
 tree_path: events
 branches:
   - MCParticles
