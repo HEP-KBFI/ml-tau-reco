@@ -13,6 +13,7 @@ Date: 22.02.2022
 
 import numpy as np
 import math
+import awkward as ak
 
 """
 Helper calulating the PCA to the refference point, see [1] for mor details.
@@ -315,19 +316,20 @@ def findTrackPCAs(
         frame[vertexCollection][ev][vertexCollection + ".position.y"][0],
         frame[vertexCollection][ev][vertexCollection + ".position.z"][0],
     ]
-    partTickleTrackLink_b = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_begin"]
-    partTickleTrackLink_e = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_end"]
+    particles_ = frame[recoParticleCollection]
+    particles = ak.Record({k.replace(f"{recoParticleCollection}.", ""): particles_[k] for k in particles_.fields})
+    reco_particle_mask = particles["type"] != 0
+    partTickleTrackLink_b = particles["tracks_begin"][reco_particle_mask][ev]
+    partTickleTrackLink_e = particles["tracks_end"][reco_particle_mask][ev]
     partTickleTrackLink = []
     for ili, part_trkidx in enumerate(partTickleTrackLink_b):
         if part_trkidx == partTickleTrackLink_e[ili]:
             partTickleTrackLink.append(-1)  # no track / neutral
-    else:
-        partTickleTrackLink.append(part_trkidx)
-    impacts = [-1, -1000, -1, -1000, -1000] * np.ones((len(partTickleTrackLink), 5))
-    impacts_error = [-1, -1000, -1, -1000, -1000] * np.ones((len(partTickleTrackLink), 5))
-    pvs = [-1000, -1000, -100] * np.ones((len(partTickleTrackLink), 3))
-    pcas = [-1000, -1000, -100] * np.ones((len(partTickleTrackLink), 3))
-    pcas_error = [-1000, -1000, -100] * np.ones((len(partTickleTrackLink), 3))
+        else:
+            partTickleTrackLink.append(part_trkidx)
+    impacts_pcas_pvs = [-1, -1000, -1, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000] * np.ones(
+        (len(partTickleTrackLink), 11))
+    impacts_pcas_errors = [-1, -1000, -1, -1000, -1000, -1000, -1000, -100] * np.ones((len(partTickleTrackLink), 8))
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
         # i.e track 0 is present at idx 0-3 for different track states, 1 at 4-7, and so on -> multiply by 4
@@ -365,7 +367,7 @@ def findTrackPCAs(
             phi0_error = cov[2]
             tanL_error = cov[14]
             pca = calcPCA(pr, d0, z0, phi0, tanL, omega, vertex)
-            pca_error = calcPCA(pr, d0, z0, phi0, tanL, omega, vertex, d0_error, z0_error, phi0_error, tanL_error)
+            pca_error = calcPCA_error(pr, d0, z0, phi0, tanL, omega, vertex, d0_error, z0_error, phi0_error, tanL_error)
             dz = vertex[2] - pca[2]
             dz_error = math.sqrt(pca_error[2] * pca_error[2])
             dxy = math.sqrt((vertex[0] - pca[0]) * (vertex[0] - pca[0]) + (vertex[1] - pca[1]) * (vertex[1] - pca[1]))
@@ -383,12 +385,9 @@ def findTrackPCAs(
                 + 4 * (vertex[1] - pca[1]) * (vertex[1] - pca[1]) * pca_error[1] * pca_error[1]
                 + 4 * (vertex[2] - pca[2]) * (vertex[2] - pca[2]) * pca_error[2] * pca_error[2]
             )
-            impacts[ili] = np.array([dxy, dz, d3, d0, z0])
-            pcas[ili] = np.array(pca)
-            pcas_error[ili] = np.array(pca_error)
-            pvs[ili] = np.array(vertex)
-            impacts_error[ili] = np.array([dxy_error, dz_error, d3_error, d0_error, z0_error])
-    return impacts, impacts_error, pcas, pcas_error, pvs
+            impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0] + pca + vertex
+            impacts_pcas_errors[ili] = [dxy_error, dz_error, d3_error, d0_error, z0_error] + pca_error
+    return [impacts_pcas_pvs, impacts_pcas_errors]
 
 
 """
@@ -414,37 +413,3 @@ def calculateImpactParameterSigns(ips, pca, pv, jetp4):
         newips.append(sign * abs(ip))
     return newips
 
-
-"""
-Dummy function to allow the use of impact parameters while the vertex collection is not available.
-"""
-
-
-def trimmed_track_info_z0_d0(
-    frame, ev, recoParticleCollection="MergedRecoParticles", trackCollection="SiTracks_Refitted_1", debug=-1
-):
-    partTickleTrackLink_b = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_begin"]
-    partTickleTrackLink_e = frame[recoParticleCollection][ev][recoParticleCollection + ".tracks_end"]
-    partTickleTrackLink = []
-    for ili, part_trkidx in enumerate(partTickleTrackLink_b):
-        if part_trkidx == partTickleTrackLink_e[ili]:
-            partTickleTrackLink.append(-1)  # no track / neutral
-        else:
-            partTickleTrackLink.append(part_trkidx)
-    impacts = [-1000, -1000] * np.ones((len(partTickleTrackLink), 2))
-    for ili, part_trkidx in enumerate(partTickleTrackLink):
-        # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
-        # i.e track 0 is present at idx 0-3 for different track states, 1 at 4-7, and so on -> multiply by 4
-        si_trkidx = part_trkidx * 4
-        if part_trkidx < 0:
-            if debug >= 0:
-                print("Found no SiTrack for particle! Maybe neutral?")
-        elif si_trkidx < 0 or si_trkidx >= len(frame[trackCollection][ev][trackCollection + ".location"]):
-            print("Warning, invalid track indx, please check!")
-        else:
-            if debug >= 0:
-                print("Found SiTrack for particle!")
-            d0 = frame[trackCollection][ev][trackCollection + ".D0"][si_trkidx]
-            z0 = frame[trackCollection][ev][trackCollection + ".Z0"][si_trkidx]
-            impacts[ili] = np.array([d0, z0])
-    return impacts

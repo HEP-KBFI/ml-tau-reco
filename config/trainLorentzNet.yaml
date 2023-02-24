@@ -1,6 +1,6 @@
 model_file: LorentzNet_model.pt
-max_num_files: 1
-batch_size: 256
+max_num_files: -1
+batch_size: 128
 num_epochs: 25
 #do_energy_regression: True
 verbosity: 1

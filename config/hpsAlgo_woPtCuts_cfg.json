@@ -1,16 +1,20 @@
 {
     "HPSAlgo": {
-        "signalCands": {"minChargedHadronPt": 0.5, "minElectronPt": 0.5, "minMuonPt": 1.0e6},
+        "signalCands": {
+            "minChargedHadronPt": -1.0,
+            "minElectronPt": -1.0,
+            "minMuonPt": 1.0e6
+        },
         "isolationCands": {
-            "minChargedHadronPt": 0.5,
-            "minElectronPt": 0.5,
-            "minGammaPt": 1.0,
-            "minMuonPt": 0.5,
-            "minNeutralHadronPt": 10.0
+            "minChargedHadronPt": -1.0,
+            "minElectronPt": -1.0,
+            "minGammaPt": -1.0,
+            "minMuonPt": -1.0,
+            "minNeutralHadronPt": -1.0
         },
         "matchingConeSize": 1.0e-1,
         "isolationConeSize": 5.0e-1,
-        "metric": "theta-phi",
+        "coneMetric": "theta-phi",
         "StripAlgo": {
             "useGammas": true,
             "minGammaPtSeed": 1.0,

@@ -12,8 +12,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from LorentzNetDataset import LorentzNetDataset
-from LorentzNet import LorentzNet
+from ParticleTransformerDataset import ParticleTransformerDataset
+from ParticleTransformer import ParticleTransformer
 
 
 def get_split_files(cfg_filename, split):
@@ -36,12 +36,12 @@ def train_loop(dataloader, model, dev, loss_fn, optimizer):
     for batch, (X, y) in enumerate(dataloader):
         # Compute prediction and loss
         x = X["x"].to(device=dev)
-        scalars = X["scalars"].to(device=dev)
+        v = X["v"].to(device=dev)
         mask = X["mask"].to(device=dev)
         y = y.squeeze(dim=1).to(device=dev)
         # print("shape(y) = ", y.shape)
         # print("y = ", y)
-        pred = model(x, scalars, mask)
+        pred = model(x, v, mask)
         # print("shape(pred) = ", pred.shape)
         # print("pred = ", pred)
         loss = loss_fn(pred, y)
@@ -84,9 +84,9 @@ def run_command(cmd):
     print(result.stdout)
 
 
-@hydra.main(config_path="../config", config_name="trainLorentzNet", version_base=None)
-def trainLorentzNet(train_cfg: DictConfig) -> None:
-    print("<trainLorentzNet>:")
+@hydra.main(config_path="../config", config_name="trainParticleTransformer", version_base=None)
+def trainParticleTransformer(train_cfg: DictConfig) -> None:
+    print("<trainParticleTransformer>:")
 
     filelist_train = get_split_files("config/datasets/train.yaml", "train")
     filelist_test = get_split_files("config/datasets/validation.yaml", "validation")
@@ -94,38 +94,32 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device: %s" % dev)
 
-    jsonFileName = "./config/LorentzNet_cfg.json"
+    jsonFileName = "./config/ParticleTransformer_cfg.json"
     print("Loading model configuration from file: %s" % jsonFileName)
-    LorentzNet_cfg = None
+    ParticleTransformer_cfg = None
     if os.path.isfile(jsonFileName):
         jsonFile = open(jsonFileName, "r")
-        LorentzNet_cfg = json.load(jsonFile)
-        if "LorentzNet" not in LorentzNet_cfg.keys():
+        ParticleTransformer_cfg = json.load(jsonFile)
+        if "ParticleTransformer" not in ParticleTransformer_cfg.keys():
             raise RuntimeError("Failed to parse config file %s !!")
-        LorentzNet_cfg = LorentzNet_cfg["LorentzNet"]
-        for key, value in LorentzNet_cfg.items():
+        ParticleTransformer_cfg = ParticleTransformer_cfg["ParticleTransformer"]
+        for key, value in ParticleTransformer_cfg.items():
             print(" %s = " % key, value)
         jsonFile.close()
     else:
         raise RuntimeError("Failed to read config file %s !!")
 
-    n_scalar = LorentzNet_cfg["n_scalar"]
-    n_hidden = LorentzNet_cfg["n_hidden"]
-    n_class = LorentzNet_cfg["n_class"]
-    dropout = LorentzNet_cfg["dropout"]
-    n_layers = LorentzNet_cfg["n_layers"]
-    c_weight = LorentzNet_cfg["c_weight"]
-    max_cands = LorentzNet_cfg["max_cands"]
-    add_beams = LorentzNet_cfg["add_beams"]
+    max_cands = ParticleTransformer_cfg["max_cands"]
+    metric = ParticleTransformer_cfg["metric"]
 
     print("Building model...")
-    model = LorentzNet(
-        n_scalar=n_scalar,
-        n_hidden=n_hidden,
-        n_class=n_class,
-        dropout=dropout,
-        n_layers=n_layers,
-        c_weight=c_weight,
+    model = ParticleTransformer(
+        input_dim=17,
+        num_classes=2,
+        use_pre_activation_pair=False,
+        for_inference=False,
+        use_amp=False,
+        metric=metric,
         verbosity=train_cfg.verbosity,
     ).to(device=dev)
     print("Finished building model:")
@@ -135,14 +129,12 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
 
     print("Starting to build training dataset...")
-    dataset_train = LorentzNetDataset(
-        filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams
-    )
+    dataset_train = ParticleTransformerDataset(filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands)
     print("Finished building training dataset.")
 
     print("Starting to build validation dataset...")
-    dataset_test = LorentzNetDataset(
-        filelist_test, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams
+    dataset_test = ParticleTransformerDataset(
+        filelist_test, max_num_files=train_cfg.max_num_files, metric=metric, max_cands=max_cands
     )
     print("Finished building validation dataset.")
 
@@ -168,4 +160,4 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    trainLorentzNet()
+    trainParticleTransformer()

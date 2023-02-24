@@ -1,0 +1,6 @@
+model_file: ParticleTransformer_model.pt
+max_num_files: -1
+batch_size: 64
+num_epochs: 10
+#do_energy_regression: True
+verbosity: 1
