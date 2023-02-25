@@ -1,0 +1,12 @@
+weighting:
+  # weights_dir: /local/laurits/CLIC_weights
+  variables:
+    pt:
+      range: [20, 200]
+      n_bins: 91
+    eta:
+      range: [-2.8, 2.8]
+      n_bins: 57
+defaults:
+  - ntupelizer
+  - _self_
