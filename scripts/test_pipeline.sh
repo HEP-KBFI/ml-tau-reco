@@ -32,6 +32,9 @@ fi;
 python3 ../src/edm4hep_to_ntuple.py samples_to_process=[ZH_Htautau] samples.ZH_Htautau.input_dir=$INFILE_TAU_DIR samples.ZH_Htautau.output_dir=$PWD test_run=True
 python3 ../src/edm4hep_to_ntuple.py samples_to_process=[QCD] samples.QCD.input_dir=$INFILE_QCD_DIR samples.QCD.output_dir=$PWD test_run=True
 
+python3 ../src/weight_tools.py samples.ZH_Htautau.output_dir=$PWD
+python3 ../src/weight_tools.py samples.QCD.output_dir=$PWD # Currently the weights are calculated 2 times here since the two samples are in the same directory
+
 find . -type f -name "*.parquet"
 
 TAU_FILENAME=reco_p8_ee_ZH_Htautau_ecm380_200001.parquet
