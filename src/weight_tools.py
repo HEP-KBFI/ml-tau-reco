@@ -76,7 +76,7 @@ def process_files(weight_matrix, eta_bin_edges, pt_bin_edges, data_dir, use_mult
             )
 
 
-def process_single_file(input_path, weight_matrix, eta_bin_edges, pt_bin_edges, output):
+def process_single_file(input_path, weight_matrix, eta_bin_edges, pt_bin_edges):
     data = ak.from_parquet(input_path)
     p4s = vector.awk(
         ak.zip(
