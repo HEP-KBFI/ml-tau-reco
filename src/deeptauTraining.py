@@ -184,19 +184,31 @@ def get_split_files(config_path, split):
 
 @hydra.main(config_path="../config", config_name="deeptauTraining", version_base=None)
 def main(cfg):
-    hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
-    outpath = hydra_cfg["runtime"]["output_dir"]
+    sig_input_dir = cfg.algorithms.HPS.sig_ntuples_dir
+    bkg_input_dir = cfg.algorithms.HPS.bkg_ntuples_dir
+    sig_train_paths = [
+        os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "ZH_Htautau" in path
+    ]
+    bkg_train_paths = [
+        os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "QCD" in path
+    ]
+    sig_val_paths = [
+        os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.validation.paths if "ZH_Htautau" in path
+    ]
+    bkg_val_paths = [
+        os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.validation.paths if "QCD" in path
+    ]
 
-    files_train = get_split_files(cfg.train_files, "train")
-    files_val = get_split_files(cfg.validation_files, "validation")
+    files_train = sig_train_paths + bkg_train_paths
+    files_val = sig_val_paths + bkg_val_paths
 
     ds_train = TauJetDatasetWithGrid(files_train)
     ds_val = TauJetDatasetWithGrid(files_val)
 
     print("Loaded TauJetDatasetWithGrid with {} train steps".format(len(ds_train)))
     print("Loaded TauJetDatasetWithGrid with {} val steps".format(len(ds_val)))
-    ds_train_loader = DataLoader(ds_train, batch_size=cfg.batch_size, shuffle=True)
-    ds_val_loader = DataLoader(ds_val, batch_size=cfg.batch_size, shuffle=True)
+    ds_train_loader = DataLoader(ds_train, batch_size=cfg.DeepTau_training.batch_size, shuffle=True)
+    ds_val_loader = DataLoader(ds_val, batch_size=cfg.DeepTau_training.batch_size, shuffle=True)
 
     assert len(ds_train_loader) > 0
     assert len(ds_val_loader) > 0
@@ -212,12 +224,12 @@ def main(cfg):
     print("params={}".format(count_parameters(model)))
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.000001)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=0.000001, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
+        optimizer, max_lr=0.000001, steps_per_epoch=len(ds_train_loader), epochs=cfg.DeepTau_training.epochs
     )
     
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
     
-    for iepoch in range(cfg.epochs):
+    for iepoch in range(cfg.DeepTau_training.epochs):
         loss_cls_train, loss_p4_train, _ = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)

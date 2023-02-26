@@ -1,5 +1,9 @@
-train_files: config/datasets/train_deeptau.yaml
-validation_files: config/datasets/validation_deeptau.yaml
-epochs: 200
-batch_size: 512
-lr: 0.0001
+DeepTau_training:
+  n_training_files: -1
+  epochs: 200
+  batch_size: 512
+  lr: 0.0001
+defaults:
+  - datasets: datasets
+  - metrics
+  - _self_
