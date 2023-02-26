@@ -62,7 +62,7 @@ validation:
 EOF
 
 #Train a simple pytorch model
-python3 src/endtoend_simple.py epochs=2 train_files=train.yaml validation_files=val.yaml
+python3 src/endtoend_simple.py epochs=10 train_files=train.yaml validation_files=val.yaml
 
 # run oracle -> oracle.parquet
 mkdir -p oracle
@@ -76,9 +76,28 @@ python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_H
 mkdir -p hps
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=HPS use_multiprocessing=False output_dir=hps
 
+mkdir -p hps
+python3 src/runBuilder.py n_files=1 samples_to_process=[QCD] samples.QCD.output_dir=ntuple builder=HPS use_multiprocessing=False output_dir=hps
+
 #run GridBuilder
 mkdir -p grid
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] builder=Grid use_multiprocessing=False output_dir=grid samples.ZH_Htautau.output_dir=hps/HPS/ZH_Htautau/
+
+python3 src/runBuilder.py n_files=1 samples_to_process=[QCD] builder=Grid use_multiprocessing=False output_dir=grid samples.QCD.output_dir=hps/HPS/QCD/
+
+#Prepare training inputs with just one file per split
+cat <<EOF > train_deeptau.yaml
+train:
+  paths:
+  - ./grid/Grid/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_1.parquet
+EOF
+cat <<EOF > val_deeptau.yaml
+validation:
+  paths:
+  - ./grid/Grid/QCD/reco_p8_ee_QCD_ecm380_1.parquet
+EOF
+
+python3 src/deeptauTraining.py epochs=10 train_files=train_deeptau.yaml validation_files=val_deeptau.yaml
 
 #run simple DNN reco
 mkdir -p simplednn
