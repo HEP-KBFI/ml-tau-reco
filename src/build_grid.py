@@ -49,49 +49,49 @@ class GridBuilder(BasicTauBuilder):
         cone = 3
         return np.maximum(cone / np.maximum(pt, minpt), minr)
 
-    def process_onejet(self, etas, phis, parts_p4, part_type, grid):
+    def process_onejet(self, etas, phis, parts_p4, part_type, grid, tau_p4):
         part_var = part_var_list[part_type]
-        list_part_var = np.zeros((grid.nCellsEta * grid.nCellsPhi, len(part_var)))
+        list_part_var = np.zeros((len(part_var), grid.nCellsEta * grid.nCellsPhi))
         for eta, phi, part_p4 in zip(etas, phis, parts_p4):
-            if eta is None or phi is None:  # it means eta, phi are not within inner or outer grid
+            if eta is None or phi is None or tau_p4.pt == 0:  # it means eta, phi are not within inner or outer grid
                 continue
             cellIndex = CellIndex(eta, phi)
             flatcellIndex = grid.GetFlatIndex(cellIndex)
 
             ##### fill electron variable ####
             if part_type == "ele":
-                list_part_var[flatcellIndex][part_var["elept"]] += part_p4.pt
-                list_part_var[flatcellIndex][part_var["eleeta"]] += part_p4.eta
-                list_part_var[flatcellIndex][part_var["elephi"]] += part_p4.phi
-                list_part_var[flatcellIndex][part_var["elemass"]] += part_p4.mass
+                list_part_var[part_var["elept"]][flatcellIndex] += part_p4.pt / tau_p4.pt
+                list_part_var[part_var["eleeta"]][flatcellIndex] += part_p4.eta
+                list_part_var[part_var["elephi"]][flatcellIndex] += part_p4.phi
+                list_part_var[part_var["elemass"]][flatcellIndex] += part_p4.mass
             #### fill gamma variable #####
             elif part_type == "gamma":
-                list_part_var[flatcellIndex][part_var["gammapt"]] += part_p4.pt
-                list_part_var[flatcellIndex][part_var["gammaeta"]] += part_p4.eta
-                list_part_var[flatcellIndex][part_var["gammaphi"]] += part_p4.phi
-                list_part_var[flatcellIndex][part_var["gammamass"]] += part_p4.mass
+                list_part_var[part_var["gammapt"]][flatcellIndex] += part_p4.pt / tau_p4.pt
+                list_part_var[part_var["gammaeta"]][flatcellIndex] += part_p4.eta
+                list_part_var[part_var["gammaphi"]][flatcellIndex] += part_p4.phi
+                list_part_var[part_var["gammamass"]][flatcellIndex] += part_p4.mass
             #### fill muon candidate #####
             elif part_type == "mu":
-                list_part_var[flatcellIndex][part_var["mupt"]] += part_p4.pt
-                list_part_var[flatcellIndex][part_var["mueta"]] += part_p4.eta
-                list_part_var[flatcellIndex][part_var["muphi"]] += part_p4.phi
-                list_part_var[flatcellIndex][part_var["mumass"]] += part_p4.mass
+                list_part_var[part_var["mupt"]][flatcellIndex] += part_p4.pt / tau_p4.pt
+                list_part_var[part_var["mueta"]][flatcellIndex] += part_p4.eta
+                list_part_var[part_var["muphi"]][flatcellIndex] += part_p4.phi
+                list_part_var[part_var["mumass"]][flatcellIndex] += part_p4.mass
             #### fill charged candidate variable ####
             elif part_type == "charge_candidate":
-                list_part_var[flatcellIndex][part_var["chargedpt"]] += part_p4.pt
-                list_part_var[flatcellIndex][part_var["chargedeta"]] += part_p4.eta
-                list_part_var[flatcellIndex][part_var["chargedphi"]] += part_p4.phi
-                list_part_var[flatcellIndex][part_var["chargedmass"]] += part_p4.mass
+                list_part_var[part_var["chargedpt"]][flatcellIndex] += part_p4.pt / tau_p4.pt
+                list_part_var[part_var["chargedeta"]][flatcellIndex] += part_p4.eta
+                list_part_var[part_var["chargedphi"]][flatcellIndex] += part_p4.phi
+                list_part_var[part_var["chargedmass"]][flatcellIndex] += part_p4.mass
             ### fill neutral candidate #####
             elif part_type == "neutral_candidate":
-                list_part_var[flatcellIndex][part_var["neutralpt"]] += part_p4.pt
-                list_part_var[flatcellIndex][part_var["neutraleta"]] += part_p4.eta
-                list_part_var[flatcellIndex][part_var["neutralphi"]] += part_p4.phi
-                list_part_var[flatcellIndex][part_var["neutralmass"]] += part_p4.mass
+                list_part_var[part_var["neutralpt"]][flatcellIndex] += part_p4.pt / tau_p4.pt
+                list_part_var[part_var["neutraleta"]][flatcellIndex] += part_p4.eta
+                list_part_var[part_var["neutralphi"]][flatcellIndex] += part_p4.phi
+                list_part_var[part_var["neutralmass"]][flatcellIndex] += part_p4.mass
         return list_part_var.reshape(-1)
 
     def processJets(self, data):
-        write_info = {}
+        write_info = {field: data[field] for field in data.fields}
         reco_tau_p4 = self.build_p4(data, "tau_p4s")
         signalcone = self.signalCone(reco_tau_p4.pt)
         for part in self.parttype:
@@ -119,12 +119,13 @@ class GridBuilder(BasicTauBuilder):
                     maskdeta = ak.mask(maskdeta, dr < 0.5)
                     maskdphi = ak.mask(maskdphi, dr < 0.5)
                 etacellindex, phicellindex = grid.getcellIndex(maskdeta, maskdphi)
+                assert(len(reco_tau_p4) == len(etacellindex))
                 for idx, eta in enumerate(etacellindex):  # this loops over all jet?
-                    list_part_info_perjet = self.process_onejet(eta, phicellindex[idx], part_inside_cone[idx], part, grid)
+                    list_part_info_perjet = self.process_onejet(eta, phicellindex[idx], part_inside_cone[idx], part, grid, reco_tau_p4[idx])
                     if idx == 0:
                         list_part_info_alljet = list_part_info_perjet
                     else:
-                        list_part_info_alljet = np.concatenate((list_part_info_perjet, list_part_info_alljet))
+                        list_part_info_alljet = np.concatenate((list_part_info_perjet, list_part_info_alljet), axis=-1)
                 list_ak = ak.from_numpy(list_part_info_alljet)
                 write_info.update({f"{cone}_{part}_block": list_ak})
                 assert list_part_info_alljet.shape[0] == pow(self._builderConfig[cone]["n_cells"], 2) * len(

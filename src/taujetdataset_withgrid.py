@@ -5,19 +5,20 @@ from torch_geometric.data import Data
 import os.path as osp
 from glob import glob
 import json
+import numpy as np
 
 from part_var import part_var_list
 
 
 class TauJetDatasetWithGrid:
     def __init__(self, filelist=[], cfgFileName="./config/grid_builder.json"):
-        self.tau_features = ["x", "y", "z", "tau"]
+        self.tau_p4_features = ["x", "y", "z", "tau"]
         self.filelist = filelist
         self.all_data = []
-
         cfgFile = open(cfgFileName, "r")
         cfg = json.load(cfgFile)
         self._builderConfig = cfg["GridAlgo"]
+        self.tauftrs = cfg["tau_features"]
         cfgFile.close()
 
         for fn in self.filelist:
@@ -26,6 +27,10 @@ class TauJetDatasetWithGrid:
 
     def process_file_data(self, data):
 
+        gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
+        p4 = data["gen_jet_tau_p4s"]
+        gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.tau], axis=-1)).to(dtype=torch.float32)
+        assert gen_tau_p4.shape[0] == gen_tau_decaymode.shape[0]
         tau_features = self.get_tau_features(data)
         ele_block_features = self.get_part_block_features(data, "ele")
         gamma_block_features = self.get_part_block_features(data, "gamma")
@@ -38,6 +43,8 @@ class TauJetDatasetWithGrid:
         )
         ret_data = [
             Data(
+                gen_tau_decaymode=gen_tau_decaymode[itau : itau + 1],
+                gen_tau_p4=gen_tau_p4[itau : itau + 1],
                 tau_features=tau_features[itau : itau + 1, :],
                 inner_grid_ele_gamma_block=ele_gamma_features["inner_grid"][itau : itau + 1, :],
                 outer_grid_ele_gamma_block=ele_gamma_features["outer_grid"][itau : itau + 1, :],
@@ -57,8 +64,10 @@ class TauJetDatasetWithGrid:
             taus[k] = data["tau_p4s"][k]
         # collect tau features in a specific order to an (Njet x Nfeatjet) torch tensor
         tau_feature_tensors = []
-        for feat in self.tau_features:
+        for feat in self.tau_p4_features:
             tau_feature_tensors.append(torch.tensor(taus[feat], dtype=torch.float32))
+        for feat in self.tauftrs:
+            tau_feature_tensors.append(torch.tensor(data[feat], dtype=torch.float32))
         tau_features = torch.stack(tau_feature_tensors, axis=-1)
         self.data_len = len(tau_features)
 
@@ -71,7 +80,7 @@ class TauJetDatasetWithGrid:
             len_part_features = len(part_var_list[parttype])
             part_block_features = torch.tensor(data[block_name], dtype=torch.float32)
             part_block = part_block_features.reshape(
-                self.data_len, self._builderConfig[cone]["n_cells"], self._builderConfig[cone]["n_cells"], len_part_features
+                self.data_len, len_part_features, self._builderConfig[cone]["n_cells"], self._builderConfig[cone]["n_cells"]
             )
             part_block_frs[cone] = part_block
         return part_block_frs
@@ -81,7 +90,7 @@ class TauJetDatasetWithGrid:
         for block in ["inner_grid", "outer_grid"]:
             first_block_feature = first_part_blocks[block]
             second_block_feature = second_part_blocks[block]
-            concatenated_part_frs[f"{block}"] = torch.concatenate((first_block_feature, second_block_feature), axis=-1)
+            concatenated_part_frs[f"{block}"] = torch.concatenate((first_block_feature, second_block_feature), axis=1)
         return concatenated_part_frs
 
     def __getitem__(self, idx):
