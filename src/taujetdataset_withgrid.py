@@ -29,10 +29,13 @@ class TauJetDatasetWithGrid:
         tau_features = self.get_tau_features(data)
         ele_block_features = self.get_part_block_features(data, "ele")
         gamma_block_features = self.get_part_block_features(data, "gamma")
-        ele_gamma_features = self.get_ele_gamma_block_features(ele_block_features, gamma_block_features)
+        ele_gamma_features = self.get_concatenated_part_block_features(ele_block_features, gamma_block_features)
         muon_block_features = self.get_part_block_features(data, "mu")
         charged_cand_block_features = self.get_part_block_features(data, "charged_cand")
         neutral_cand_block_features = self.get_part_block_features(data, "neutral_cand")
+        charged_neutral_features = self.get_concatenated_part_block_features(
+            charged_cand_block_features, neutral_cand_block_features
+        )
         ret_data = [
             Data(
                 tau_features=tau_features[itau : itau + 1, :],
@@ -40,10 +43,8 @@ class TauJetDatasetWithGrid:
                 outer_grid_ele_gamma_block=ele_gamma_features["outer_grid"][itau : itau + 1, :],
                 inner_grid_mu_block=muon_block_features["inner_grid"][itau : itau + 1, :],
                 outer_grid_mu_block=muon_block_features["outer_grid"][itau : itau + 1, :],
-                inner_grid_charged_cand_block=charged_cand_block_features["inner_grid"][itau : itau + 1, :],
-                outer_grid_charged_cand_block=charged_cand_block_features["outer_grid"][itau : itau + 1, :],
-                inner_grid_neutral_cand_block=neutral_cand_block_features["inner_grid"][itau : itau + 1, :],
-                outer_grid_neutral_cand_block=neutral_cand_block_features["outer_grid"][itau : itau + 1, :],
+                inner_grid_charged_neutral_block=charged_neutral_features["inner_grid"][itau : itau + 1, :],
+                outer_grid_charged_neutral_block=charged_neutral_features["outer_grid"][itau : itau + 1, :],
             )
             for itau in range(len(tau_features))
         ]
@@ -75,13 +76,13 @@ class TauJetDatasetWithGrid:
             part_block_frs[cone] = part_block
         return part_block_frs
 
-    def get_ele_gamma_block_features(self, eleblocks: dict, gammablocks: dict) -> dict:
-        ele_gamma_frs = {}
+    def get_concatenated_part_block_features(self, first_part_blocks: dict, second_part_blocks: dict) -> dict:
+        concatenated_part_frs = {}
         for block in ["inner_grid", "outer_grid"]:
-            ele_feature = eleblocks[block]
-            gamma_feature = gammablocks[block]
-            ele_gamma_frs[f"{block}"] = torch.concatenate((ele_feature, gamma_feature), axis=-1)
-        return ele_gamma_frs
+            first_block_feature = first_part_blocks[block]
+            second_block_feature = second_part_blocks[block]
+            concatenated_part_frs[f"{block}"] = torch.concatenate((first_block_feature, second_block_feature), axis=-1)
+        return concatenated_part_frs
 
     def __getitem__(self, idx):
         return self.all_data[idx]
@@ -98,11 +99,10 @@ if __name__ == "__main__":
     # treat each input file like a batch
     for ibatch in range(len(ds)):
         batch = ds[ibatch]
-    print("shape of ele_gamma inner grid ", batch["inner_grid_ele_gamma_block"].shape)
-    print("shape of ele_gamma inner grid ", batch["outer_grid_ele_gamma_block"].shape)
-    print("shape of muon inner grid ", batch["inner_grid_mu_block"].shape)
-    print("shape of muon inner grid ", batch["outer_grid_mu_block"].shape)
-    print("shape of charged cand inner grid ", batch["inner_grid_charged_cand_block"].shape)
-    print("shape of charged cand inner grid ", batch["outer_grid_charged_cand_block"].shape)
-    print("shape of neutral cand inner grid ", batch["inner_grid_neutral_cand_block"].shape)
-    print("shape of neutral cand inner grid ", batch["outer_grid_neutral_cand_block"].shape)
+        print("shape of ele_gamma inner grid ", batch["inner_grid_ele_gamma_block"].shape)
+        print("shape of ele_gamma inner grid ", batch["outer_grid_ele_gamma_block"].shape)
+        print("shape of muon inner grid ", batch["inner_grid_mu_block"].shape)
+        print("shape of muon inner grid ", batch["outer_grid_mu_block"].shape)
+        print("shape of charged_neutral inner grid ", batch["inner_grid_charged_neutral_block"].shape)
+        print("shape of charged_neutral outer grid ", batch["outer_grid_charged_neutral_block"].shape)
+        break
