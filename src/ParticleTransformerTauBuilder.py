@@ -45,7 +45,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             input_dim=17,
             num_classes=2,
             use_pre_activation_pair=False,
-            for_inference=False, # CV: keep same as for training and apply softmax function on NN output manually, as in LorentzNet case
+            for_inference=False, # CV: keep same as for training and apply softmax function on NN output manually
             use_amp=False,
             metric=metric,
             verbosity=verbosity,
