@@ -9,6 +9,7 @@ import torch
 from basicTauBuilder import BasicTauBuilder
 from ParticleTransformer import ParticleTransformer
 from ParticleTransformerDataset import buildParticleTransformerTensors
+from hpsAlgoTools import comp_angle, comp_deltaEta, comp_deltaTheta, comp_deltaR
 
 
 class ParticleTransformerTauBuilder(BasicTauBuilder):
@@ -45,12 +46,14 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             input_dim=17,
             num_classes=2,
             use_pre_activation_pair=False,
-            for_inference=False, # CV: keep same as for training and apply softmax function on NN output manually
+            for_inference=False,  # CV: keep same as for training and apply softmax function on NN output manually
             use_amp=False,
             metric=metric,
             verbosity=verbosity,
         )
-        self.model.load_state_dict(torch.load("data/ParticleTransformer_model_2023MarXX.pt", map_location=torch.device("cpu")))
+        self.model.load_state_dict(
+            torch.load("data/ParticleTransformer_model_2023MarXX.pt", map_location=torch.device("cpu"))
+        )
         self.model.eval()
 
         self.verbosity = verbosity
