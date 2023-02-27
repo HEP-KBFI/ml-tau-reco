@@ -29,9 +29,19 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             raise RuntimeError("Failed to read config file %s !!")
 
         self.max_cands = self._builderConfig["max_cands"]
-        self.metric = self._builderConfig["metric"]
+        metric = self._builderConfig["metric"]
+        self.metric_dR = None
+        self.metric_dEta = None
+        if metric == "eta-phi":
+            self.metric_dR = comp_deltaR
+            self.metric_dEta = comp_deltaEta
+        elif metric == "theta-phi":
+            self.metric_dR = comp_angle
+            self.metric_dEta = comp_deltaTheta
+        else:
+            raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
 
-        model = ParticleTransformer(
+        self.model = ParticleTransformer(
             input_dim=17,
             num_classes=2,
             use_pre_activation_pair=False,
