@@ -52,10 +52,10 @@ def create_matrix(data, y_bin_edges, x_bin_edges, y_property, x_property):
     )
     x_property_ = getattr(p4s, x_property).to_numpy()
     y_property_ = getattr(p4s, y_property).to_numpy()
-    if y_property == 'theta':
+    if y_property == "theta":
         y_property_ = np.rad2deg(y_property_)
     matrix = np.histogram2d(y_property_, x_property_, bins=(y_bin_edges, x_bin_edges))[0]
-    normalized_matrix = matrix/np.sum(matrix)
+    normalized_matrix = matrix / np.sum(matrix)
     return normalized_matrix
 
 
