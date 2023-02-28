@@ -41,12 +41,6 @@ def buildCands(cand_p4s, cand_pdgIds, cand_qs, cand_d0s, cand_d0errs, cand_dzs, 
         and len(cand_d0errs) == len(cand_dzs)
         and len(cand_dzs) == len(cand_dzerrs)
     ):
-        # print("len(cand_p4s) = %i" % len(cand_p4s))
-        # print("len(cand_pdgIds) = %i" % len(cand_pdgIds))
-        # print("len(cand_d0s) = %i" % len(cand_d0s))
-        # print("len(cand_d0errs) = %i" % len(cand_d0errs))
-        # print("len(cand_dzs) = %i" % len(cand_dzs))
-        # print("len(cand_dzerrs) = %i" % len(cand_dzerrs))
         raise ValueError("Length of arrays for candidate for p4 and other features don't match !!")
     cands = []
     num_cands = len(cand_p4s)
