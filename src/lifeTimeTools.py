@@ -327,10 +327,10 @@ def findTrackPCAs(
             partTickleTrackLink.append(-1)  # no track / neutral
         else:
             partTickleTrackLink.append(part_trkidx)
-    impacts_pcas_pvs = [-1, -1000, -1, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000] * np.ones(
+    impacts_pcas_pvs = [-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000] * np.ones(
         (len(partTickleTrackLink), 11)
     )
-    impacts_pcas_errors = [-1, -1000, -1, -1000, -1000, -1000, -1000, -100] * np.ones((len(partTickleTrackLink), 8))
+    impacts_pcas_errors = [-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000] * np.ones((len(partTickleTrackLink), 8))
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
         # i.e track 0 is present at idx 0-3 for different track states, 1 at 4-7, and so on -> multiply by 4
@@ -365,10 +365,11 @@ def findTrackPCAs(
             """
             d0_error = cov[0]
             z0_error = cov[9]
-            phi0_error = cov[2]
-            tanL_error = cov[14]
+            phi0_error = 0.0  # cov[2] approx 0
+            tanL_error = 0.0  # approx 0. cov[14]
             pca = calcPCA(pr, d0, z0, phi0, tanL, omega, vertex)
             pca_error = calcPCA_error(pr, d0, z0, phi0, tanL, omega, vertex, d0_error, z0_error, phi0_error, tanL_error)
+            # print(pca, pca_error)
             dz = vertex[2] - pca[2]
             dz_error = math.sqrt(pca_error[2] * pca_error[2])
             dxy = math.sqrt((vertex[0] - pca[0]) * (vertex[0] - pca[0]) + (vertex[1] - pca[1]) * (vertex[1] - pca[1]))
@@ -386,8 +387,12 @@ def findTrackPCAs(
                 + 4 * (vertex[1] - pca[1]) * (vertex[1] - pca[1]) * pca_error[1] * pca_error[1]
                 + 4 * (vertex[2] - pca[2]) * (vertex[2] - pca[2]) * pca_error[2] * pca_error[2]
             )
-            impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0] + pca + vertex
-            impacts_pcas_errors[ili] = [dxy_error, dz_error, d3_error, d0_error, z0_error] + pca_error
+            # store positions in mym as numbers are very small
+            pca_store = [pca[i] * 1000000.0 for i in range(3)]
+            pca_error_store = [pca_error[i] * 1000000.0 for i in range(3)]
+            vertex_store = [vertex[i] * 1000.0 for i in range(3)]
+            impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0] + pca_store + vertex_store
+            impacts_pcas_errors[ili] = [dxy_error, dz_error, d3_error, d0_error, z0_error] + pca_error_store
     return [impacts_pcas_pvs, impacts_pcas_errors]
 
 
@@ -398,18 +403,27 @@ Helper to project the impact parameters of the track on the direction jet axis.
 
 
 def calculateImpactParameterSigns(ips, pca, pv, jetp4):
-    ip_direction = [ips[0] - pv[0], ips[1] - pv[1], ips[2] - pv[2]]
-    ip_direction /= math.sqrt(
-        ip_direction[0] * ip_direction[0] + ip_direction[1] * ip_direction[1] + ip_direction[2] * ip_direction[2]
-    )
-    jet_direction = [jetp4["x"], jetp4["y"], jetp4["z"]]
-    jet_direction /= math.sqrt(
-        jet_direction[0] * jet_direction[0] + jet_direction[1] * jet_direction[1] + jet_direction[2] * jet_direction[2]
-    )
-    sign = np.sign(
-        ip_direction[0] * jet_direction[0] + ip_direction[1] * jet_direction[1] + ip_direction[2] * jet_direction[2]
-    )
+    # jet_direction = [jetp4["x"], jetp4["y"], jetp4["z"]]
+    # jet_norm = math.sqrt(
+    #     jet_direction[0] * jet_direction[0] + jet_direction[1] * jet_direction[1] + jet_direction[2] * jet_direction[2]
+    # )
+    # jet_direction = [(1.0 / jet_norm) * jet_direction[i] for i in range(len(jet_direction))]
     newips = []
-    for ip in ips:
-        newips.append(sign * abs(ip))
+    for iip, ip in enumerate(ips):
+        if ip == -1000.0:
+            newips.append(-1000.0)
+            continue
+        # pca_direction = [pca[0][iip] - pv[0][iip], pca[1][iip] - pv[1][iip], pca[2][iip] - pv[2][iip]]
+        # pca_norm = math.sqrt(
+        #     pca_direction[0] * pca_direction[0] + pca_direction[1] * pca_direction[1] + pca_direction[2] * pca_direction[2]
+        # )
+        # if pca_norm > 0:
+        #     pca_direction = [(1.0 / pca_norm) * pca_direction[i] for i in range(len(pca_direction))]
+        # else:
+        #     pca_direction = jet_direction
+        # sign = np.sign(
+        #     pca_direction[0] * jet_direction[0] + pca_direction[1] * jet_direction[1] + pca_direction[2] * jet_direction[2]
+        # )
+        # newips.append(sign * abs(ip))
+        newips.append(abs(ip))
     return newips
