@@ -18,14 +18,7 @@ def load_samples(sig_dir: str, bkg_dir: str):
     return sig_data, bkg_data
 
 
-def visualize_weights(
-        weight_matrix,
-        x_bin_edges,
-        y_bin_edges,
-        output_path,
-        ylabel=r"$\eta$",
-        xlabel=r"$p_T$"
-):
+def visualize_weights(weight_matrix, x_bin_edges, y_bin_edges, output_path, ylabel=r"$\eta$", xlabel=r"$p_T$"):
     x_labels = [f"{label:9.0f}" for label in (x_bin_edges[1:] + x_bin_edges[:-1]) / 2]
     y_labels = [f"{label:9.2f}" for label in (y_bin_edges[1:] + y_bin_edges[:-1]) / 2]
     sns.set(rc={"figure.figsize": (16, 9)})
@@ -81,8 +74,12 @@ def process_files(weight_matrix, theta_bin_edges, pt_bin_edges, data_dir, use_mu
     else:
         for input_path in data_paths:
             process_single_file(
-                input_path=input_path, weight_matrix=weight_matrix, theta_bin_edges=theta_bin_edges, pt_bin_edges=pt_bin_edges
+                input_path=input_path,
+                weight_matrix=weight_matrix,
+                theta_bin_edges=theta_bin_edges,
+                pt_bin_edges=pt_bin_edges,
             )
+
 
 def get_weights(data, weight_matrix, theta_bin_edges, pt_bin_edges):
     p4s = vector.awk(
@@ -145,7 +142,8 @@ def main(cfg: DictConfig):
         y_bin_edges=theta_bin_edges,
         output_path=sig_output_path_p_theta,
         ylabel=r"$\theta$",
-        xlabel="p")
+        xlabel="p",
+    )
     bkg_output_path_p_theta = os.path.join(cfg.samples.QCD.output_dir, "bkg_weights_p_theta.png")
     visualize_weights(
         weight_matrix=bkg_weights_p_theta,
@@ -153,7 +151,8 @@ def main(cfg: DictConfig):
         y_bin_edges=theta_bin_edges,
         output_path=bkg_output_path_p_theta,
         ylabel=r"$\theta$",
-        xlabel="p")
+        xlabel="p",
+    )
     process_files(
         weight_matrix=sig_weights_p_theta,
         theta_bin_edges=theta_bin_edges,
