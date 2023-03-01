@@ -71,7 +71,7 @@ class Tau:
             cand.print()
         print(
             " isolation: charged = %1.2f, gamma = %1.2f, neutralHadron = %1.2f, combined = %1.2f"
-            % (self.chargedIso, self.gammaIso, self.neutralHadronIso, self.combinedIso)
+            % (self.chargedIso_dR0p5, self.gammaIso_dR0p5, self.neutralHadronIso_dR0p5, self.combinedIso_dR0p5)
         )
 
 
