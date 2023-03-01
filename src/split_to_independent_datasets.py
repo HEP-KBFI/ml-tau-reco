@@ -12,7 +12,7 @@ def split_to_datasets(cfg: DictConfig) -> None:
     fractions = {dataset: cfg[dataset] / total for dataset in ["train", "test", "validation"]}
     datasets = {dataset: [] for dataset in ["train", "test", "validation"]}
     for sample in cfg.samples_to_process:
-        sample_paths = glob.glob(os.path.join(cfg.samples[sample].output_dir, "*"))
+        sample_paths = glob.glob(os.path.join(cfg.samples[sample].output_dir, "*.parquet"))
         n_files_in_sample = len(sample_paths)
         n_train_files = int(n_files_in_sample * fractions["train"])
         n_test_files = int(n_files_in_sample * fractions["test"])

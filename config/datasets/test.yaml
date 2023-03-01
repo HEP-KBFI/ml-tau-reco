@@ -219,7 +219,6 @@ test:
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201517.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201851.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200465.parquet
-  - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/signal_weights.png
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201906.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201756.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200558.parquet
