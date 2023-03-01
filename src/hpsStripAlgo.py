@@ -1,12 +1,12 @@
-import math
 import vector
 
 from hpsGetParameter import getParameter
 from hpsStrip import Strip
-from hpsAlgoTools import comp_deltaPhi, comp_deltaTheta
+from hpsAlgoTools import comp_deltaPhi
+
 
 class StripAlgo:
-    def __init__(self, cfg, verbosity=0):
+    def __init__(self, cfg, metric_dEta_or_dTheta, verbosity=0):
         if verbosity >= 1:
             print("<StripAlgo::StripAlgo>:")
         self.useGammas = getParameter(cfg, "useGammas", True)
@@ -33,6 +33,8 @@ class StripAlgo:
             print(" maxStripSizeEta = %1.2f" % self.maxStripSizeEta)
             print(" maxStripSizePhi = %1.2f" % self.maxStripSizePhi)
 
+        self.metric_dEta_or_dTheta = metric_dEta_or_dTheta
+
         self.verbosity = verbosity
 
     def updateStripP4(self, strip):
@@ -45,7 +47,7 @@ class StripAlgo:
         isCandAdded = False
         for cand in cands:
             if not (cand.barcode in candBarcodesPreviousStrips or cand.barcode in candBarcodesCurrentStrip):
-                dEta = comp_deltaEta(cand, strip)
+                dEta = self.metric_dEta_or_dTheta(cand, strip)
                 dPhi = comp_deltaPhi(cand, strip)
                 if dEta < self.maxStripSizeEta and dPhi < self.maxStripSizePhi:
                     strip.cands.add(cand)
