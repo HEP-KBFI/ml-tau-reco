@@ -3,7 +3,7 @@ import vector
 
 from hpsGetParameter import getParameter
 from hpsStrip import Strip
-
+from hpsAlgoTools import comp_deltaPhi, comp_deltaTheta
 
 class StripAlgo:
     def __init__(self, cfg, verbosity=0):
@@ -45,8 +45,8 @@ class StripAlgo:
         isCandAdded = False
         for cand in cands:
             if not (cand.barcode in candBarcodesPreviousStrips or cand.barcode in candBarcodesCurrentStrip):
-                dEta = math.fabs(cand.eta - strip.eta)
-                dPhi = math.fabs(cand.phi - strip.phi)
+                dEta = comp_deltaEta(cand, strip)
+                dPhi = comp_deltaPhi(cand, strip)
                 if dEta < self.maxStripSizeEta and dPhi < self.maxStripSizePhi:
                     strip.cands.add(cand)
                     if self.updateStripAfterEachCand:

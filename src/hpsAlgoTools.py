@@ -1,32 +1,45 @@
 import math
 
 
+twopi = 2.*math.pi
+one_over_twopi = 1./twopi
+
+
 def comp_angle(cand1, cand2):
-    dTheta = cand1.p4.theta - cand2.p4.theta
-    dPhi = cand1.phi - cand2.phi
+    dTheta = math.fabs(cand1.p4.theta - cand2.p4.theta)
+    dPhi = math.fabs(cand1.phi - cand2.phi)
+    if dPhi > math.pi:
+        n = round(dPhi*one_over_twopi)
+        dPhi = math.fabs(dPhi - n*twopi)
     angle = math.sqrt(dTheta * dTheta + dPhi * dPhi)
     return angle
 
 
 def comp_deltaTheta(cand1, cand2):
-    dTheta = cand1.p4.theta - cand2.p4.theta
+    dTheta = math.fabs(cand1.p4.theta - cand2.p4.theta)
     return dTheta
 
 
 def comp_deltaR(cand1, cand2):
-    dEta = cand1.eta - cand2.eta
-    dPhi = cand1.phi - cand2.phi
+    dEta = math.fabs(cand1.eta - cand2.eta)
+    dPhi = math.fabs(cand1.phi - cand2.phi)
+    if dPhi > math.pi:
+        n = round(dPhi*one_over_twopi)
+        dPhi = math.fabs(dPhi - n*twopi)
     dR = math.sqrt(dEta * dEta + dPhi * dPhi)
     return dR
 
 
 def comp_deltaEta(cand1, cand2):
-    dEta = cand1.eta - cand2.eta
+    dEta = math.fabs(cand1.eta - cand2.eta)
     return dEta
 
 
 def comp_deltaPhi(cand1, cand2):
-    dPhi = cand1.phi - cand2.phi
+    dPhi = math.fabs(cand1.phi - cand2.phi)
+    if dPhi > math.pi:
+        n = round(dPhi*one_over_twopi)
+        dPhi = math.fabs(dPhi - n*twopi)
     return dPhi
 
 
