@@ -85,7 +85,7 @@ class HPSAlgo:
             print("isolationConeSize = %1.2f" % self.isolationConeSize)
             print("metric = '%s'" % metric)
 
-        self.stripAlgo = StripAlgo(cfg["StripAlgo"], verbosity)
+        self.stripAlgo = StripAlgo(cfg["StripAlgo"], self.metric_dEta_or_dTheta, verbosity)
 
         self.targetedDecayModes = cfg["decayModes"]
         if verbosity >= 1:
