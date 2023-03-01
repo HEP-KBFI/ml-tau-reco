@@ -42,7 +42,6 @@ train:
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201857.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201646.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201391.parquet
-  - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/signal_weights_p_theta.png
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200584.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200663.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201544.parquet
@@ -1221,7 +1220,6 @@ train:
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_101510.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_101185.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_100732.parquet
-  - /scratch-persistent/laurits/CLIC_data_20230227/QCD/bkg_weights.png
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_101210.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_100064.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_101900.parquet
@@ -1293,7 +1291,6 @@ train:
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_101297.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_100347.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_100686.parquet
-  - /scratch-persistent/laurits/CLIC_data_20230227/QCD/bkg_weights_p_theta.png
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_100057.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_101994.parquet
   - /scratch-persistent/laurits/CLIC_data_20230227/QCD/reco_p8_ee_qq_ecm380_100089.parquet
