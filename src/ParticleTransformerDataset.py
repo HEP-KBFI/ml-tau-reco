@@ -27,8 +27,6 @@ def buildParticleTransformerTensors(
         zip(jet_constituent_p4s.px, jet_constituent_p4s.py, jet_constituent_p4s.pz, jet_constituent_p4s.energy)
     )
     num_jet_constituents = int(len(jet_constituent_p4s_zipped))
-    v_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
-    v_tensor = torch.nn.functional.pad(v_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
 
     jet_constituent_features = []
     for idx in range(num_jet_constituents):
@@ -85,13 +83,16 @@ def buildParticleTransformerTensors(
             ]
         )
     x_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
-    x_tensor = torch.nn.functional.pad(v_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
+    x_tensor = torch.nn.functional.pad(x_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
+
+    v_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
+    v_tensor = torch.nn.functional.pad(v_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
 
     node_mask_tensor = torch.ones(num_jet_constituents, dtype=torch.float32)
     node_mask_tensor = torch.nn.functional.pad(node_mask_tensor, (0, max_cands - num_jet_constituents), "constant", 0.0)
     node_mask_tensor = torch.unsqueeze(node_mask_tensor, dim=-1)
 
-    return v_tensor, x_tensor, node_mask_tensor
+    return x_tensor, v_tensor, node_mask_tensor
 
 
 class ParticleTransformerDataset(Dataset):
@@ -133,8 +134,8 @@ class ParticleTransformerDataset(Dataset):
         self.filelist = filelist
         self.max_cands = max_cands
 
-        self.v_tensors = []
         self.x_tensors = []
+        self.v_tensors = []
         self.node_mask_tensors = []
         self.y_tensors = []
 
@@ -177,7 +178,7 @@ class ParticleTransformerDataset(Dataset):
                 jet_constituent_dzs = data_cand_dzs[idx]
                 jet_constituent_dzerrs = data_cand_dzerrs[idx]
 
-                v_tensor, x_tensor, node_mask_tensor = buildParticleTransformerTensors(
+                x_tensor, v_tensor, node_mask_tensor = buildParticleTransformerTensors(
                     jet_p4,
                     jet_constituent_p4s,
                     jet_constituent_pdgIds,
@@ -192,8 +193,8 @@ class ParticleTransformerDataset(Dataset):
                 )
                 y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
 
-                self.v_tensors.append(v_tensor)
                 self.x_tensors.append(x_tensor)
+                self.v_tensors.append(v_tensor)
                 self.node_mask_tensors.append(node_mask_tensor)
                 self.y_tensors.append(y_tensor)
 
@@ -203,8 +204,8 @@ class ParticleTransformerDataset(Dataset):
 
         print("Dataset contains %i entries." % self.num_jets)
 
-        assert len(self.v_tensors) == self.num_jets
         assert len(self.x_tensors) == self.num_jets
+        assert len(self.v_tensors) == self.num_jets
         assert len(self.node_mask_tensors) == self.num_jets
         assert len(self.y_tensors) == self.num_jets
 

@@ -15,6 +15,7 @@ from endtoend_simple import SimpleDNNTauBuilder
 from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 from fastCMSTauBuilder import FastCMSTauBuilder
 from LorentzNetTauBuilder import LorentzNetTauBuilder
+from ParticleTransformerTauBuilder import ParticleTransformerTauBuilder
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
@@ -48,6 +49,8 @@ def build_taus(cfg: DictConfig) -> None:
         builder = SimpleDNNTauBuilder(pytorch_model)
     elif cfg.builder == "LorentzNet":
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
+    elif cfg.builder == "ParticleTransformer":
+        builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
     builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     for sample in cfg.samples_to_process:
