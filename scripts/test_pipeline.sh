@@ -7,7 +7,7 @@ mkdir -p data
 cd ntuple
 
 #Download test files if they don't exist
-INFILE_TAU_DIR=/local/joosep/clic_edm4hep_2023_02_21/p8_ee_ZH_Htautau_ecm380/
+INFILE_TAU_DIR=/local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
 if [ ! -d "$INFILE_TAU_DIR" ]; then
     wget --directory-prefix ZH_Htautau -q --no-check-certificate -nc https://jpata.web.cern.ch/jpata/clic_edm4hep_2023_02_21/p8_ee_ZH_Htautau_ecm380/reco_p8_ee_ZH_Htautau_ecm380_200001.root
     INFILE_TAU_DIR=$PWD/ZH_Htautau
@@ -17,7 +17,7 @@ else
     INFILE_TAU_DIR=$PWD/root_input/p8_ee_ZH_Htautau_ecm380
 fi;
 
-INFILE_QCD_DIR=/local/joosep/clic_edm4hep_2023_02_21/p8_ee_qq_ecm380
+INFILE_QCD_DIR=/local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380
 if [ ! -d "$INFILE_QCD_DIR" ]; then
     wget --directory-prefix QCD -q --no-check-certificate -nc https://jpata.web.cern.ch/jpata/clic_edm4hep_2023_02_21/p8_ee_qq_ecm380/reco_p8_ee_qq_ecm380_100001.root
     INFILE_QCD_DIR=$PWD/QCD

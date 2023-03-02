@@ -243,7 +243,6 @@ def plot_all_metrics(cfg):
         plot_decaymode_reconstruction(sig_data, algorithm_output_dir, numerator_mask_e)
     plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
-    plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e)
     plot_roc(efficiencies, fakerates, output_dir)
     plot_tauClassifiers(tauClassifiers, 'sig', os.path.join(output_dir, 'tauClassifier_sig.png'))
     plot_tauClassifiers(tauClassifiers, 'bkg', os.path.join(output_dir, 'tauClassifier_bkg.png'))
@@ -258,42 +257,6 @@ def plot_tauClassifiers(tauClassifiers, dtype, output_path):
         plt.yscale('log')
         plt.legend()
     plt.savefig(output_path, bbox_inches='tight')
-
-
-def plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e):
-    vis_tau_pt = vector.awk(
-        ak.zip(
-            {
-                "mass": sig_data.gen_jet_tau_p4s.tau,
-                "x": sig_data.gen_jet_tau_p4s.x,
-                "y": sig_data.gen_jet_tau_p4s.y,
-                "z": sig_data.gen_jet_tau_p4s.z,
-            }
-        )
-    ).pt.to_numpy()
-    gen_jet_pt = vector.awk(
-        ak.zip(
-            {
-                "mass": sig_data.gen_jet_p4s.tau,
-                "x": sig_data.gen_jet_p4s.x,
-                "y": sig_data.gen_jet_p4s.y,
-                "z": sig_data.gen_jet_p4s.z,
-            }
-        )
-    ).pt.to_numpy()
-    vis_tau_pt_ = vis_tau_pt[denominator_mask_e]
-    gen_jet_pt_ = gen_jet_pt[denominator_mask_e]
-    output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
-    pl.plot_regression_confusion_matrix(
-        y_true=gen_jet_pt_,
-        y_pred=vis_tau_pt_,
-        output_path=output_path,
-        left_bin_edge=np.min([vis_tau_pt, gen_jet_pt]),
-        right_bin_edge=np.max([vis_tau_pt, gen_jet_pt]),
-        y_label=r"$p_T^{\tau_{vis}}$",
-        x_label=r"$p_T^{genJet}$",
-        title="",
-    )
 
 
 if __name__ == "__main__":
