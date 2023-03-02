@@ -3,6 +3,7 @@ import glob
 import hydra
 import vector
 import numpy as np
+import mplhep as hep
 import awkward as ak
 import seaborn as sns
 import multiprocessing
@@ -10,6 +11,8 @@ from itertools import repeat
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
 from general import load_all_data
+
+hep.style.use(hep.styles.CMS)
 
 
 def load_samples(sig_dir: str, bkg_dir: str):
@@ -110,6 +113,71 @@ def process_single_file(input_path, weight_matrix, theta_bin_edges, pt_bin_edges
     ak.to_parquet(ak.Record(merged_info), input_path)
 
 
+def plot_weighting_results(sig_data, bkg_data, sig_weights, bkg_weights, output_dir):
+    bkg_p4s = vector.awk(
+        ak.zip(
+            {
+                "mass": bkg_data.gen_jet_p4s.tau,
+                "x": bkg_data.gen_jet_p4s.x,
+                "y": bkg_data.gen_jet_p4s.y,
+                "z": bkg_data.gen_jet_p4s.z,
+            }
+        )
+    )
+    sig_p4s = vector.awk(
+        ak.zip(
+            {
+                "mass": sig_data.gen_jet_p4s.tau,
+                "x": sig_data.gen_jet_p4s.x,
+                "y": sig_data.gen_jet_p4s.y,
+                "z": sig_data.gen_jet_p4s.z,
+            }
+        )
+    )
+    plot_distributions(
+        sig_values=sig_p4s.pt,
+        bkg_values=bkg_p4s.pt,
+        bkg_weights=np.ones(len(bkg_p4s.pt)) / len(bkg_p4s.pt),
+        sig_weights=np.ones(len(sig_p4s.pt)) / len(sig_p4s.pt),
+        output_path=os.path.join(output_dir, "pt_normalized_unweighted.png"),
+        xlabel=r"$p_T$",
+    )
+    plot_distributions(
+        sig_values=sig_p4s.pt,
+        bkg_values=bkg_p4s.pt,
+        bkg_weights=bkg_weights / sum(bkg_weights),
+        sig_weights=sig_weights / sum(sig_weights),
+        output_path=os.path.join(output_dir, "pt_normalized_weighted.png"),
+        xlabel=r"$p_T$",
+    )
+    plot_distributions(
+        sig_values=sig_p4s.eta,
+        bkg_values=bkg_p4s.eta,
+        bkg_weights=np.ones(len(bkg_p4s.pt)) / len(bkg_p4s.pt),
+        sig_weights=np.ones(len(sig_p4s.pt)) / len(sig_p4s.pt),
+        output_path=os.path.join(output_dir, "eta_normalized_unweighted.png"),
+        xlabel=r"$\eta$",
+    )
+    plot_distributions(
+        sig_values=sig_p4s.eta,
+        bkg_values=bkg_p4s.eta,
+        bkg_weights=bkg_weights / sum(bkg_weights),
+        sig_weights=sig_weights / sum(sig_weights),
+        output_path=os.path.join(output_dir, "eta_normalized_weighted.png"),
+        xlabel=r"$\eta$",
+    )
+
+
+def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_path, xlabel=r"$p_T$"):
+    bkg_hist, bin_edges = np.histogram(bkg_values, weights=bkg_weights, bins=100)
+    sig_hist = np.histogram(sig_values, weights=sig_weights, bins=bin_edges)[0]
+    hep.histplot(bkg_hist, bins=bin_edges, histtype="step", label="BKG", hatch="//")
+    hep.histplot(sig_hist, bins=bin_edges, histtype="step", label="SIG", hatch="\\\\")
+    plt.xlabel(xlabel)
+    plt.legend()
+    plt.savefig(output_path, bbox_inches="tight")
+
+
 @hydra.main(config_path="../config", config_name="weighting", version_base=None)
 def main(cfg: DictConfig):
     sig_data, bkg_data = load_samples(sig_dir=cfg.samples.ZH_Htautau.output_dir, bkg_dir=cfg.samples.QCD.output_dir)
@@ -128,14 +196,15 @@ def main(cfg: DictConfig):
     bkg_weights = get_weight_matrix(target_matrix=bkg_matrix, comp_matrix=sig_matrix)
     sig_output_path = os.path.join(cfg.samples.ZH_Htautau.output_dir, "signal_weights.png")
     visualize_weights(sig_weights, pt_bin_edges, eta_bin_edges, sig_output_path)
-    bkg_output_path = os.path.join(cfg.samples.QCD.output_dir, "bkg_weights.png")
+    output_dir = os.path.abspath(os.path.join(cfg.samples.QCD.output_dir, os.pardir))
+    bkg_output_path = os.path.join(output_dir, "bkg_weights.png")
     visualize_weights(bkg_weights, pt_bin_edges, eta_bin_edges, bkg_output_path)
 
     sig_matrix_p_theta = create_matrix(sig_data, theta_bin_edges, pt_bin_edges, y_property="theta", x_property="p")
     bkg_matrix_p_theta = create_matrix(bkg_data, theta_bin_edges, pt_bin_edges, y_property="theta", x_property="p")
     sig_weights_p_theta = get_weight_matrix(target_matrix=sig_matrix_p_theta, comp_matrix=bkg_matrix_p_theta)
     bkg_weights_p_theta = get_weight_matrix(target_matrix=bkg_matrix_p_theta, comp_matrix=sig_matrix_p_theta)
-    sig_output_path_p_theta = os.path.join(cfg.samples.ZH_Htautau.output_dir, "signal_weights_p_theta.png")
+    sig_output_path_p_theta = os.path.join(output_dir, "signal_weights_p_theta.png")
     visualize_weights(
         weight_matrix=sig_weights_p_theta,
         x_bin_edges=pt_bin_edges,
@@ -166,6 +235,13 @@ def main(cfg: DictConfig):
         pt_bin_edges=pt_bin_edges,
         data_dir=cfg.samples.QCD.output_dir,
         use_multiprocessing=cfg.use_multiprocessing,
+    )
+    plot_weighting_results(
+        sig_data=sig_data,
+        bkg_data=bkg_data,
+        sig_weights=sig_weights_p_theta,
+        bkg_weights=bkg_weights_p_theta,
+        output_dir=output_dir,
     )
 
 
