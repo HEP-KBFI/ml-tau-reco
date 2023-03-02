@@ -9,15 +9,15 @@ src/metrics.py  \
 import os
 import hydra
 import vector
-import mplhep
 import numpy as np
 import awkward as ak
+import mplhep as hep
 import plotting as pl
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
 from general import get_reduced_decaymodes, load_data_from_paths
 
-mplhep.style.use(mplhep.styles.CMS)
+hep.style.use(hep.styles.CMS)
 
 
 def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
@@ -215,6 +215,7 @@ def plot_all_metrics(cfg):
     fakerates = {}
     eff_data = {}
     fake_data = {}
+    tauClassifiers = {algo: {} for algo in algorithms}
     for algorithm in algorithms:
         sig_input_dir = os.path.expandvars(cfg.algorithms[algorithm].sig_ntuples_dir)
         bkg_input_dir = os.path.expandvars(cfg.algorithms[algorithm].bkg_ntuples_dir)
@@ -226,6 +227,7 @@ def plot_all_metrics(cfg):
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
         ]
         bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
+        tauClassifiers[algorithm] = {'sig': sig_data.tauClassifier, 'bkg': bkg_data.tauClassifier}
         numerator_mask_e, denominator_mask_e = get_data_masks(sig_data, ref_obj="gen_jet_tau_p4s")
         numerator_mask_f, denominator_mask_f = get_data_masks(bkg_data, ref_obj="gen_jet_p4s")
         raw_numerator_data_e, denominator_data_e = sig_data[numerator_mask_e], sig_data[denominator_mask_e]
@@ -243,6 +245,19 @@ def plot_all_metrics(cfg):
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
     plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e)
     plot_roc(efficiencies, fakerates, output_dir)
+    plot_tauClassifiers(tauClassifiers, 'sig', os.path.join(output_dir, 'tauClassifier_sig.png'))
+    plot_tauClassifiers(tauClassifiers, 'bkg', os.path.join(output_dir, 'tauClassifier_bkg.png'))
+
+
+def plot_tauClassifiers(tauClassifiers, dtype, output_path):
+    for name, tC  in tauClassifiers.items():
+        bin_edges = np.linspace(0, 1, 21)
+        hist = np.histogram(tC[dtype], bins=bin_edges)[0]
+        hep.histplot(hist, bins=bin_edges, histtype="step", label=name, ls='--')
+        plt.xlabel('tauClassifier')
+        plt.yscale('log')
+        plt.legend()
+    plt.savefig(output_path, bbox_inches='tight')
 
 
 def plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e):
