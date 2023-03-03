@@ -30,14 +30,23 @@ algorithms:
   FastCMSTau:
     sig_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/ZH_Htautau
     bkg_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/QCD
-    compare: True
+    compare: False
   SimpleDNN:
     sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/ZH_Htautau/
     bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/QCD/
-    compare: True
+    compare: False
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"
+  WPs:
+    HPS_wo_quality_cuts:
+      Loose: -1
+      Medium: 0.951
+      Tight: 0.467
+    LorentzNet:
+      Loose: 0.972
+      Medium: 0.946
+      Tight: 0.878
   efficiency:
     variables:
       - name: pt

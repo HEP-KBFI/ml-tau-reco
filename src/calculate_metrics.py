@@ -7,6 +7,7 @@ src/metrics.py  \
   ...
 """
 import os
+import json
 import hydra
 import vector
 import numpy as np
@@ -69,7 +70,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         plt.close("all")
 
 
-def plot_energy_resolution(sig_data, algorithm_output_dir, full_numerator_mask):
+def plot_energy_resolution(sig_data, algorithm_output_dir):
     output_path = os.path.join(algorithm_output_dir, "energy_resolution.png")
     gen_tau_vis_energies = sig_data.gen_jet_tau_vis_energy
     reco_tau_energies = vector.awk(
@@ -82,8 +83,8 @@ def plot_energy_resolution(sig_data, algorithm_output_dir, full_numerator_mask):
             }
         )
     ).energy
-    gen_tau_vis_energies = gen_tau_vis_energies.to_numpy()[full_numerator_mask]
-    reco_tau_energies = reco_tau_energies.to_numpy()[full_numerator_mask]
+    gen_tau_vis_energies = gen_tau_vis_energies.to_numpy()
+    reco_tau_energies = reco_tau_energies.to_numpy()
     pl.plot_regression_confusion_matrix(
         y_true=gen_tau_vis_energies,
         y_pred=reco_tau_energies,
@@ -96,7 +97,7 @@ def plot_energy_resolution(sig_data, algorithm_output_dir, full_numerator_mask):
     )
 
 
-def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, full_numerator_mask):
+def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, cfg):
     output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.png")
     gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
     reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
@@ -108,8 +109,9 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, full_numerator
         11: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}\pi^{0}$",
         15: "Other",
     }
-    gen_tau_decaymodes_ = gen_tau_decaymodes[full_numerator_mask]
-    reco_tau_decaymodes_ = reco_tau_decaymodes[full_numerator_mask]
+    classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
+    gen_tau_decaymodes_ = gen_tau_decaymodes[sig_data.tauClassifier > classifier_cut]
+    reco_tau_decaymodes_ = reco_tau_decaymodes[sig_data.tauClassifier > classifier_cut]
     categories = [value for value in mapping.values()]
     pl.plot_classification_confusion_matrix(
         true_cats=gen_tau_decaymodes_, pred_cats=reco_tau_decaymodes_, categories=categories, output_path=output_path
@@ -191,8 +193,7 @@ def get_data_masks(data, ref_obj):
     return full_numerator_mask, denominator_mask
 
 
-def calculate_efficiencies_fakerates(raw_numerator_data, denominator_data, variant=False):
-    classifier_cuts = np.linspace(start=0, stop=1, num=1001)
+def calculate_efficiencies_fakerates(raw_numerator_data, denominator_data, classifier_cuts, variant=False):
     eff_fakes = []
     if variant:
         n_all = len(raw_numerator_data[raw_numerator_data.tauClassifier > 0])
@@ -233,17 +234,20 @@ def plot_all_metrics(cfg):
         raw_numerator_data_e, denominator_data_e = sig_data[numerator_mask_e], sig_data[denominator_mask_e]
         raw_numerator_data_f, denominator_data_f = bkg_data[numerator_mask_f], bkg_data[denominator_mask_f]
         # Also need to calculate workingpoints
-        efficiencies[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e)
-        fakerates[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_f, denominator_data_f)
+        classifier_cuts = np.linspace(start=0, stop=1, num=1001)
+        efficiencies[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e, classifier_cuts)
+        fakerates[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_f, denominator_data_f, classifier_cuts)
         eff_data[algorithm] = {"numerator": raw_numerator_data_e, "denominator": denominator_data_e}
         fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
-        plot_energy_resolution(sig_data, algorithm_output_dir, numerator_mask_e)
-        plot_decaymode_reconstruction(sig_data, algorithm_output_dir, numerator_mask_e)
-    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
-    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
+        save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
+        plot_energy_resolution(raw_numerator_data_e, algorithm_output_dir)
+        plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, cfg)
     plot_roc(efficiencies, fakerates, output_dir)
+    classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
+    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
+    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
     plot_tauClassifiers(tauClassifiers, 'sig', os.path.join(output_dir, 'tauClassifier_sig.png'))
     plot_tauClassifiers(tauClassifiers, 'bkg', os.path.join(output_dir, 'tauClassifier_bkg.png'))
 
@@ -257,6 +261,22 @@ def plot_tauClassifiers(tauClassifiers, dtype, output_path):
         plt.yscale('log')
         plt.legend()
     plt.savefig(output_path, bbox_inches='tight')
+
+
+def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
+    working_points = {"Loose": 0.4, "Medium": 0.6, "Tight": 0.8}
+    wp_file_path = os.path.join(algorithm_output_dir, "working_points.json")
+    wp_values = {}
+    for wp_name, wp_value in working_points.items():
+        diff = abs(np.array(efficiencies) - wp_value)
+        idx = np.argmin(diff)
+        if not diff[idx]/wp_value > 0.1:
+            cut = classifier_cuts[idx]
+        else:
+            cut = -1
+        wp_values[wp_name] = cut
+    with open(wp_file_path, 'wt') as out_file:
+        json.dump(wp_values, out_file, indent=4)
 
 
 if __name__ == "__main__":
