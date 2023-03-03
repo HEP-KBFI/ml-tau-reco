@@ -236,11 +236,13 @@ def main(cfg: DictConfig):
         data_dir=cfg.samples.QCD.output_dir,
         use_multiprocessing=cfg.use_multiprocessing,
     )
+    sig_weights = get_weights(sig_data, sig_weights_p_theta, theta_bin_edges, pt_bin_edges)
+    bkg_weights = get_weights(bkg_data, bkg_weights_p_theta, theta_bin_edges, pt_bin_edges)
     plot_weighting_results(
         sig_data=sig_data,
         bkg_data=bkg_data,
-        sig_weights=sig_weights_p_theta,
-        bkg_weights=bkg_weights_p_theta,
+        sig_weights=sig_weights,
+        bkg_weights=bkg_weights,
         output_dir=output_dir,
     )
 
