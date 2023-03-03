@@ -4,8 +4,8 @@ plotting:
   n_files: -1
 algorithms:
   LorentzNet:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb20/LorentzNet/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb20/LorentzNet/QCD
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21/LorentzNet/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21/LorentzNet/QCD
     compare: True
   HPS_DeepTau:
     sig_ntuples_dir: /foo/bar
@@ -20,20 +20,20 @@ algorithms:
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
     compare: True
   HPS_wo_quality_cuts:
-    sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau
-    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
-    compare: False
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21_woPtCuts/HPS/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21_woPtCuts/HPS/QCD
+    compare: True
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/QCD
     compare: False
   FastCMSTau:
-    sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/FastCMSTau/ZH_Htautau
-    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/FastCMSTau/QCD
+    sig_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/ZH_Htautau
+    bkg_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/QCD
     compare: True
   SimpleDNN:
-    sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_20/SimpleDNN/ZH_Htautau/
-    bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_20/SimpleDNN/QCD/
+    sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/ZH_Htautau/
+    bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/QCD/
     compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"

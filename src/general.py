@@ -24,6 +24,7 @@ def load_all_data(input_dir: str, n_files: int = None) -> ak.Array:
     input_files = glob.glob(os.path.join(input_dir, "*.parquet"))[:n_files]
     input_data = []
     for file_path in input_files:
+        print(f"Loading from {file_path}")
         input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
     input_data = ak.concatenate(input_data)
     print("Input data loaded")

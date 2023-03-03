@@ -17,7 +17,7 @@ import awkward as ak
 import multiprocessing
 from itertools import repeat
 from omegaconf import DictConfig
-from lifeTimeTools import trimmed_track_info_z0_d0
+from lifeTimeTools import findTrackPCAs, calculateImpactParameterSigns
 
 
 def save_record_to_file(data: dict, output_path: str) -> None:
@@ -26,7 +26,9 @@ def save_record_to_file(data: dict, output_path: str) -> None:
 
 
 def load_single_file_contents(
-    path: str, tree_path: str = "events", branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1"]
+    path: str,
+    tree_path: str = "events",
+    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"],
 ) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
@@ -208,7 +210,8 @@ def deltar(eta1, phi1, eta2, phi2):
 
 @numba.njit
 def deltaphi(phi1, phi2):
-    return np.fmod(phi1 - phi2 + np.pi, 2 * np.pi) - np.pi
+    diff = phi1 - phi2
+    return np.arctan2(np.sin(diff), np.cos(diff))
 
 
 @numba.njit
@@ -250,17 +253,10 @@ def get_jet_constituent_p4s(reco_p4, constituent_idx, num_ptcls_per_jet):
     return vector.awk(ak.zip({"x": ret.x, "y": ret.y, "z": ret.z, "mass": ret.tau}))
 
 
-def get_jet_constituent_pdgs(reco_particle_pdg, constituent_idx, num_ptcls_per_jet):
-    reco_pdg_flat = reco_particle_pdg[ak.flatten(constituent_idx, axis=-1)]
+def get_jet_constituent_property(property_, constituent_idx, num_ptcls_per_jet):
+    reco_property_flat = property_[ak.flatten(constituent_idx, axis=-1)]
     return ak.from_iter(
-        [ak.unflatten(reco_pdg_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
-    )
-
-
-def get_jet_constituent_charges(reco_particles, constituent_idx, num_ptcls_per_jet):
-    reco_charge_flat = reco_particles["charge"][ak.flatten(constituent_idx, axis=-1)]
-    return ak.from_iter(
-        [ak.unflatten(reco_charge_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
+        [ak.unflatten(reco_property_flat[i], num_ptcls_per_jet[i], axis=-1) for i in range(len(num_ptcls_per_jet))]
     )
 
 
@@ -491,14 +487,156 @@ def process_input_file(arrays: ak.Array):
     gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_lifetime_infos = ak.from_iter([trimmed_track_info_z0_d0(arrays, i) for i in range(len(reco_jets))])
-    event_d0 = ak.from_iter(event_lifetime_infos[i][:, 0] for i in range(len(reco_jets)))
-    event_z0 = ak.from_iter(event_lifetime_infos[i][:, 1] for i in range(len(reco_jets)))
-    event_per_jet_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_per_jet_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    ## Dummy values for sigma_z0 and sigma_d0 as per request to be always 0.035
-    dummy_uncert_d0_z0 = ak.ones_like(event_per_jet_d0) * 0.035
-    ##
+    event_lifetime_infos = ak.from_iter([findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
+    event_lifetime_info = event_lifetime_infos[:, 0]
+    event_lifetime_errs = event_lifetime_infos[:, 1]
+    event_dxy = event_lifetime_info[:, :, 0]
+    event_dz = event_lifetime_info[:, :, 1]
+    event_d3 = event_lifetime_info[:, :, 2]
+    event_d0 = event_lifetime_info[:, :, 3]
+    event_z0 = event_lifetime_info[:, :, 4]
+    event_PCA_x = event_lifetime_info[:, :, 5]
+    event_PCA_y = event_lifetime_info[:, :, 6]
+    event_PCA_z = event_lifetime_info[:, :, 7]
+    event_PV_x = event_lifetime_info[:, :, 8]
+    event_PV_y = event_lifetime_info[:, :, 9]
+    event_PV_z = event_lifetime_info[:, :, 10]
+    event_dxy_err = event_lifetime_errs[:, :, 0]
+    event_dz_err = event_lifetime_errs[:, :, 1]
+    event_d3_err = event_lifetime_errs[:, :, 2]
+    event_d0_err = event_lifetime_errs[:, :, 3]
+    event_z0_err = event_lifetime_errs[:, :, 4]
+    event_PCA_x_err = event_lifetime_errs[:, :, 5]
+    event_PCA_y_err = event_lifetime_errs[:, :, 6]
+    event_PCA_z_err = event_lifetime_errs[:, :, 7]
+    event_reco_cand_dxy = ak.from_iter([[event_dxy[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_dz = ak.from_iter([[event_dz[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_d3 = ak.from_iter([[event_d3[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_d0 = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_z0 = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PCA_x = ak.from_iter([[event_PCA_x[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PCA_y = ak.from_iter([[event_PCA_y[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PCA_z = ak.from_iter([[event_PCA_z[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PV_x = ak.from_iter([[event_PV_x[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PV_y = ak.from_iter([[event_PV_y[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PV_z = ak.from_iter([[event_PV_z[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_dxy_err = ak.from_iter([[event_dxy[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_dz_err = ak.from_iter([[event_dz[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_d3_err = ak.from_iter([[event_d3[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_d0_err = ak.from_iter([[event_d0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_z0_err = ak.from_iter([[event_z0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_PCA_x_err = ak.from_iter(
+        [[event_PCA_x[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+    )
+    event_reco_cand_PCA_y_err = ak.from_iter(
+        [[event_PCA_y[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+    )
+    event_reco_cand_PCA_z_err = ak.from_iter(
+        [[event_PCA_z[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
+    )
+    event_reco_cand_signed_dxy = ak.from_iter(
+        [
+            [
+                calculateImpactParameterSigns(
+                    event_reco_cand_dxy[j][i],
+                    [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
+                    [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
+                    reco_jets[j][i],
+                )
+                for i in range(len(reco_jets[j]))
+            ]
+            for j in range(len(reco_jets))
+        ]
+    )
+    event_reco_cand_signed_dz = ak.from_iter(
+        [
+            [
+                calculateImpactParameterSigns(
+                    event_reco_cand_dz[j][i],
+                    [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
+                    [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
+                    reco_jets[j][i],
+                )
+                for i in range(len(reco_jets[j]))
+            ]
+            for j in range(len(reco_jets))
+        ]
+    )
+    event_reco_cand_signed_d3 = ak.from_iter(
+        [
+            [
+                calculateImpactParameterSigns(
+                    event_reco_cand_d3[j][i],
+                    [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
+                    [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
+                    reco_jets[j][i],
+                )
+                for i in range(len(reco_jets[j]))
+            ]
+            for j in range(len(reco_jets))
+        ]
+    )
+    reco_cand_dxy = get_jet_constituent_property(event_dxy, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_dz = get_jet_constituent_property(event_dz, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_d3 = get_jet_constituent_property(event_d3, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_d0 = get_jet_constituent_property(event_d0, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_z0 = get_jet_constituent_property(event_z0, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PCA_x = get_jet_constituent_property(event_PCA_x, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PCA_y = get_jet_constituent_property(event_PCA_y, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PCA_z = get_jet_constituent_property(event_PCA_z, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PV_x = get_jet_constituent_property(event_PV_x, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PV_y = get_jet_constituent_property(event_PV_y, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PV_z = get_jet_constituent_property(event_PV_z, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_dxy_err = get_jet_constituent_property(event_dxy_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_dz_err = get_jet_constituent_property(event_dz_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_d3_err = get_jet_constituent_property(event_d3_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_signed_dxy = ak.from_iter(
+        [
+            [
+                calculateImpactParameterSigns(
+                    reco_cand_dxy[j][i],
+                    [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
+                    [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
+                    reco_jets[j][i],
+                )
+                for i in range(len(reco_jets[j]))
+            ]
+            for j in range(len(reco_jets))
+        ]
+    )
+    reco_cand_signed_dz = ak.from_iter(
+        [
+            [
+                calculateImpactParameterSigns(
+                    reco_cand_dz[j][i],
+                    [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
+                    [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
+                    reco_jets[j][i],
+                )
+                for i in range(len(reco_jets[j]))
+            ]
+            for j in range(len(reco_jets))
+        ]
+    )
+    reco_cand_signed_d3 = ak.from_iter(
+        [
+            [
+                calculateImpactParameterSigns(
+                    reco_cand_d3[j][i],
+                    [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
+                    [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
+                    reco_jets[j][i],
+                )
+                for i in range(len(reco_jets[j]))
+            ]
+            for j in range(len(reco_jets))
+        ]
+    )
+    reco_cand_d0_err = get_jet_constituent_property(event_d0_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_z0_err = get_jet_constituent_property(event_z0_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PCA_x_err = get_jet_constituent_property(event_PCA_x_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PCA_y_err = get_jet_constituent_property(event_PCA_y_err, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_PCA_z_err = get_jet_constituent_property(event_PCA_z_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     data = {
         "event_reco_cand_p4s": vector.awk(
@@ -517,16 +655,58 @@ def process_input_file(arrays: ak.Array):
         "event_reco_cand_charge": ak.from_iter(
             [[reco_particles["charge"][j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
-        "event_particle_d0": event_per_jet_d0,
-        "event_particle_z0": event_per_jet_z0,
-        "event_particle_sigma_d0": dummy_uncert_d0_z0,
-        "event_particle_sigma_z0": dummy_uncert_d0_z0,
         "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
-        "reco_cand_charge": get_jet_constituent_charges(reco_particles, reco_jet_constituent_indices, num_ptcls_per_jet),
-        "reco_cand_pdg": get_jet_constituent_pdgs(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
+        "reco_cand_charge": get_jet_constituent_property(
+            reco_particles["charge"], reco_jet_constituent_indices, num_ptcls_per_jet
+        ),
+        "reco_cand_pdg": get_jet_constituent_property(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
+        "event_reco_cand_dxy": event_reco_cand_dxy,
+        "event_reco_cand_dz": event_reco_cand_dz,
+        "event_reco_cand_signed_dxy": event_reco_cand_signed_dxy,
+        "event_reco_cand_signed_dz": event_reco_cand_signed_dz,
+        "event_reco_cand_signed_d3": event_reco_cand_signed_d3,
+        "event_reco_cand_d3": event_reco_cand_d3,
+        "event_reco_cand_d0": event_reco_cand_d0,
+        "event_reco_cand_z0": event_reco_cand_z0,
+        "event_reco_cand_PCA_x": event_reco_cand_PCA_x,
+        "event_reco_cand_PCA_y": event_reco_cand_PCA_y,
+        "event_reco_cand_PCA_z": event_reco_cand_PCA_z,
+        "event_reco_cand_PV_x": event_reco_cand_PV_x,
+        "event_reco_cand_PV_y": event_reco_cand_PV_y,
+        "event_reco_cand_PV_z": event_reco_cand_PV_z,
+        "event_reco_cand_dxy_err": event_reco_cand_dxy_err,
+        "event_reco_cand_dz_err": event_reco_cand_dz_err,
+        "event_reco_cand_d3_err": event_reco_cand_d3_err,
+        "event_reco_cand_d0_err": event_reco_cand_d0_err,
+        "event_reco_cand_z0_err": event_reco_cand_z0_err,
+        "event_reco_cand_PCA_x_err": event_reco_cand_PCA_x_err,
+        "event_reco_cand_PCA_y_err": event_reco_cand_PCA_y_err,
+        "event_reco_cand_PCA_z_err": event_reco_cand_PCA_z_err,
+        "reco_cand_dxy": reco_cand_dxy,
+        "reco_cand_dz": reco_cand_dz,
+        "reco_cand_signed_dxy": reco_cand_signed_dxy,
+        "reco_cand_signed_dz": reco_cand_signed_dz,
+        "reco_cand_signed_d3": reco_cand_signed_d3,
+        "reco_cand_d3": reco_cand_d3,
+        "reco_cand_d0": reco_cand_d0,
+        "reco_cand_z0": reco_cand_z0,
+        "reco_cand_PCA_x": reco_cand_PCA_x,
+        "reco_cand_PCA_y": reco_cand_PCA_y,
+        "reco_cand_PCA_z": reco_cand_PCA_z,
+        "reco_cand_PV_x": reco_cand_PV_x,
+        "reco_cand_PV_y": reco_cand_PV_y,
+        "reco_cand_PV_z": reco_cand_PV_z,
+        "reco_cand_dxy_err": reco_cand_dxy_err,
+        "reco_cand_dz_err": reco_cand_dz_err,
+        "reco_cand_d3_err": reco_cand_d3_err,
+        "reco_cand_d0_err": reco_cand_d0_err,
+        "reco_cand_z0_err": reco_cand_z0_err,
+        "reco_cand_PCA_x_err": reco_cand_PCA_x_err,
+        "reco_cand_PCA_y_err": reco_cand_PCA_y_err,
+        "reco_cand_PCA_z_err": reco_cand_PCA_z_err,
         "gen_jet_p4s": vector.awk(ak.zip({"mass": gen_jets.mass, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z})),
         "gen_jet_tau_decaymode": gen_tau_jet_info["gen_jet_tau_decaymode"],
         "gen_jet_tau_vis_energy": gen_tau_jet_info["gen_jet_tau_vis_energy"],
@@ -565,8 +745,14 @@ def process_all_input_files(cfg: DictConfig) -> None:
         else:
             n_files = None
         input_paths = glob.glob(input_wcp)[:n_files]
-        pool = multiprocessing.Pool(processes=8)
-        pool.starmap(process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(output_dir)))
+        if cfg.use_multiprocessing:
+            pool = multiprocessing.Pool(processes=8)
+            pool.starmap(
+                process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(output_dir))
+            )
+        else:
+            for path in input_paths:
+                process_single_file(path, cfg.tree_path, cfg.branches, output_dir)
 
 
 if __name__ == "__main__":

@@ -59,16 +59,19 @@ class LorentzNet(nn.Module):
 
         self.verbosity = verbosity
 
-    def forward(self, x: torch.Tensor, scalars: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, scalars: torch.Tensor, node_mask: torch.Tensor) -> torch.Tensor:
         # print("<LorentzNet::forward>")
         # print("shape(x) = ", x.shape)
         # print("shape(scalars) = ", scalars.shape)
+        # print("shape(node_mask) = ", node_mask.shape)
 
         h = self.embedding(scalars)
         # print("shape(h) = ", h.shape)
 
-        batchsize = x.size(dim=0)
+        # batchsize = x.size(dim=0)
+        # print("batchsize = %i" % batchsize)
         n_particles = x.size(dim=1)
+        # print("n_particles = %i" % n_particles)
 
         edges = torch.ones(n_particles, n_particles, dtype=torch.long, device=h.device)
         edges_above_diag = torch.triu(edges, diagonal=1)
@@ -82,10 +85,6 @@ class LorentzNet(nn.Module):
         edgej = edgej.expand(h.size(dim=0), -1)
         # print("shape(edgei) = ", edgei.shape)
         # print("shape(edgej) = ", edgej.shape)
-
-        node_mask = torch.ones(n_particles, dtype=torch.bool, device=h.device).unsqueeze(dim=1)
-        node_mask = node_mask.expand(batchsize, -1, -1)
-        # print("shape(node_mask) = ", node_mask.shape)
 
         for i in range(self.n_layers):
             h, x, _ = self.LGEBs[i].forward(h, x, edgei, edgej, node_attr=scalars)
