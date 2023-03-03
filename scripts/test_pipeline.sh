@@ -36,7 +36,7 @@ python3 ../src/weight_tools.py samples.ZH_Htautau.output_dir=$PWD samples.QCD.ou
 
 find . -type f -name "*.parquet"
 
-TAU_FILENAME=reco_p8_ee_ZH_Htautau_ecm380_1.parquet
+TAU_FILENAME=reco_p8_ee_ZH_Htautau_ecm380_200001.parquet
 QCD_FILENAME=reco_p8_ee_qq_ecm380_100001.parquet
 
 TAU_FILES=( $TAU_FILENAME )
