@@ -469,13 +469,34 @@ def get_hadronically_decaying_hard_tau_masks(mc_particles):
     return tau_mask, mask_addition
 
 
+def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
+    """ Filter out all gen jets that have a lepton as one of their consituents (so in dR < 0.4)
+    Currently see that also some jets with 6 hadrons and an electron are filtered out
+    Roughly 90% of gen jets will be left after filtering
+    """
+    gen_num_ptcls_per_jet = ak.num(gen_jet_constituent_indices, axis=-1)
+    gen_jet_pdgs = get_jet_constituent_property(stable_mc_particles.PDG, gen_jet_constituent_indices, gen_num_ptcls_per_jet)
+    mask = []
+    for gj_pdg in gen_jet_pdgs:
+        sub_mask = []
+        for gjp in gj_pdg:
+            if (15 in np.abs(gjp)) or (13 in np.abs(gjp)):
+                sub_mask.append(False)
+            else:
+                sub_mask.append(True)
+        mask.append(sub_mask)
+    mask = ak.Array(mask)
+    return gen_jets[mask]
+
+
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
     stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
-    gen_jets = cluster_jets(stable_mc_p4)[0]
+    gen_jets, gen_jet_constituent_indices = cluster_jets(stable_mc_p4)
+    gen_jets = filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles)
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
     reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
