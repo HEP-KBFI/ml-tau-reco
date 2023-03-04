@@ -69,6 +69,23 @@ def cluster_jets(particles_p4):
     return jets, constituent_index
 
 
+def cluster_gen_jets(particles_p4):
+    jetdef = fastjet.JetDefinition2Param(fastjet.ee_genkt_algorithm, 0.4, -1)
+    # This workaround here is also only temporary due to incorrect object
+    # initialization, see: https://github.com/scikit-hep/fastjet/issues/174
+    constituent_index = []
+    jets = []
+    for iev in range(len(particles_p4.pt)):
+        cluster = fastjet.ClusterSequence(particles_p4[iev], jetdef)
+        jets.append(vector.awk(cluster.inclusive_jets(min_pt=20.0)))
+        ci = cluster.constituent_index(min_pt=20.0)
+        constituent_index.append(ci)
+    constituent_index = ak.from_iter(constituent_index)
+    jets = ak.from_iter(jets)
+    jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
+    return jets, constituent_index
+
+
 ###############################################################################
 ###############################################################################
 #####                 TAU DECAYMODE CALCULATION                         #######
@@ -400,19 +417,18 @@ def get_stable_mc_particles(mc_particles, mc_p4):
     stable_pythia_mask = mc_particles["generatorStatus"] == 1
     neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (abs(mc_particles["PDG"]) != 16)
     particle_mask = stable_pythia_mask * neutrino_mask
-    stable_mc_particles = ak.Array({field: ak.Array(mc_particles[field][particle_mask]) for field in mc_particles.fields})
-    stable_mc_p4 = mc_p4[particle_mask]
-    stable_mc_p4 = vector.awk(
+    mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    mc_p4 = vector.awk(
         ak.zip(
             {
-                "tau": stable_mc_p4["tau"],
-                "px": stable_mc_p4["x"],
-                "py": stable_mc_p4["y"],
-                "pz": stable_mc_p4["z"],
+                "mass": mc_p4[particle_mask].tau,
+                "px": mc_p4[particle_mask].x,
+                "py": mc_p4[particle_mask].y,
+                "pz": mc_p4[particle_mask].z,
             }
         )
     )
-    return stable_mc_p4, stable_mc_particles
+    return mc_p4, mc_particles
 
 
 def get_reco_particle_pdg(reco_particles):

@@ -390,12 +390,22 @@ def plot_jet_response(reco_jets, gen_jets, output_dir):
     flat_gen_jets = ak.flatten(gen_jets.pt, axis=1).to_numpy()
     jet_response = flat_reco_jets / flat_gen_jets
     jet_response_output_path = os.path.join(output_dir, "jet_response.png")
+    jet_response2 = flat_reco_jets / flat_gen_jets
+    jet_response_output_path2 = os.path.join(output_dir, "jet_response2.png")
     pl.plot_histogram(
         entries=jet_response,
         output_path=jet_response_output_path,
         left_bin_edge=min(jet_response),
         right_bin_edge=max(jet_response),
         x_label=r"$p_T^{recoJet} / p_T^{genJet}$",
+        title="jet response",
+    )
+    pl.plot_histogram(
+        entries=jet_response2,
+        output_path=jet_response_output_path2,
+        left_bin_edge=min(jet_response2),
+        right_bin_edge=max(jet_response2),
+        x_label=r"$p_T^{recoJet} - p_T^{genJet}$",
         title="jet response",
     )
 
