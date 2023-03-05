@@ -34,11 +34,11 @@ algorithms:
   FastCMSTau:
     sig_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/ZH_Htautau
     bkg_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/QCD
-    compare: False
+    compare: True
   SimpleDNN:
     sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/ZH_Htautau/
     bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/QCD/
-    compare: False
+    compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"

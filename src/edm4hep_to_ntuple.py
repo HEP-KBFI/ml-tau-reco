@@ -65,24 +65,7 @@ def cluster_jets(particles_p4):
     cluster = fastjet.ClusterSequence(particles_p4, jetdef)
     jets = vector.awk(cluster.inclusive_jets(min_pt=20.0))
     jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
-    constituent_index = cluster.constituent_index(min_pt=20.0)
-    return jets, constituent_index
-
-
-def cluster_gen_jets(particles_p4):
-    jetdef = fastjet.JetDefinition2Param(fastjet.ee_genkt_algorithm, 0.4, -1)
-    # This workaround here is also only temporary due to incorrect object
-    # initialization, see: https://github.com/scikit-hep/fastjet/issues/174
-    constituent_index = []
-    jets = []
-    for iev in range(len(particles_p4.pt)):
-        cluster = fastjet.ClusterSequence(particles_p4[iev], jetdef)
-        jets.append(vector.awk(cluster.inclusive_jets(min_pt=20.0)))
-        ci = cluster.constituent_index(min_pt=20.0)
-        constituent_index.append(ci)
-    constituent_index = ak.from_iter(constituent_index)
-    jets = ak.from_iter(jets)
-    jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
+    constituent_index = ak.Array(cluster.constituent_index(min_pt=20.0))
     return jets, constituent_index
 
 
@@ -421,10 +404,10 @@ def get_stable_mc_particles(mc_particles, mc_p4):
     mc_p4 = vector.awk(
         ak.zip(
             {
-                "mass": mc_p4[particle_mask].tau,
                 "px": mc_p4[particle_mask].x,
                 "py": mc_p4[particle_mask].y,
                 "pz": mc_p4[particle_mask].z,
+                "mass": mc_p4[particle_mask].tau,
             }
         )
     )
@@ -443,7 +426,7 @@ def get_reco_particle_pdg(reco_particles):
 
 def clean_reco_particles(reco_particles, reco_p4):
     mask = reco_particles["type"] != 0
-    reco_particles = ak.Record({k: reco_particles[k][mask] for k in reco_particles.fields})
+    reco_particles = ak.Record({field: reco_particles[field][mask] for field in reco_particles.fields})
     reco_p4 = vector.awk(
         ak.zip(
             {
@@ -757,7 +740,6 @@ def process_input_file(arrays: ak.Array):
 
 
 def process_single_file(input_path: str, tree_path: str, branches: list, output_dir: str):
-    # print(f"[{i}/{len(input_paths)}] Loading contents of {path}")
     start_time = time.time()
     arrays = load_single_file_contents(input_path, tree_path, branches)
     data = process_input_file(arrays)

@@ -8,6 +8,7 @@ src/metrics.py  \
 """
 import os
 import json
+import yaml
 import hydra
 import vector
 import numpy as np
@@ -220,13 +221,33 @@ def plot_all_metrics(cfg):
     for algorithm in algorithms:
         sig_input_dir = os.path.expandvars(cfg.algorithms[algorithm].sig_ntuples_dir)
         bkg_input_dir = os.path.expandvars(cfg.algorithms[algorithm].bkg_ntuples_dir)
-        sig_paths = [
-            os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
-        ]
+        # sig_paths = [
+        #     os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
+        # ]
+        # bkg_paths = [
+        #     os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
+        # ]
+
+
+        if algorithm != 'FastCMSTau' and algorithm != 'SimpleDNN':
+            sig_paths = [
+                os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
+            ]
+            bkg_paths = [
+                os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
+            ]
+        else:
+            with open("/home/laurits/ml-tau-reco/config/datasets/test.yaml_", "r") as stream:
+                data = yaml.safe_load(stream)
+            all_paths = data['test']['paths']
+            sig_paths = [
+                os.path.join(sig_input_dir, os.path.basename(path)) for path in all_paths if "ZH_Htautau" in path
+            ]
+            bkg_paths = [
+                os.path.join(bkg_input_dir, os.path.basename(path)) for path in all_paths if "QCD" in path
+            ]
+
         sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
-        bkg_paths = [
-            os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
-        ]
         bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
         tauClassifiers[algorithm] = {'sig': sig_data.tauClassifier, 'bkg': bkg_data.tauClassifier}
         numerator_mask_e, denominator_mask_e = get_data_masks(sig_data, ref_obj="gen_jet_tau_p4s")
