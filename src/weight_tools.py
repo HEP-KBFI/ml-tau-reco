@@ -176,7 +176,7 @@ def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_
     plt.xlabel(xlabel)
     plt.legend()
     plt.savefig(output_path, bbox_inches="tight")
-    plt.close('all')
+    plt.close("all")
 
 
 @hydra.main(config_path="../config", config_name="weighting", version_base=None)

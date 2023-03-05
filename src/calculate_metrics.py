@@ -228,10 +228,11 @@ def plot_all_metrics(cfg):
         #     os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
         # ]
 
-
-        if algorithm != 'FastCMSTau' and algorithm != 'SimpleDNN':
+        if algorithm != "FastCMSTau" and algorithm != "SimpleDNN":
             sig_paths = [
-                os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
+                os.path.join(sig_input_dir, os.path.basename(path))
+                for path in cfg.datasets.test.paths
+                if "ZH_Htautau" in path
             ]
             bkg_paths = [
                 os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
@@ -239,17 +240,13 @@ def plot_all_metrics(cfg):
         else:
             with open("/home/laurits/ml-tau-reco/config/datasets/test.yaml_", "r") as stream:
                 data = yaml.safe_load(stream)
-            all_paths = data['test']['paths']
-            sig_paths = [
-                os.path.join(sig_input_dir, os.path.basename(path)) for path in all_paths if "ZH_Htautau" in path
-            ]
-            bkg_paths = [
-                os.path.join(bkg_input_dir, os.path.basename(path)) for path in all_paths if "QCD" in path
-            ]
+            all_paths = data["test"]["paths"]
+            sig_paths = [os.path.join(sig_input_dir, os.path.basename(path)) for path in all_paths if "ZH_Htautau" in path]
+            bkg_paths = [os.path.join(bkg_input_dir, os.path.basename(path)) for path in all_paths if "QCD" in path]
 
         sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
         bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
-        tauClassifiers[algorithm] = {'sig': sig_data.tauClassifier, 'bkg': bkg_data.tauClassifier}
+        tauClassifiers[algorithm] = {"sig": sig_data.tauClassifier, "bkg": bkg_data.tauClassifier}
         numerator_mask_e, denominator_mask_e = get_data_masks(sig_data, ref_obj="gen_jet_tau_p4s")
         numerator_mask_f, denominator_mask_f = get_data_masks(bkg_data, ref_obj="gen_jet_p4s")
         raw_numerator_data_e, denominator_data_e = sig_data[numerator_mask_e], sig_data[denominator_mask_e]
@@ -269,19 +266,19 @@ def plot_all_metrics(cfg):
     classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
     plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
-    plot_tauClassifiers(tauClassifiers, 'sig', os.path.join(output_dir, 'tauClassifier_sig.png'))
-    plot_tauClassifiers(tauClassifiers, 'bkg', os.path.join(output_dir, 'tauClassifier_bkg.png'))
+    plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.png"))
+    plot_tauClassifiers(tauClassifiers, "bkg", os.path.join(output_dir, "tauClassifier_bkg.png"))
 
 
 def plot_tauClassifiers(tauClassifiers, dtype, output_path):
-    for name, tC  in tauClassifiers.items():
+    for name, tC in tauClassifiers.items():
         bin_edges = np.linspace(0, 1, 21)
         hist = np.histogram(tC[dtype], bins=bin_edges)[0]
-        hep.histplot(hist, bins=bin_edges, histtype="step", label=name, ls='--')
-        plt.xlabel('tauClassifier')
-        plt.yscale('log')
+        hep.histplot(hist, bins=bin_edges, histtype="step", label=name, ls="--")
+        plt.xlabel("tauClassifier")
+        plt.yscale("log")
         plt.legend()
-    plt.savefig(output_path, bbox_inches='tight')
+    plt.savefig(output_path, bbox_inches="tight")
 
 
 def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
@@ -291,12 +288,12 @@ def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
     for wp_name, wp_value in working_points.items():
         diff = abs(np.array(efficiencies) - wp_value)
         idx = np.argmin(diff)
-        if not diff[idx]/wp_value > 0.1:
+        if not diff[idx] / wp_value > 0.1:
             cut = classifier_cuts[idx]
         else:
             cut = -1
         wp_values[wp_name] = cut
-    with open(wp_file_path, 'wt') as out_file:
+    with open(wp_file_path, "wt") as out_file:
         json.dump(wp_values, out_file, indent=4)
 
 

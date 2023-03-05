@@ -469,7 +469,7 @@ def get_hadronically_decaying_hard_tau_masks(mc_particles):
 
 
 def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
-    """ Filter out all gen jets that have a lepton as one of their consituents (so in dR < 0.4)
+    """Filter out all gen jets that have a lepton as one of their consituents (so in dR < 0.4)
     Currently see that also some jets with 6 hadrons and an electron are filtered out
     Roughly 90% of gen jets will be left after filtering
     """

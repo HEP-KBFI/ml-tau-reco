@@ -31,7 +31,7 @@ def main(cfg: DictConfig) -> None:
     output_dir = os.path.expandvars(cfg.output_dir)
     os.makedirs(output_dir, exist_ok=True)
     sig_data = sample_arrays["ZH_Htautau"]
-    bkg_data = sample_arrays["QCD"]
+    # bkg_data = sample_arrays["QCD"]
     plot_gen(sig_data, output_dir)
     plot_reco(sig_data, output_dir)
 
@@ -52,7 +52,6 @@ def plot_genvistau_gentau_correlation(tau_gen_jet_p4s, gen_jets, mask, output_di
         x_label=r"$p_T^{genJet}$",
         title="",
     )
-
 
 
 def get_data_masks(gen_jets, tau_gen_jet_p4s):
@@ -81,7 +80,7 @@ def plot_gen(signal_arrays, output_dir):
     qg_jets = plot_quark_gluon_jet_multiplicity(mc_particles, mc_p4, output_dir)
     plot_genjet_vars(qg_jets, output_dir)
     plot_lepton_multiplicities(mc_particles, mc_p4, output_dir)
-    ### 
+    ###
     reco_particles, reco_p4 = nt.clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = nt.cluster_jets(reco_p4)
     stable_mc_p4, stable_mc_particles = nt.get_stable_mc_particles(mc_particles, mc_p4)
@@ -105,17 +104,16 @@ def plot_gen(signal_arrays, output_dir):
     )[0]
     best_combos = nt.get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, mask_addition)
     vis_tau_p4s = nt.get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
-    tau_gen_jet_p4s = nt.get_matched_gen_tau_property(gen_jets, best_combos, vis_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value)
-    tau_gen_jet_p4s = vector.awk(ak.zip({
-        "mass": tau_gen_jet_p4s.tau,
-        "px": tau_gen_jet_p4s.x,
-        "py": tau_gen_jet_p4s.y,
-        "pz": tau_gen_jet_p4s.z
-    }))
+    tau_gen_jet_p4s = nt.get_matched_gen_tau_property(
+        gen_jets, best_combos, vis_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
+    )
+    tau_gen_jet_p4s = vector.awk(
+        ak.zip({"mass": tau_gen_jet_p4s.tau, "px": tau_gen_jet_p4s.x, "py": tau_gen_jet_p4s.y, "pz": tau_gen_jet_p4s.z})
+    )
     gen_jets_ = ak.flatten(gen_jets, axis=-1)
     tau_gen_jet_p4s_ = ak.flatten(tau_gen_jet_p4s, axis=-1)
-    mask = get_data_masks(gen_jets_, tau_gen_jet_p4s)
-    plot_genvistau_gentau_correlation(tau_gen_jet_p4s, gen_jets_, mask, output_dir)
+    mask = get_data_masks(gen_jets_, tau_gen_jet_p4s_)
+    plot_genvistau_gentau_correlation(tau_gen_jet_p4s_, gen_jets_, mask, output_dir)
 
 
 def is_qg_jet(jet):
