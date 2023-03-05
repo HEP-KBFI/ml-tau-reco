@@ -7,17 +7,19 @@ src/metrics.py  \
   ...
 """
 import os
+import json
+import yaml
 import hydra
 import vector
-import mplhep
 import numpy as np
 import awkward as ak
+import mplhep as hep
 import plotting as pl
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
 from general import get_reduced_decaymodes, load_data_from_paths
 
-mplhep.style.use(mplhep.styles.CMS)
+hep.style.use(hep.styles.CMS)
 
 
 def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
@@ -69,7 +71,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         plt.close("all")
 
 
-def plot_energy_resolution(sig_data, algorithm_output_dir, full_numerator_mask):
+def plot_energy_resolution(sig_data, algorithm_output_dir):
     output_path = os.path.join(algorithm_output_dir, "energy_resolution.png")
     gen_tau_vis_energies = sig_data.gen_jet_tau_vis_energy
     reco_tau_energies = vector.awk(
@@ -82,8 +84,8 @@ def plot_energy_resolution(sig_data, algorithm_output_dir, full_numerator_mask):
             }
         )
     ).energy
-    gen_tau_vis_energies = gen_tau_vis_energies.to_numpy()[full_numerator_mask]
-    reco_tau_energies = reco_tau_energies.to_numpy()[full_numerator_mask]
+    gen_tau_vis_energies = gen_tau_vis_energies.to_numpy()
+    reco_tau_energies = reco_tau_energies.to_numpy()
     pl.plot_regression_confusion_matrix(
         y_true=gen_tau_vis_energies,
         y_pred=reco_tau_energies,
@@ -96,7 +98,7 @@ def plot_energy_resolution(sig_data, algorithm_output_dir, full_numerator_mask):
     )
 
 
-def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, full_numerator_mask):
+def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, cfg):
     output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.png")
     gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
     reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
@@ -108,8 +110,9 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, full_numerator
         11: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}\pi^{0}$",
         15: "Other",
     }
-    gen_tau_decaymodes_ = gen_tau_decaymodes[full_numerator_mask]
-    reco_tau_decaymodes_ = reco_tau_decaymodes[full_numerator_mask]
+    classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
+    gen_tau_decaymodes_ = gen_tau_decaymodes[sig_data.tauClassifier > classifier_cut]
+    reco_tau_decaymodes_ = reco_tau_decaymodes[sig_data.tauClassifier > classifier_cut]
     categories = [value for value in mapping.values()]
     pl.plot_classification_confusion_matrix(
         true_cats=gen_tau_decaymodes_, pred_cats=reco_tau_decaymodes_, categories=categories, output_path=output_path
@@ -191,8 +194,7 @@ def get_data_masks(data, ref_obj):
     return full_numerator_mask, denominator_mask
 
 
-def calculate_efficiencies_fakerates(raw_numerator_data, denominator_data, variant=False):
-    classifier_cuts = np.linspace(start=0, stop=1, num=1001)
+def calculate_efficiencies_fakerates(raw_numerator_data, denominator_data, classifier_cuts, variant=False):
     eff_fakes = []
     if variant:
         n_all = len(raw_numerator_data[raw_numerator_data.tauClassifier > 0])
@@ -215,70 +217,84 @@ def plot_all_metrics(cfg):
     fakerates = {}
     eff_data = {}
     fake_data = {}
+    tauClassifiers = {algo: {} for algo in algorithms}
     for algorithm in algorithms:
         sig_input_dir = os.path.expandvars(cfg.algorithms[algorithm].sig_ntuples_dir)
         bkg_input_dir = os.path.expandvars(cfg.algorithms[algorithm].bkg_ntuples_dir)
-        sig_paths = [
-            os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
-        ]
+        # sig_paths = [
+        #     os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
+        # ]
+        # bkg_paths = [
+        #     os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
+        # ]
+
+        if algorithm != "FastCMSTau" and algorithm != "SimpleDNN":
+            sig_paths = [
+                os.path.join(sig_input_dir, os.path.basename(path))
+                for path in cfg.datasets.test.paths
+                if "ZH_Htautau" in path
+            ]
+            bkg_paths = [
+                os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
+            ]
+        else:
+            with open("/home/laurits/ml-tau-reco/config/datasets/test.yaml_", "r") as stream:
+                data = yaml.safe_load(stream)
+            all_paths = data["test"]["paths"]
+            sig_paths = [os.path.join(sig_input_dir, os.path.basename(path)) for path in all_paths if "ZH_Htautau" in path]
+            bkg_paths = [os.path.join(bkg_input_dir, os.path.basename(path)) for path in all_paths if "QCD" in path]
+
         sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
-        bkg_paths = [
-            os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
-        ]
         bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
+        tauClassifiers[algorithm] = {"sig": sig_data.tauClassifier, "bkg": bkg_data.tauClassifier}
         numerator_mask_e, denominator_mask_e = get_data_masks(sig_data, ref_obj="gen_jet_tau_p4s")
         numerator_mask_f, denominator_mask_f = get_data_masks(bkg_data, ref_obj="gen_jet_p4s")
         raw_numerator_data_e, denominator_data_e = sig_data[numerator_mask_e], sig_data[denominator_mask_e]
         raw_numerator_data_f, denominator_data_f = bkg_data[numerator_mask_f], bkg_data[denominator_mask_f]
         # Also need to calculate workingpoints
-        efficiencies[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e)
-        fakerates[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_f, denominator_data_f)
+        classifier_cuts = np.linspace(start=0, stop=1, num=1001)
+        efficiencies[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e, classifier_cuts)
+        fakerates[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_f, denominator_data_f, classifier_cuts)
         eff_data[algorithm] = {"numerator": raw_numerator_data_e, "denominator": denominator_data_e}
         fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
-        plot_energy_resolution(sig_data, algorithm_output_dir, numerator_mask_e)
-        plot_decaymode_reconstruction(sig_data, algorithm_output_dir, numerator_mask_e)
-    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
-    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=cfg.tauClassifierCut)
-    plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e)
+        save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
+        plot_energy_resolution(raw_numerator_data_e, algorithm_output_dir)
+        plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, cfg)
     plot_roc(efficiencies, fakerates, output_dir)
+    classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
+    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
+    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
+    plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.png"))
+    plot_tauClassifiers(tauClassifiers, "bkg", os.path.join(output_dir, "tauClassifier_bkg.png"))
 
 
-def plot_genvistau_gentau_correlation(sig_data, output_dir, denominator_mask_e):
-    vis_tau_pt = vector.awk(
-        ak.zip(
-            {
-                "mass": sig_data.gen_jet_tau_p4s.tau,
-                "x": sig_data.gen_jet_tau_p4s.x,
-                "y": sig_data.gen_jet_tau_p4s.y,
-                "z": sig_data.gen_jet_tau_p4s.z,
-            }
-        )
-    ).pt.to_numpy()
-    gen_jet_pt = vector.awk(
-        ak.zip(
-            {
-                "mass": sig_data.gen_jet_p4s.tau,
-                "x": sig_data.gen_jet_p4s.x,
-                "y": sig_data.gen_jet_p4s.y,
-                "z": sig_data.gen_jet_p4s.z,
-            }
-        )
-    ).pt.to_numpy()
-    vis_tau_pt_ = vis_tau_pt[denominator_mask_e]
-    gen_jet_pt_ = gen_jet_pt[denominator_mask_e]
-    output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
-    pl.plot_regression_confusion_matrix(
-        y_true=gen_jet_pt_,
-        y_pred=vis_tau_pt_,
-        output_path=output_path,
-        left_bin_edge=np.min([vis_tau_pt, gen_jet_pt]),
-        right_bin_edge=np.max([vis_tau_pt, gen_jet_pt]),
-        y_label=r"$p_T^{\tau_{vis}}$",
-        x_label=r"$p_T^{genJet}$",
-        title="",
-    )
+def plot_tauClassifiers(tauClassifiers, dtype, output_path):
+    for name, tC in tauClassifiers.items():
+        bin_edges = np.linspace(0, 1, 21)
+        hist = np.histogram(tC[dtype], bins=bin_edges)[0]
+        hep.histplot(hist, bins=bin_edges, histtype="step", label=name, ls="--")
+        plt.xlabel("tauClassifier")
+        plt.yscale("log")
+        plt.legend()
+    plt.savefig(output_path, bbox_inches="tight")
+
+
+def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
+    working_points = {"Loose": 0.4, "Medium": 0.6, "Tight": 0.8}
+    wp_file_path = os.path.join(algorithm_output_dir, "working_points.json")
+    wp_values = {}
+    for wp_name, wp_value in working_points.items():
+        diff = abs(np.array(efficiencies) - wp_value)
+        idx = np.argmin(diff)
+        if not diff[idx] / wp_value > 0.1:
+            cut = classifier_cuts[idx]
+        else:
+            cut = -1
+        wp_values[wp_name] = cut
+    with open(wp_file_path, "wt") as out_file:
+        json.dump(wp_values, out_file, indent=4)
 
 
 if __name__ == "__main__":

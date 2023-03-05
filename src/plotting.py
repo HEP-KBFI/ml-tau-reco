@@ -201,6 +201,6 @@ def plot_histogram(
     plt.ylabel(y_label, fontdict={"size": 20})
     # plt.grid(True, which="both")
     plt.yscale("log")
-    ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
+    ax.legend(loc="center left")  # , bbox_to_anchor=(1, 0.9))
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")

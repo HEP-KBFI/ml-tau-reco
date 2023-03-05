@@ -4,13 +4,17 @@ plotting:
   n_files: -1
 algorithms:
   LorentzNet:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21/LorentzNet/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21/LorentzNet/QCD
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar02/LorentzNet/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar02/LorentzNet/QCD
     compare: True
   HPS_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
     compare: False
+  ParticleTransformer:
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar03/ParticleTransformer/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar03/ParticleTransformer/QCD
+    compare: True
   MLReco_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
@@ -18,10 +22,10 @@ algorithms:
   HPS:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
-    compare: True
+    compare: False
   HPS_wo_quality_cuts:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21_woPtCuts/HPS/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Feb21_woPtCuts/HPS/QCD
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar01_woPtCuts/HPS/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar01_woPtCuts/HPS/QCD
     compare: True
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
@@ -38,6 +42,15 @@ algorithms:
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"
+  WPs:
+    HPS_wo_quality_cuts:
+      Loose: -1
+      Medium: 0.951
+      Tight: 0.467
+    LorentzNet:
+      Loose: 0.972
+      Medium: 0.946
+      Tight: 0.878
   efficiency:
     variables:
       - name: pt

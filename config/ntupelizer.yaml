@@ -12,13 +12,13 @@ samples_to_process:
 samples:
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /scratch-persistent/laurits/CLIC_data_20230227/ZH_Htautau
+    output_dir: /scratch-persistent/laurits/CLIC_data_20230303/ZH_Htautau
   QCD:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
-    output_dir: /scratch-persistent/laurits/CLIC_data_20230227/QCD
+    output_dir: /scratch-persistent/laurits/CLIC_data_20230303/QCD
   TT:
-    input_dir: /local/joosep/clic_edm4hep_2023_02_21/p8_ee_tt_ecm365
-    output_dir: /scratch-persistent/laurits/CLIC_data_[DATE]/TT
+    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_tt_ecm365
+    output_dir: /scratch-persistent/laurits/CLIC_data_20230302/TT
 validation:
   output_dir: $HOME/CLIC_ntuple_validation
   validation_samples:
