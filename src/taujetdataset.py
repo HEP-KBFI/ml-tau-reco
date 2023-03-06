@@ -24,6 +24,30 @@ class TauJetDataset(Dataset):
         # The order of features in the PF feature tensor
         self.pf_features = ["x", "y", "z", "tau", "charge", "pdg"]
 
+        self.pf_extras = [
+            "reco_cand_dxy",
+            "reco_cand_dz",
+            "reco_cand_signed_dxy",
+            "reco_cand_signed_dz",
+            "reco_cand_signed_d3",
+            "reco_cand_d3",
+            "reco_cand_d0",
+            "reco_cand_z0",
+            "reco_cand_PCA_x",
+            "reco_cand_PCA_y",
+            "reco_cand_PCA_z",
+            "reco_cand_PV_x",
+            "reco_cand_PV_y",
+            "reco_cand_PV_z",
+            "reco_cand_dxy_err",
+            "reco_cand_dz_err",
+            "reco_cand_d3_err",
+            "reco_cand_d0_err",
+            "reco_cand_z0_err",
+            "reco_cand_PCA_x_err",
+            "reco_cand_PCA_y_err",
+            "reco_cand_PCA_z_err"
+        ]
         # just load all data to memory
         self.all_data = []
         for fn in self.processed_file_names:
@@ -55,10 +79,13 @@ class TauJetDataset(Dataset):
             pfs[k] = data["reco_cand_p4s"][k]
         pfs["charge"] = data["reco_cand_charge"]
         pfs["pdg"] = np.abs(data["reco_cand_pdg"])
+
         # collect PF features in a specific order to an (Ncand x Nfeatcand) torch tensor
         pf_feature_tensors = []
         for feat in self.pf_features:
             pf_feature_tensors.append(torch.tensor(ak.flatten(pfs[feat]), dtype=torch.float32))
+        for feat in self.pf_extras:
+            pf_feature_tensors.append(torch.tensor(ak.flatten(data[feat]), dtype=torch.float32))
         pf_features = torch.stack(pf_feature_tensors, axis=-1)
 
         # create a tensor with (Ncand x 1) which assigns each PF candidate to the jet it belongs to
