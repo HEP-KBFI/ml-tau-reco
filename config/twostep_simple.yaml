@@ -1,0 +1,6 @@
+train_files: config/datasets/train.yaml
+validation_files: config/datasets/validation.yaml
+epochs: 200
+batch_size: 2048
+lr: 0.01
+outpath: /home/tolange/CLIC_paper/ml-tau-reco/twostep_gpu/
