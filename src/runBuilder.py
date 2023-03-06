@@ -15,7 +15,7 @@ from endtoend_simple import SimpleDNNTauBuilder
 from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 from fastCMSTauBuilder import FastCMSTauBuilder
 from LorentzNetTauBuilder import LorentzNetTauBuilder
-
+from DeepTauBuilder import DeepTauBuilder
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
     print("Load jets from", input_path)
@@ -48,6 +48,10 @@ def build_taus(cfg: DictConfig) -> None:
         builder = SimpleDNNTauBuilder(pytorch_model)
     elif cfg.builder == "LorentzNet":
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
+    elif cfg.builder == "DeepTau":
+        model = torch.load("data/model_ddeptau.pt", map_location=torch.device("cpu"))
+        print(model.__class__)
+        #builder = DeepTauBuilder(model)
     builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     for sample in cfg.samples_to_process:
