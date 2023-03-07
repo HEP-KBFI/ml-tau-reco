@@ -122,7 +122,7 @@ def plot_roc(efficiencies, fakerates, output_dir):
     output_path = os.path.join(output_dir, "ROC.png")
     algorithms = efficiencies.keys()
     fig, ax = plt.subplots(figsize=(12, 12))
-    non_ml_algos = ['FastCMSTau', 'HPS', 'HPS_wo_quality_cuts']
+    non_ml_algos = ["FastCMSTau", "HPS", "HPS_wo_quality_cuts"]
     for algorithm in algorithms:
         if algorithm in non_ml_algos:
             linewidth = 1
@@ -243,7 +243,9 @@ def plot_all_metrics(cfg):
         sig_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files)
         bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files)
         sig_paths_val = [
-            os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.validation.paths if "ZH_Htautau" in path
+            os.path.join(sig_input_dir, os.path.basename(path))
+            for path in cfg.datasets.validation.paths
+            if "ZH_Htautau" in path
         ]
         bkg_paths_val = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.validation.paths if "QCD" in path
@@ -281,7 +283,7 @@ def plot_all_metrics(cfg):
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
         print(f"Plotting for {algorithm}")
-        plot_algo_tauClassifiers(tauClassifiers[algorithm], os.path.join(algorithm_output_dir, 'tauClassifier.png'))
+        plot_algo_tauClassifiers(tauClassifiers[algorithm], os.path.join(algorithm_output_dir, "tauClassifier.png"))
         save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
         plot_energy_resolution(raw_numerator_data_e, algorithm_output_dir)
         plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, cfg)
@@ -296,36 +298,36 @@ def plot_all_metrics(cfg):
 
 def plot_tauClassifiers(tauClassifiers, dtype, output_path):
     bin_edges = np.linspace(0, 1, 26)
-    non_ml_algos = ['FastCMSTau', 'HPS', 'HPS_wo_quality_cuts']
+    non_ml_algos = ["FastCMSTau", "HPS", "HPS_wo_quality_cuts"]
     for name, tC in tauClassifiers.items():
         if name in non_ml_algos:
             linewidth = 1
         else:
             linewidth = 2
-        hist = np.histogram(tC['test'][dtype], bins=bin_edges)[0]
+        hist = np.histogram(tC["test"][dtype], bins=bin_edges)[0]
         hep.histplot(hist, bins=bin_edges, histtype="step", label=name, lw=linewidth)
         plt.xlabel("tauClassifier")
         plt.yscale("log")
         plt.legend()
     plt.savefig(output_path, bbox_inches="tight")
-    plt.close('all')
+    plt.close("all")
 
 
 def plot_algo_tauClassifiers(tauClassifiers, output_path):
     bin_edges = np.linspace(0, 1, 21)
-    linestyles = ['solid', 'dashed', 'dotted']
+    linestyles = ["solid", "dashed", "dotted"]
     for i, (split, values) in enumerate(tauClassifiers.items()):
-        hist_sig_ = np.histogram(values['sig'], bins=bin_edges)[0]
+        hist_sig_ = np.histogram(values["sig"], bins=bin_edges)[0]
         hist_sig = hist_sig_ / np.sum(hist_sig_)
-        hist_bkg_ = np.histogram(values['bkg'], bins=bin_edges)[0]
+        hist_bkg_ = np.histogram(values["bkg"], bins=bin_edges)[0]
         hist_bkg = hist_bkg_ / np.sum(hist_bkg_)
-        hep.histplot(hist_sig, bins=bin_edges, histtype="step", label=f"sig_{split}", ls=linestyles[i], color='red')
-        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", label=f"bkg_{split}", ls=linestyles[i], color='blue')
+        hep.histplot(hist_sig, bins=bin_edges, histtype="step", label=f"sig_{split}", ls=linestyles[i], color="red")
+        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", label=f"bkg_{split}", ls=linestyles[i], color="blue")
         plt.xlabel("tauClassifier")
         plt.yscale("log")
         plt.legend()
     plt.savefig(output_path, bbox_inches="tight")
-    plt.close('all')
+    plt.close("all")
 
 
 def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):

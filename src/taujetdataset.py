@@ -46,7 +46,7 @@ class TauJetDataset(Dataset):
             "reco_cand_z0_err",
             "reco_cand_PCA_x_err",
             "reco_cand_PCA_y_err",
-            "reco_cand_PCA_z_err"
+            "reco_cand_PCA_z_err",
         ]
         # just load all data to memory
         self.all_data = []
