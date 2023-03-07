@@ -15,7 +15,7 @@ def print_param(name, param):
     if param is not None:
         print(" type(%s) = " % name, type(param))
         print(" shape(%s) = " % name, param.shape)
-        print(" %s = " % name, param)
+        # print(" %s = " % name, param)
     else:
         print(" %s = None" % name)
 
@@ -541,6 +541,8 @@ class ParticleTransformer(nn.Module):
     ) -> None:
         if verbosity >= 1:
             print("<ParticleTransformer::ParticleTransformer>:")
+            print(" input_dim = %i" % input_dim)
+            print(" num_classes = %i" % num_classes)
         super().__init__(**kwargs)
 
         self.trimmer = SequenceTrimmer(enabled=trim and not for_inference)
@@ -577,9 +579,9 @@ class ParticleTransformer(nn.Module):
 
         self.to_ptXXXphim = None
         if metric == "eta-phi":
-            self.to_ptXXXphim = self.to_ptrapphim
+            self.to_ptXXXphim = to_ptrapphim
         elif metric == "theta-phi":
-            self.to_ptXXXphim = self.to_ptthetaphim
+            self.to_ptXXXphim = to_ptthetaphim
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
         self.pair_extra_dim = pair_extra_dim
@@ -630,7 +632,7 @@ class ParticleTransformer(nn.Module):
         # mask: (N, 1, P) -- real particle = 1, padded = 0
         # for pytorch: uu (N, C', num_pairs), uu_idx (N, 2, num_pairs)
         # for onnx: uu (N, C', P, P), uu_idx=None
-        if self.verbosity >= 1:
+        if self.verbosity >= 3:
             print("<ParticleTransformer::forward>:")
             print_param("x", x)
             print_param("v", v)
@@ -669,5 +671,6 @@ class ParticleTransformer(nn.Module):
             output = self.fc(x_cls)
             if self.for_inference:
                 output = torch.softmax(output, dim=1)
-            # print('output:\n', output)
+            if self.verbosity >= 3:
+                print_param("output", output)
             return output
