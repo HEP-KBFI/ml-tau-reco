@@ -78,12 +78,18 @@ class GridBuilder(BasicTauBuilder):
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
             """
-            list_part_var[filledpartidx+5][etaidx,phiidx] = self.pt_sorted_cand_dxy[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+6][etaidx,phiidx] = self.pt_sorted_cand_dz[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+7][etaidx,phiidx] = self.pt_sorted_cand_d3[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+8][etaidx,phiidx] = self.pt_sorted_cand_d0[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+9][etaidx,phiidx] = self.pt_sorted_cand_z0[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+10][etaidx,phiidx] = self.pt_sorted_cand_dz[self.pt_sorted_cone_mask>0][self.jetidx][idx]
+            list_part_var[filledpartidx+5][etaidx,phiidx] = \
+            self.pt_sorted_cand_dxy[self.pt_sorted_cone_mask>0][self.jetidx][idx]
+            list_part_var[filledpartidx+6][etaidx,phiidx] = \
+            self.pt_sorted_cand_dz[self.pt_sorted_cone_mask>0][self.jetidx][idx]
+            list_part_var[filledpartidx+7][etaidx,phiidx] = \
+            self.pt_sorted_cand_d3[self.pt_sorted_cone_mask>0][self.jetidx][idx]
+            list_part_var[filledpartidx+8][etaidx,phiidx] = \
+            self.pt_sorted_cand_d0[self.pt_sorted_cone_mask>0][self.jetidx][idx]
+            list_part_var[filledpartidx+9][etaidx,phiidx] = \
+            self.pt_sorted_cand_z0[self.pt_sorted_cone_mask>0][self.jetidx][idx]
+            list_part_var[filledpartidx+10][etaidx,phiidx] = \
+            self.pt_sorted_cand_dz[self.pt_sorted_cone_mask>0][self.jetidx][idx]
             """
             self.filledgrid[etaidx, phiidx] += 1
         return list_part_var
