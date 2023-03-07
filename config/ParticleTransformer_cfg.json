@@ -1,6 +1,8 @@
 {
     "ParticleTransformer": {
-        "max_cands": 50,
-        "metric": "theta-phi"
+        "max_cands": 10,
+        "metric": "theta-phi",
+        "standardize_inputs": true,
+        "json_file_FeatureStandardization": "ParticleTransformer_FeatureStandardization.json"
     }
 }
