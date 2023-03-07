@@ -3,6 +3,7 @@
 import datetime
 import hydra
 import json
+import numpy as np
 from omegaconf import DictConfig
 import os
 import subprocess
@@ -27,13 +28,13 @@ def get_split_files(cfg_filename, split):
         return paths
 
 
-def train_loop(dataloader, model, dev, loss_fn, optimizer):
+def train_loop(dataloader, model, dev, loss_fn, use_weights, optimizer):
     print("<train_loop>:")
     print("current time:", datetime.datetime.now())
     size = len(dataloader.dataset)
 
     model.train()
-    for batch, (X, y) in enumerate(dataloader):
+    for batch, (X, y, weight) in enumerate(dataloader):
         # Compute prediction and loss
         x = X["x"].to(device=dev)
         scalars = X["scalars"].to(device=dev)
@@ -41,22 +42,32 @@ def train_loop(dataloader, model, dev, loss_fn, optimizer):
         y = y.squeeze(dim=1).to(device=dev)
         # print("shape(y) = ", y.shape)
         # print("y = ", y)
+        weight = weight.squeeze(dim=1).to(device=dev)
+        # print("shape(weight) = ", weight.shape)
+        # print("weight = ", weight)
         pred = model(x, scalars, mask)
         # print("shape(pred) = ", pred.shape)
         # print("pred = ", pred)
-        loss = loss_fn(pred, y)
+        loss = None
+        if use_weights:
+            loss = loss_fn(pred, y)
+            loss = loss * weight
+            loss = loss.mean()
+        else:
+            loss = loss_fn(pred, y)
 
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        if (batch % 100) == 0 or batch == (size - 1):
+        batchsize = pred.size(dim=0)
+        if (batch % 100) == 0 or batch >= (size - batchsize):
             loss, current = loss.item(), (batch + 1) * len(pred)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
-def test_loop(dataloader, model, dev, loss_fn):
+def test_loop(dataloader, model, dev, loss_fn, use_weights):
     print("<test_loop>:")
     print("current time:", datetime.datetime.now())
     size = len(dataloader.dataset)
@@ -65,13 +76,19 @@ def test_loop(dataloader, model, dev, loss_fn):
 
     model.eval()
     with torch.no_grad():
-        for batch, (X, y) in enumerate(dataloader):
+        for batch, (X, y, weight) in enumerate(dataloader):
             x = X["x"].to(device=dev)
             scalars = X["scalars"].to(device=dev)
             mask = X["mask"].to(device=dev)
             y = y.squeeze(dim=1).to(device=dev)
+            weight = weight.squeeze(dim=1).to(device=dev)
             pred = model(x, scalars, mask)
-            test_loss += loss_fn(pred, y).item()
+            if use_weights:
+                loss = loss_fn(pred, y)
+                loss = loss * weight
+                test_loss += loss.mean().item()
+            else:
+                test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
     test_loss /= num_batches
@@ -130,8 +147,15 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     ).to(device=dev)
     print("Finished building model:")
     print(model)
+    model_params = filter(lambda p: p.requires_grad, model.parameters())
+    num_trainable_weights = sum([np.prod(p.size()) for p in model_params])
+    print("#trainable parameters = %i" % num_trainable_weights)
 
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = None
+    if train_cfg.use_weights:
+        loss_fn = nn.CrossEntropyLoss(reduction="none")
+    else:
+        loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
 
     print("Starting to build training dataset...")
@@ -152,11 +176,11 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     print("Starting training (%i epochs)..." % train_cfg.num_epochs)
     for t in range(train_cfg.num_epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        train_loop(dataloader_train, model, dev, loss_fn, optimizer)
+        train_loop(dataloader_train, model, dev, loss_fn, train_cfg.use_weights, optimizer)
         if dev == "cuda":
             dev_id = torch.cuda.current_device()
             run_command("nvidia-smi --id=%i" % dev_id)
-        test_loop(dataloader_test, model, dev, loss_fn)
+        test_loop(dataloader_test, model, dev, loss_fn, train_cfg.use_weights)
         if dev == "cuda":
             dev_id = torch.cuda.current_device()
             run_command("nvidia-smi --id=%i" % dev_id)

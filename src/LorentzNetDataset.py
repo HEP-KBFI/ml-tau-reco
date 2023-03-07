@@ -74,6 +74,7 @@ class LorentzNetDataset(Dataset):
         self.scalars_tensors = []
         self.node_mask_tensors = []
         self.y_tensors = []
+        self.weight_tensors = []
 
         self.num_jets = 0
         for file in filelist:
@@ -90,6 +91,8 @@ class LorentzNetDataset(Dataset):
 
             data_gen_tau_decaymodes = data["gen_jet_tau_decaymode"]
 
+            data_weights = data["weight"]
+
             for idx in range(num_jets_in_file):
                 if idx > 0 and (idx % 10000) == 0:
                     print(" Processing entry %i" % idx)
@@ -99,11 +102,13 @@ class LorentzNetDataset(Dataset):
                     jet_constituent_p4s, self.max_cands, self.add_beams
                 )
                 y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
+                weight_tensor = torch.tensor([data_weights[idx]], dtype=torch.float32)
 
                 self.x_tensors.append(x_tensor)
                 self.scalars_tensors.append(scalars_tensor)
                 self.node_mask_tensors.append(node_mask_tensor)
                 self.y_tensors.append(y_tensor)
+                self.weight_tensors.append(weight_tensor)
 
             print("Closing file %s." % file)
 
@@ -115,16 +120,21 @@ class LorentzNetDataset(Dataset):
         assert len(self.scalars_tensors) == self.num_jets
         assert len(self.node_mask_tensors) == self.num_jets
         assert len(self.y_tensors) == self.num_jets
+        assert len(self.weight_tensors) == self.num_jets
 
     def __len__(self):
         return self.num_jets
 
     def __getitem__(self, idx):
         if idx < self.num_jets:
-            return {
-                "x": self.x_tensors[idx],
-                "scalars": self.scalars_tensors[idx],
-                "mask": self.node_mask_tensors[idx],
-            }, self.y_tensors[idx]
+            return (
+                {
+                    "x": self.x_tensors[idx],
+                    "scalars": self.scalars_tensors[idx],
+                    "mask": self.node_mask_tensors[idx],
+                },
+                self.y_tensors[idx],
+                self.weight_tensors[idx],
+            )
         else:
             raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))
