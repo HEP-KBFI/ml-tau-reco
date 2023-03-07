@@ -16,6 +16,7 @@ from ParticleTransformerDataset import ParticleTransformerDataset
 from ParticleTransformer import ParticleTransformer
 from FocalLoss import FocalLoss
 
+
 def get_split_files(cfg_filename, split):
     with open(cfg_filename, "r") as cfg_file:
         data = yaml.safe_load(cfg_file)
@@ -29,9 +30,8 @@ def get_split_files(cfg_filename, split):
 
 def train_one_epoch(idx_epoch, dataloader_train, dataloader_test, model, dev, loss_fn, use_per_jet_weights, optimizer):
     num_jets_train = len(dataloader_train.dataset)
-    num_batches_train = len(dataloader_train)
-    loss_train = 0.
-    accuracy_train = 0.
+    loss_train = 0.0
+    accuracy_train = 0.0
     model.train()
     for idx_batch, (X, y, weight) in enumerate(dataloader_train):
         # Compute prediction and loss
@@ -48,16 +48,16 @@ def train_one_epoch(idx_epoch, dataloader_train, dataloader_test, model, dev, lo
             loss = loss * weight
         else:
             loss = loss_fn(pred, y)
-        loss_train += loss.sum().item() 
+        loss_train += loss.sum().item()
         accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
-        accuracy_train += accuracy.sum().item() 
+        accuracy_train += accuracy.sum().item()
 
         # Backpropagation
         optimizer.zero_grad()
         loss.mean().backward()
         optimizer.step()
 
-        batchsize = pred.size(dim=0) 
+        batchsize = pred.size(dim=0)
         if (idx_batch % 100) == 0 or idx_batch >= (num_jets_train - batchsize):
             running_loss = loss.mean().item()
             num_jets_processed = min((idx_batch + 1) * batchsize, num_jets_train)
@@ -65,12 +65,11 @@ def train_one_epoch(idx_epoch, dataloader_train, dataloader_test, model, dev, lo
 
     loss_train /= num_jets_train
     accuracy_train /= num_jets_train
-    print("Train: Avg loss = %1.6f, accuracy = %1.2f" % (loss_train, 100*accuracy_train))
+    print("Train: Avg loss = %1.6f, accuracy = %1.2f" % (loss_train, 100 * accuracy_train))
 
     num_jets_test = len(dataloader_test.dataset)
-    num_batches_test = len(dataloader_test)
-    loss_test = 0.
-    accuracy_test = 0.
+    loss_test = 0.0
+    accuracy_test = 0.0
     model.eval()
     with torch.no_grad():
         for idx_batch, (X, y, weight) in enumerate(dataloader_test):
@@ -79,20 +78,20 @@ def train_one_epoch(idx_epoch, dataloader_train, dataloader_test, model, dev, lo
             mask = X["mask"].to(device=dev)
             y = y.squeeze(dim=1).to(device=dev)
             weight = weight.squeeze(dim=1).to(device=dev)
-            pred = model(x, v, mask).to(device=dev)          
+            pred = model(x, v, mask).to(device=dev)
 
             if use_per_jet_weights:
                 loss = loss_fn(pred, y)
                 loss = loss * weight
             else:
                 loss = loss_fn(pred, y).item()
-            loss_test += loss.sum().item()  
+            loss_test += loss.sum().item()
             accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
             accuracy_test += accuracy.sum().item()
 
     loss_test /= num_jets_test
     accuracy_test /= num_jets_test
-    print("Test: Avg loss = %1.6f, accuracy = %1.2f" % (loss_test, 100*accuracy_test))
+    print("Test: Avg loss = %1.6f, accuracy = %1.2f" % (loss_test, 100 * accuracy_test))
 
     return loss_train, loss_test
 
@@ -141,21 +140,25 @@ def lrfinderParticleTransformer(train_cfg: DictConfig) -> None:
     print("Finished building validation dataset.")
     print(" current time:", datetime.datetime.now())
 
-    dataloader_train = DataLoader(dataset_train, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True)
-    dataloader_test = DataLoader(dataset_test, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True)
+    dataloader_train = DataLoader(
+        dataset_train, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True
+    )
+    dataloader_test = DataLoader(
+        dataset_test, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True
+    )
 
-    classweight_bgr = 1.
-    classweight_sig = 1.
+    classweight_bgr = 1.0
+    classweight_sig = 1.0
     if train_cfg.use_class_weights:
         classweight_bgr = train_cfg.classweight_bgr
         classweight_sig = train_cfg.classweight_sig
-    classweight_tensor = torch.tensor([ classweight_bgr, classweight_sig ], dtype=torch.float32).to(device=dev)
+    classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
     loss_fn = None
     if train_cfg.use_focal_loss:
-        loss_fn = FocalLoss(gamma=train_cfg.focal_loss_gamma, alpha=classweight_tensor, reduction='none')
+        loss_fn = FocalLoss(gamma=train_cfg.focal_loss_gamma, alpha=classweight_tensor, reduction="none")
     else:
-        loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction='none')
-   
+        loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
+
     points_lr = []
     points_loss_train = []
     points_loss_test = []
@@ -174,9 +177,11 @@ def lrfinderParticleTransformer(train_cfg: DictConfig) -> None:
             verbosity=train_cfg.verbosity,
         ).to(device=dev)
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1.e-2)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1.0e-2)
 
-        loss_train, loss_test = train_one_epoch(0, dataloader_train, dataloader_test, model, dev, loss_fn, train_cfg.use_per_jet_weights, optimizer)
+        loss_train, loss_test = train_one_epoch(
+            0, dataloader_train, dataloader_test, model, dev, loss_fn, train_cfg.use_per_jet_weights, optimizer
+        )
 
         points_lr.append(lr)
         points_loss_train.append(loss_train)
@@ -184,13 +189,14 @@ def lrfinderParticleTransformer(train_cfg: DictConfig) -> None:
 
         lr *= 1.2
 
-    graph_train, = plt.plot(points_lr, points_loss_train, 'b', label="train")
-    graph_test,  = plt.plot(points_lr, points_loss_test,  'r', label="test")
-    plt.xscale('log')
-    plt.legend(handles=[ graph_train, graph_test ])
+    (graph_train,) = plt.plot(points_lr, points_loss_train, "b", label="train")
+    (graph_test,) = plt.plot(points_lr, points_loss_test, "r", label="test")
+    plt.xscale("log")
+    plt.legend(handles=[graph_train, graph_test])
     plt.xlabel("lr")
     plt.ylabel("loss")
     plt.savefig("lrfinderParticleTransformer.png")
+
 
 if __name__ == "__main__":
     lrfinderParticleTransformer()
