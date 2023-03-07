@@ -31,14 +31,14 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
 
         self.max_cands = self._builderConfig["max_cands"]
         metric = self._builderConfig["metric"]
-        self.metric_dR = None
-        self.metric_dEta = None
+        self.metric_dR_or_angle = None
+        self.metric_dEta_or_dTheta = None
         if metric == "eta-phi":
-            self.metric_dR = comp_deltaR
-            self.metric_dEta = comp_deltaEta
+            self.metric_dR_or_angle = comp_deltaR
+            self.metric_dEta_or_dTheta = comp_deltaEta
         elif metric == "theta-phi":
-            self.metric_dR = comp_angle
-            self.metric_dEta = comp_deltaTheta
+            self.metric_dR_or_angle = comp_angle
+            self.metric_dEta_or_dTheta = comp_deltaTheta
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
 
@@ -52,7 +52,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             verbosity=verbosity,
         )
         self.model.load_state_dict(
-            torch.load("data/ParticleTransformer_model_2023MarXX.pt", map_location=torch.device("cpu"))
+            torch.load("data/ParticleTransformer_model_wReweighting_2023Mar03.pt", map_location=torch.device("cpu"))
         )
         self.model.eval()
 
@@ -71,15 +71,15 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         cand_p4s = vector.awk(
             ak.zip({"px": data_cand_p4s.x, "py": data_cand_p4s.y, "pz": data_cand_p4s.z, "mass": data_cand_p4s.tau})
         )
-        data_cand_pdgIds = data["reco_cand_pdgIds"]
+        data_cand_pdgIds = data["reco_cand_pdg"]
         data_cand_qs = data["reco_cand_charge"]
-        data_cand_d0s = data["reco_cand_d0s"]
-        data_cand_d0errs = data["reco_cand_d0errs"]
-        data_cand_dzs = data["reco_cand_dzs"]
-        data_cand_dzerrs = data["reco_cand_dzerrs"]
+        data_cand_d0s = data["reco_cand_dxy"]
+        data_cand_d0errs = data["reco_cand_dxy_err"]
+        data_cand_dzs = data["reco_cand_dz"]
+        data_cand_dzerrs = data["reco_cand_dz_err"]
 
-        v_tensors = []
         x_tensors = []
+        v_tensors = []
         node_mask_tensors = []
         for idx in range(num_jets):
             if self.verbosity >= 2 and (idx % 100) == 0:
@@ -95,7 +95,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             jet_constituent_dzs = data_cand_dzs[idx]
             jet_constituent_dzerrs = data_cand_dzerrs[idx]
 
-            v_tensor, x_tensor, node_mask_tensor = buildParticleTransformerTensors(
+            x_tensor, v_tensor, node_mask_tensor = buildParticleTransformerTensors(
                 jet_p4,
                 jet_constituent_p4s,
                 jet_constituent_pdgIds,
@@ -104,8 +104,8 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
                 jet_constituent_d0errs,
                 jet_constituent_dzs,
                 jet_constituent_dzerrs,
-                self.metric_dR,
-                self.metric_Eta,
+                self.metric_dR_or_angle,
+                self.metric_dEta_or_dTheta,
                 self.max_cands,
             )
             x_tensors.append(x_tensor)
