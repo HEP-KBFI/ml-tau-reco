@@ -3,8 +3,8 @@ import awkward as ak
 import vector
 from torch_geometric.data.batch import Batch
 from basicTauBuilder import BasicTauBuilder
-from deeptauTraining import DeepTau
 from taujetdataset_withgrid import TauJetDatasetWithGrid
+
 
 class DeepTauBuilder(BasicTauBuilder):
     def __init__(
@@ -29,16 +29,7 @@ class DeepTauBuilder(BasicTauBuilder):
         dmode = np.zeros(njets)
         # as a dummy placeholder, just return the first PFCand for each jet
         tau_cand_p4s = data["reco_cand_p4s"][:, 0:1]
-        tauP4 = vector.awk(
-            ak.zip(
-                {
-                    "px": pred_p4[:, 0],
-                    "py": pred_p4[:, 1],
-                    "pz": pred_p4[:, 2],
-                    "mass": pred_p4[:, 3]
-                }
-            )
-        )
+        tauP4 = vector.awk(ak.zip({"px": pred_p4[:, 0], "py": pred_p4[:, 1], "pz": pred_p4[:, 2], "mass": pred_p4[:, 3]}))
         return {
             "tau_p4s": tauP4,
             "tauSigCand_p4s": tau_cand_p4s,

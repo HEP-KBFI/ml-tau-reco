@@ -28,12 +28,12 @@ class TauJetDatasetWithGrid:
         self.num_particles_in_grid = cfg["num_particles_in_grid"]
 
         for fn in self.filelist:
-            print(f'Processing file: {fn} at ', time.strftime('%H:%M'))
+            print(f"Processing file: {fn} at ", time.strftime("%H:%M"))
             data = ak.from_parquet(fn)
             self.all_data += self.process_file_data(data)
 
     def process_file_data(self, data):
-        if 'inner_grid' not in data.fields:
+        if "inner_grid" not in data.fields:
             data = self.buildGrid.processJets(data)
         gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
         p4 = data["gen_jet_tau_p4s"]
@@ -75,8 +75,10 @@ class TauJetDatasetWithGrid:
             block_name = f"{cone}"
             part_block_features = torch.tensor(data[block_name].to_numpy(), dtype=torch.float32)
             part_block = part_block_features.reshape(
-                self.data_len, self.len_part_features*self.num_particles_in_grid,
-                self._builderConfig[cone]["n_cells"], self._builderConfig[cone]["n_cells"]
+                self.data_len,
+                self.len_part_features * self.num_particles_in_grid,
+                self._builderConfig[cone]["n_cells"],
+                self._builderConfig[cone]["n_cells"],
             )
             part_block_frs[cone] = part_block
         return part_block_frs

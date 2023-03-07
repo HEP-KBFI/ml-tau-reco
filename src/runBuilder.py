@@ -18,6 +18,7 @@ from LorentzNetTauBuilder import LorentzNetTauBuilder
 from DeepTauBuilder import DeepTauBuilder
 from deeptauTraining import DeepTau
 
+
 def process_single_file(input_path: str, builder, output_dir) -> None:
     print("Load jets from", input_path)
     jets = ak.from_parquet(input_path)
@@ -51,6 +52,7 @@ def build_taus(cfg: DictConfig) -> None:
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "DeepTau":
         model = torch.load("data/model_deeptau_v2.pt", map_location=torch.device("cpu"))
+        assert model.__class__ == DeepTau
         builder = DeepTauBuilder(model)
     builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)

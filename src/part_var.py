@@ -1,4 +1,6 @@
 from enum import Enum, auto
+
+
 class Var(Enum):
     rel_pt = auto()
     dtheta = auto()
