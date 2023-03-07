@@ -173,6 +173,8 @@ def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_
     sig_hist = np.histogram(sig_values, weights=sig_weights, bins=bin_edges)[0]
     hep.histplot(bkg_hist, bins=bin_edges, histtype="step", label="BKG", hatch="//")
     hep.histplot(sig_hist, bins=bin_edges, histtype="step", label="SIG", hatch="\\\\")
+    ax = plt.axes()
+    ax.set_facecolor("white")
     plt.xlabel(xlabel)
     plt.legend()
     plt.savefig(output_path, bbox_inches="tight")
