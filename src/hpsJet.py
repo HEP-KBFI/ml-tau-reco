@@ -18,8 +18,10 @@ class Jet:
         barcode=-1,
     ):
         self.p4 = jet_p4
+        self.energy = jet_p4.energy
         self.pt = jet_p4.pt
         self.eta = jet_p4.eta
+        self.theta = jet_p4.theta
         self.phi = jet_p4.phi
         self.mass = jet_p4.mass
         self.constituents = buildCands(
@@ -41,8 +43,8 @@ class Jet:
 
     def print(self):
         print(
-            "jet #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.2f, #constituents = %i"
-            % (self.barcode, self.pt, self.eta, self.phi, self.mass, len(self.constituents))
+            "jet #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.2f, #constituents = %i"
+            % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, len(self.constituents))
         )
         print("constituents:")
         for cand in self.constituents:
