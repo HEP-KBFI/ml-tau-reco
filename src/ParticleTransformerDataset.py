@@ -116,8 +116,15 @@ def buildParticleTransformerTensors(
     return x_tensor, v_tensor, node_mask_tensor
 
 
+def read_cut(cuts, key):
+    if key in cuts.keys():
+        return cuts[key]
+    else:
+        return -1.
+
+
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, filelist, max_num_files=-1, max_cands=50, metric="eta-phi"):
+    def __init__(self, filelist, max_num_files=-1, max_cands=50, metric="eta-phi", preselection={}):
         print("<ParticleTransformerDataset::ParticleTransformerDataset>:")
         print(" #files = %i" % len(filelist))
         print(" max_cands = %i" % max_cands)
@@ -133,6 +140,15 @@ class ParticleTransformerDataset(Dataset):
             self.metric_dEta_or_dTheta = comp_deltaTheta
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
+
+        self.min_jet_theta = read_cut(preselection, "min_jet_theta")
+        self.max_jet_theta = read_cut(preselection, "max_jet_theta")
+        self.min_jet_pt    = read_cut(preselection, "min_jet_pt")
+        self.max_jet_pt    = read_cut(preselection, "max_jet_pt")
+        print(" min_jet_theta = %1.3f" % self.min_jet_theta)
+        print(" max_jet_theta = %1.3f" % self.max_jet_theta)
+        print(" min_jet_pt = %1.3f" % self.min_jet_pt)
+        print(" max_jet_pt = %1.3f" % self.max_jet_pt)
 
         if max_num_files != -1:
             num_sig_files = 0
@@ -193,6 +209,11 @@ class ParticleTransformerDataset(Dataset):
                     print(" Processing entry %i" % idx)
 
                 jet_p4 = jet_p4s[idx]
+                if not ((self.min_jet_theta < 0. or jet_p4.theta >= self.min_jet_theta) and \
+                        (self.max_jet_theta < 0. or jet_p4.theta <= self.max_jet_theta) and \
+                        (self.min_jet_pt    < 0. or jet_p4.pt    >= self.min_jet_pt   ) and \
+                        (self.max_jet_pt    < 0. or jet_p4.pt    <= self.max_jet_pt   )):
+                    continue
 
                 jet_constituent_p4s = cand_p4s[idx]
                 jet_constituent_pdgIds = data_cand_pdgIds[idx]
@@ -224,9 +245,9 @@ class ParticleTransformerDataset(Dataset):
                 self.y_tensors.append(y_tensor)
                 self.weight_tensors.append(weight_tensor)
 
-            print("Closing file %s." % file)
+                self.num_jets += 1
 
-            self.num_jets += num_jets_in_file
+            print("Closing file %s." % file)
 
         print("Dataset contains %i entries." % self.num_jets)
 
