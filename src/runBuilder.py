@@ -15,6 +15,7 @@ from endtoend_simple import SimpleDNNTauBuilder
 from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
 from fastCMSTauBuilder import FastCMSTauBuilder
 from LorentzNetTauBuilder import LorentzNetTauBuilder
+from ParticleTransformerTauBuilder import ParticleTransformerTauBuilder
 from DeepTauBuilder import DeepTauBuilder
 from deeptauTraining import DeepTau
 
@@ -50,6 +51,8 @@ def build_taus(cfg: DictConfig) -> None:
         builder = SimpleDNNTauBuilder(pytorch_model)
     elif cfg.builder == "LorentzNet":
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
+    elif cfg.builder == "ParticleTransformer":
+        builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "DeepTau":
         model = torch.load("data/model_deeptau_v2.pt", map_location=torch.device("cpu"))
         assert model.__class__ == DeepTau
