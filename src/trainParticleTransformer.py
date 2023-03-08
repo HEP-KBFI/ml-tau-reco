@@ -34,11 +34,13 @@ def get_split_files(cfg_filename, split):
 
 
 def train_one_epoch(
-    idx_epoch, dataloader_train, dataloader_test, transform, model, dev, loss_fn, use_per_jet_weights, optimizer, tensorboard
+    idx_epoch, dataloader_train, dataloader_test, transform, model, dev, loss_fn, use_per_jet_weights, optimizer, lr_scheduler, tensorboard
 ):
     num_jets_train = len(dataloader_train.dataset)
     loss_train = 0.0
+    loss_normalization_train = 0.0
     accuracy_train = 0.0
+    accuracy_normalization_train = 0.0
     class_true_train = []
     class_pred_train = []
     false_positives_train = 0.0
@@ -62,11 +64,13 @@ def train_one_epoch(
         else:
             loss = loss_fn(pred, y)
         loss_train += loss.sum().item()
+        loss_normalization_train += torch.flatten(loss).size(dim=0)
         accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
         accuracy_train += accuracy.sum().item()
+        accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
 
-        class_true_train.append((y == torch.tensor(1)).to(dtype=torch.float32).cpu().numpy())
-        class_pred_train.append(torch.softmax(pred, dim=1).detach().cpu().numpy())
+        class_true_train.extend(y.detach().cpu().numpy())
+        class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
         false_positives_train += (
             ((y == torch.tensor(0)) * (pred.argmax(dim=1) == torch.tensor(1))).to(dtype=torch.float32).sum().item()
         )
@@ -78,29 +82,30 @@ def train_one_epoch(
         optimizer.zero_grad()
         loss.mean().backward()
         optimizer.step()
+        lr_scheduler.step()
 
         batchsize = pred.size(dim=0)
-        if (idx_batch % 100) == 0 or idx_batch >= (num_jets_train - batchsize):
-            running_loss = loss.mean().item()
-            num_jets_processed = min((idx_batch + 1) * batchsize, num_jets_train)
-            print(" Running loss: %1.6f  [%i/%s]" % (running_loss, num_jets_processed, num_jets_train))
+        num_jets_processed = min((idx_batch + 1) * batchsize, num_jets_train)
+        if (idx_batch % 100) == 0 or num_jets_processed >= (num_jets_train - batchsize):
+            print(" Running loss: %1.6f  [%i/%s]" % (loss.mean().item(), num_jets_processed, num_jets_train))
 
-    loss_train /= num_jets_train
-    accuracy_train /= num_jets_train
-    print("Train: Avg loss = %1.6f, accuracy = %1.2f" % (loss_train, 100 * accuracy_train))
-    tensorboard.add_scalar("Loss/train", loss_train, idx_epoch)
-    tensorboard.add_scalar("Accuracy/train", 100 * accuracy_train, idx_epoch)
-    class_true_train = np.concatenate(class_true_train)
-    class_pred_train = np.concatenate(class_pred_train)
-    tensorboard.add_pr_curve("ROC_curve/train", class_true_train, class_pred_train, idx_epoch)
+    loss_train /= loss_normalization_train
+    accuracy_train /= accuracy_normalization_train
+    print("Train: Avg loss = %1.6f, accuracy = %1.2f%%" % (loss_train, 100 * accuracy_train))
+
+    tensorboard.add_scalar("Loss/train", loss_train, global_step=idx_epoch)
+    tensorboard.add_scalar("Accuracy/train", 100 * accuracy_train, global_step=idx_epoch)
+    tensorboard.add_pr_curve("ROC_curve/train", np.array(class_true_train), np.array(class_pred_train), global_step=idx_epoch)
     false_positives_train /= num_jets_train
     false_negatives_train /= num_jets_train
-    tensorboard.add_scalar("false_positives/train", false_positives_train, idx_epoch)
-    tensorboard.add_scalar("false_negatives/train", false_negatives_train, idx_epoch)
+    tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
+    tensorboard.add_scalar("false_negatives/train", false_negatives_train, global_step=idx_epoch)
 
     num_jets_test = len(dataloader_test.dataset)
     loss_test = 0.0
+    loss_normalization_test = 0.0
     accuracy_test = 0.0
+    accuracy_normalization_test = 0.0
     class_true_test = []
     class_pred_test = []
     false_positives_test = 0.0
@@ -123,11 +128,13 @@ def train_one_epoch(
             else:
                 loss = loss_fn(pred, y).item()
             loss_test += loss.sum().item()
+            loss_normalization_test += torch.flatten(loss).size(dim=0)
             accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
             accuracy_test += accuracy.sum().item()
+            accuracy_normalization_test += torch.flatten(accuracy).size(dim=0)
 
-            class_true_test.append((y == torch.tensor(1)).to(dtype=torch.float32).cpu().numpy())
-            class_pred_test.append(torch.softmax(pred, dim=1).detach().cpu().numpy())
+            class_true_train.extend(y.detach().cpu().numpy())
+            class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
             false_positives_test += (
                 ((y == torch.tensor(0)) * (pred.argmax(dim=1) == torch.tensor(1))).to(dtype=torch.float32).sum().item()
             )
@@ -135,20 +142,24 @@ def train_one_epoch(
                 ((y == torch.tensor(1)) * (pred.argmax(dim=1) == torch.tensor(0))).to(dtype=torch.float32).sum().item()
             )
 
-    loss_test /= num_jets_test
-    accuracy_test /= num_jets_test
-    print("Test: Avg loss = %1.6f, accuracy = %1.2f" % (loss_test, 100 * accuracy_test))
-    tensorboard.add_scalar("Loss/test", loss_test, idx_epoch)
-    tensorboard.add_scalar("Accuracy/test", 100 * accuracy_test, idx_epoch)
-    class_true_test = np.concatenate(class_true_test)
-    class_pred_test = np.concatenate(class_pred_test)
-    tensorboard.add_pr_curve("ROC_curve/test", class_true_test, class_pred_test, idx_epoch)
+    loss_test /= loss_normalization_test
+    accuracy_test /= accuracy_normalization_test
+    print("Test: Avg loss = %1.6f, accuracy = %1.2f%%" % (loss_test, 100 * accuracy_test))
+
+    tensorboard.add_scalar("Loss/test", loss_test, global_step=idx_epoch)
+    tensorboard.add_scalar("Accuracy/test", 100 * accuracy_test, global_step=idx_epoch)
+    tensorboard.add_pr_curve("ROC_curve/test", np.array(class_true_test), np.array(class_pred_test), global_step=idx_epoch)
     false_positives_test /= num_jets_test
     false_negatives_test /= num_jets_test
-    tensorboard.add_scalar("false_positives/test", false_positives_test, idx_epoch)
-    tensorboard.add_scalar("false_negatives/test", false_negatives_test, idx_epoch)
+    tensorboard.add_scalar("false_positives/test", false_positives_test, global_step=idx_epoch)
+    tensorboard.add_scalar("false_negatives/test", false_negatives_test, global_step=idx_epoch)
 
     return loss_train, loss_test
+
+
+#def get_lr(optimizer):
+#    for param_group in optimizer.param_groups:
+#        return param_group['lr']
 
 
 def run_command(cmd):
@@ -184,6 +195,12 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     max_cands = ParticleTransformer_cfg["max_cands"]
     metric = ParticleTransformer_cfg["metric"]
     standardize_inputs = ParticleTransformer_cfg["standardize_inputs"]
+    preselection = {
+        "min_jet_theta": ParticleTransformer_cfg["min_jet_theta"],
+        "max_jet_theta": ParticleTransformer_cfg["max_jet_theta"],
+        "min_jet_pt": ParticleTransformer_cfg["min_jet_pt"],
+        "max_jet_pt": ParticleTransformer_cfg["max_jet_pt"],
+    }
 
     print("Building model...")
     model = ParticleTransformer(
@@ -203,14 +220,14 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     print("Starting to build training dataset...")
     print(" current time:", datetime.datetime.now())
-    dataset_train = ParticleTransformerDataset(filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands)
+    dataset_train = ParticleTransformerDataset(filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, preselection=preselection)
     print("Finished building training dataset.")
     print(" current time:", datetime.datetime.now())
 
     print("Starting to build validation dataset...")
     print(" current time:", datetime.datetime.now())
     dataset_test = ParticleTransformerDataset(
-        filelist_test, max_num_files=train_cfg.max_num_files, metric=metric, max_cands=max_cands
+        filelist_test, max_num_files=train_cfg.max_num_files, metric=metric, max_cands=max_cands, preselection=preselection
     )
     print("Finished building validation dataset.")
     print(" current time:", datetime.datetime.now())
@@ -242,11 +259,13 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
     num_batches_train = len(dataloader_train)
+    print("Training for %i epochs." % train_cfg.num_epochs)
+    print("#batches(train) = %i" % num_batches_train)
     lr_scheduler = OneCycleLR(
         optimizer, max_lr=1.0e-3, epochs=train_cfg.num_epochs, steps_per_epoch=num_batches_train, anneal_strategy="cos"
     )
 
-    print("Starting training (%i epochs)..." % train_cfg.num_epochs)
+    print("Starting training...")
     print(" current time:", datetime.datetime.now())
     tensorboard = SummaryWriter()
     min_loss_test = -1.0
@@ -263,16 +282,18 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
             dev,
             loss_fn,
             train_cfg.use_per_jet_weights,
-            optimizer,
+            optimizer, 
+            lr_scheduler,
             tensorboard,
         )
-        print(" lr = %1.3f" % lr_scheduler.get_last_lr()[0])
+        print(" lr = %1.3e" % lr_scheduler.get_last_lr()[0])
+        #print(" lr = %1.3e" % get_lr(optimizer))
         tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
         if min_loss_test == -1.0 or loss_test < min_loss_test:
             print("Found new best model :)")
             best_model_file = train_cfg.model_file.replace(".pt", "_best.pt")
-            print("Saving best model to file %s." % best_model_file)
+            print("Saving best model to file %s" % best_model_file)
             torch.save(model.state_dict(), best_model_file)
             print("Done.")
             min_loss_test = loss_test
@@ -280,8 +301,8 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         print("System utilization:")
         process = psutil.Process(os.getpid())
         cpu_percent = process.cpu_percent(interval=None)
-        print(" CPU-Util = %1.2f" % cpu_percent)
-        print(" Memory-Usage = %i Mb" % process.memory_info().rss / 1048576)
+        print(" CPU-Util = %1.2f%%" % cpu_percent)
+        print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
         if dev == "cuda":
             print("GPU: N/A")
             run_command("nvidia-smi --id=%i" % torch.cuda.current_device())
@@ -290,7 +311,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     print("Finished training.")
     print(" current time:", datetime.datetime.now())
 
-    print("Saving model to file %s." % train_cfg.model_file)
+    print("Saving model to file %s" % train_cfg.model_file)
     torch.save(model.state_dict(), train_cfg.model_file)
     print("Done.")
 
