@@ -8,24 +8,25 @@ class FeatureStandardization:
         self.features = features
         self.dim = dim
         self.verbosity = verbosity
+
         self.mean = {}
         self.one_over_sigma = {}
+        self.dims = {}
+        self.shapes = {}
 
     def compute_params(self, dataloader):
-        print("<FeatureStandardization::compute_params>:")
+        #print("<FeatureStandardization::compute_params>:")
 
-        dims = {}
-        shapes = {}
         xs = {}
         x2s = {}
         num_particles = 0
         for (X, y, weight) in dataloader:
             for feature in self.features:
                 x = X[feature]
-                print("shape(%s) = " % feature, x.shape)
+                #print("shape(%s) = " % feature, x.shape)
 
-                dims[feature] = x.dim()
-                shapes[feature] = x.shape
+                self.dims[feature] = x.dim()
+                self.shapes[feature] = x.shape
 
                 if self.dim != (x.dim() - 1):
                     x = torch.swapaxes(x, self.dim, -1)
@@ -43,7 +44,7 @@ class FeatureStandardization:
             mask = X["mask"]
             num_particles += mask.sum().item()
 
-        print("num_particles = %i" % num_particles)
+        #print("num_particles = %i" % num_particles)
         if num_particles == 0:
             raise RuntimeError("Dataset given as function argument is empty !!")
 
@@ -52,17 +53,17 @@ class FeatureStandardization:
             x2 = torch.mul(x2s[feature], 1.0 / num_particles)
 
             mean = x
-            print("mean = ", mean)
+            #print("mean = ", mean)
             var = torch.sub(x2, x * x)
             sigma = torch.sqrt(var)
-            print("sigma = ", sigma)
+            #print("sigma = ", sigma)
             one_over_sigma = torch.div(torch.tensor(1), torch.sqrt(var))
             if torch.isnan(one_over_sigma).sum().item() > 0.0:
                 raise RuntimeError("Failed to compute standard deviation, because <x^2> - <x>^2 is negative !!")
 
             self.mean[feature] = mean
             self.one_over_sigma[feature] = one_over_sigma
-            for dim in range(dims[feature]):
+            for dim in range(self.dims[feature]):
                 if dim < self.dim:
                     self.mean[feature] = torch.unsqueeze(self.mean[feature], 0)
                     self.one_over_sigma[feature] = torch.unsqueeze(self.one_over_sigma[feature], 0)
@@ -74,45 +75,71 @@ class FeatureStandardization:
             self.print()
 
     def __call__(self, X):
+        #print("<FeatureStandardization::operator()>:")
         X_transformed = {}
+        # apply transformation to requested features
         for feature in self.features:
             x = X[feature]
-            print("before transformation: %s = " % feature, x)
+            #print("before transformation: %s = " % feature, x[0])
             x_transformed = torch.sub(x, self.mean[feature])
             x_transformed = torch.mul(x_transformed, self.one_over_sigma[feature])
             X_transformed[feature] = x_transformed
-            print("after transformation: %s = " % feature, X_transformed[feature])
-        raise ValueError("STOP.")
+            #print("after transformation: %s = " % feature, X_transformed[feature][0])
+        # add features for which no transformation is requested
+        for feature in X.keys():
+            if not feature in self.features:
+                X_transformed[feature] = X[feature]
+        #raise ValueError("STOP.")
         return X_transformed
 
     def load_params(self, filename):
-        print("<FeatureStandardization::load_params>:")
-        print(" filename = %s" % filename)
-        cfg = json.load(filename)
+        if self.verbosity >= 1:
+            print("<FeatureStandardization::load_params>:")
+            print(" filename = %s" % filename)
+        file = open(filename, "r")
+        cfg = json.load(file)
+        file.close()
+        if self.verbosity >= 1:
+            print("cfg = %s" % cfg)
         for feature in self.features:
             self.mean[feature] = torch.tensor(cfg[feature]["mean"])
             self.one_over_sigma[feature] = torch.tensor(cfg[feature]["one_over_sigma"])
+            self.dims[feature] = int(cfg[feature]["dims"])
+     
+            for dim in range(self.dims[feature]):
+                if dim < self.dim:
+                    self.mean[feature] = torch.unsqueeze(self.mean[feature], 0)
+                    self.one_over_sigma[feature] = torch.unsqueeze(self.one_over_sigma[feature], 0)
+                elif dim > self.dim:
+                    self.mean[feature] = torch.unsqueeze(self.mean[feature], -1)
+                    self.one_over_sigma[feature] = torch.unsqueeze(self.one_over_sigma[feature], -1)
 
         if self.verbosity >= 1:
             self.print()
 
     def save_params(self, filename):
-        print("<FeatureStandardization::save_params>:")
-        print(" filename = %s" % filename)
-        file = open(filename, "w")
+        if self.verbosity >= 1:
+            print("<FeatureStandardization::save_params>:")
+            print(" filename = %s" % filename)
         cfg = {}
         for feature in self.features:
             cfg[feature] = {}
             cfg[feature]["mean"] = list(self.mean[feature].squeeze().detach().cpu().numpy())
             cfg[feature]["one_over_sigma"] = list(self.one_over_sigma[feature].squeeze().detach().cpu().numpy())
-        print("cfg = %s" % cfg)
-        file.write("%s" % cfg)
+            cfg[feature]["dims"] = self.dims[feature]
+            cfg[feature]["shape"] = "%s" % self.shape[feature]
+        if self.verbosity >= 1:
+            print("cfg = %s" % cfg)
+        file = open(filename, "w")
+        json.dump(cfg, file)
         file.close()
 
     def print(self):
+        print("<FeatureStandardization::print>:")
         for feature in self.features:
             print("%s:" % feature)
             print("shape(mean) = ", self.mean[feature].shape)
             print("mean = ", self.mean[feature].squeeze())
             print("shape(sigma) = ", self.one_over_sigma[feature].shape)
             print("sigma = ", torch.div(torch.tensor(1), self.one_over_sigma[feature].squeeze()))
+            print("dims = ", self.dims[feature])
