@@ -300,9 +300,6 @@ class ParticleNetTagger(nn.Module):
         return self.pn(points, features, mask)
 
 
-import torch
-
-
 def get_model(data_config, **kwargs):
     conv_params = [
         (8, (64, 64, 64)),
