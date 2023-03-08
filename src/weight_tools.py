@@ -173,6 +173,8 @@ def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_
     sig_hist = np.histogram(sig_values, weights=sig_weights, bins=bin_edges)[0]
     hep.histplot(bkg_hist, bins=bin_edges, histtype="step", label="BKG", hatch="//")
     hep.histplot(sig_hist, bins=bin_edges, histtype="step", label="SIG", hatch="\\\\")
+    ax = plt.axes()
+    ax.set_facecolor("white")
     plt.xlabel(xlabel)
     plt.legend()
     plt.savefig(output_path, bbox_inches="tight")
@@ -195,9 +197,9 @@ def main(cfg: DictConfig):
     bkg_matrix = create_matrix(bkg_data, eta_bin_edges, pt_bin_edges, y_property="eta", x_property="pt")
     sig_weights = get_weight_matrix(target_matrix=sig_matrix, comp_matrix=bkg_matrix)
     bkg_weights = get_weight_matrix(target_matrix=bkg_matrix, comp_matrix=sig_matrix)
-    sig_output_path = os.path.join(cfg.samples.ZH_Htautau.output_dir, "signal_weights.png")
-    visualize_weights(sig_weights, pt_bin_edges, eta_bin_edges, sig_output_path)
     output_dir = os.path.abspath(os.path.join(cfg.samples.QCD.output_dir, os.pardir))
+    sig_output_path = os.path.join(output_dir, "signal_weights.png")
+    visualize_weights(sig_weights, pt_bin_edges, eta_bin_edges, sig_output_path)
     bkg_output_path = os.path.join(output_dir, "bkg_weights.png")
     visualize_weights(bkg_weights, pt_bin_edges, eta_bin_edges, bkg_output_path)
 
@@ -214,7 +216,7 @@ def main(cfg: DictConfig):
         ylabel=r"$\theta$",
         xlabel="p",
     )
-    bkg_output_path_p_theta = os.path.join(cfg.samples.QCD.output_dir, "bkg_weights_p_theta.png")
+    bkg_output_path_p_theta = os.path.join(output_dir, "bkg_weights_p_theta.png")
     visualize_weights(
         weight_matrix=bkg_weights_p_theta,
         x_bin_edges=pt_bin_edges,
