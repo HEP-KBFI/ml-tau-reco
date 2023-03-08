@@ -78,7 +78,7 @@ class TauEndToEndSimple(nn.Module):
         self.width = 128
         self.embedding_dim = 128
 
-        self.nn_pf_initialembedding = ffn(6, self.embedding_dim, self.width, self.act, self.dropout)
+        self.nn_pf_initialembedding = ffn(28, self.embedding_dim, self.width, self.act, self.dropout)
 
         self.nn_pf_mha = nn.ModuleList()
         for i in range(4):

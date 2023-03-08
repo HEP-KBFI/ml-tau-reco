@@ -30,8 +30,36 @@ def main(cfg: DictConfig) -> None:
         sample_arrays[sample] = arrays
     output_dir = os.path.expandvars(cfg.output_dir)
     os.makedirs(output_dir, exist_ok=True)
-    plot_gen(sample_arrays["ZH_Htautau"], output_dir)
-    plot_reco(sample_arrays["ZH_Htautau"], output_dir)
+    sig_data = sample_arrays["ZH_Htautau"]
+    # bkg_data = sample_arrays["QCD"]
+    plot_gen(sig_data, output_dir)
+    plot_reco(sig_data, output_dir)
+
+
+def plot_genvistau_gentau_correlation(tau_gen_jet_p4s, gen_jets, mask, output_dir):
+    vis_tau_pt = tau_gen_jet_p4s.pt.to_numpy()
+    gen_jet_pt = gen_jets.pt.to_numpy()
+    vis_tau_pt_ = vis_tau_pt[mask]
+    gen_jet_pt_ = gen_jet_pt[mask]
+    output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
+    pl.plot_regression_confusion_matrix(
+        y_true=gen_jet_pt_,
+        y_pred=vis_tau_pt_,
+        output_path=output_path,
+        left_bin_edge=np.min([vis_tau_pt, gen_jet_pt]),
+        right_bin_edge=np.max([vis_tau_pt, gen_jet_pt]),
+        y_label=r"$p_T^{\tau_{vis}}$",
+        x_label=r"$p_T^{genJet}$",
+        title="",
+    )
+
+
+def get_data_masks(gen_jets, tau_gen_jet_p4s):
+    ref_var_pt_mask = tau_gen_jet_p4s.pt > 20
+    ref_var_theta_mask1 = abs(np.rad2deg(tau_gen_jet_p4s.theta)) < 170
+    ref_var_theta_mask2 = abs(np.rad2deg(tau_gen_jet_p4s.theta)) > 10
+    mask = ref_var_pt_mask * ref_var_theta_mask1 * ref_var_theta_mask2
+    return mask
 
 
 ########################################################################################################
@@ -52,6 +80,40 @@ def plot_gen(signal_arrays, output_dir):
     qg_jets = plot_quark_gluon_jet_multiplicity(mc_particles, mc_p4, output_dir)
     plot_genjet_vars(qg_jets, output_dir)
     plot_lepton_multiplicities(mc_particles, mc_p4, output_dir)
+    ###
+    reco_particles, reco_p4 = nt.clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
+    reco_jets, reco_jet_constituent_indices = nt.cluster_jets(reco_p4)
+    stable_mc_p4, stable_mc_particles = nt.get_stable_mc_particles(mc_particles, mc_p4)
+    gen_jets = nt.cluster_jets(stable_mc_p4)[0]
+    reco_indices, gen_indices = nt.get_matched_gen_jet_p4(reco_jets, gen_jets)
+    reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
+    reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
+    reco_jets = vector.awk(ak.zip({"energy": reco_jets.t, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z}))
+    gen_jets = ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)])
+    gen_jets = vector.awk(ak.zip({"energy": gen_jets.t, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z}))
+
+    tau_gen_jet_p4s_fill_value = vector.awk(
+        ak.zip(
+            {
+                "mass": [0.0],
+                "x": [0.0],
+                "y": [0.0],
+                "z": [0.0],
+            }
+        )
+    )[0]
+    best_combos = nt.get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, mask_addition)
+    vis_tau_p4s = nt.get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
+    tau_gen_jet_p4s = nt.get_matched_gen_tau_property(
+        gen_jets, best_combos, vis_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
+    )
+    tau_gen_jet_p4s = vector.awk(
+        ak.zip({"mass": tau_gen_jet_p4s.tau, "px": tau_gen_jet_p4s.x, "py": tau_gen_jet_p4s.y, "pz": tau_gen_jet_p4s.z})
+    )
+    gen_jets_ = ak.flatten(gen_jets, axis=-1)
+    tau_gen_jet_p4s_ = ak.flatten(tau_gen_jet_p4s, axis=-1)
+    mask = get_data_masks(gen_jets_, tau_gen_jet_p4s_)
+    plot_genvistau_gentau_correlation(tau_gen_jet_p4s_, gen_jets_, mask, output_dir)
 
 
 def is_qg_jet(jet):
@@ -326,12 +388,22 @@ def plot_jet_response(reco_jets, gen_jets, output_dir):
     flat_gen_jets = ak.flatten(gen_jets.pt, axis=1).to_numpy()
     jet_response = flat_reco_jets / flat_gen_jets
     jet_response_output_path = os.path.join(output_dir, "jet_response.png")
+    jet_response2 = flat_reco_jets / flat_gen_jets
+    jet_response_output_path2 = os.path.join(output_dir, "jet_response2.png")
     pl.plot_histogram(
         entries=jet_response,
         output_path=jet_response_output_path,
         left_bin_edge=min(jet_response),
         right_bin_edge=max(jet_response),
         x_label=r"$p_T^{recoJet} / p_T^{genJet}$",
+        title="jet response",
+    )
+    pl.plot_histogram(
+        entries=jet_response2,
+        output_path=jet_response_output_path2,
+        left_bin_edge=min(jet_response2),
+        right_bin_edge=max(jet_response2),
+        x_label=r"$p_T^{recoJet} - p_T^{genJet}$",
         title="jet response",
     )
 
