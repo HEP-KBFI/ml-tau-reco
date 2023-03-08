@@ -658,6 +658,7 @@ def process_input_file(arrays: ak.Array):
     reco_cand_PCA_y_err = get_jet_constituent_property(event_PCA_y_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_PCA_z_err = get_jet_constituent_property(event_PCA_z_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
+    # IP variables documented below and more detailed in src/lifeTimeTools.py
     data = {
         "event_reco_cand_p4s": vector.awk(
             ak.zip(
@@ -683,50 +684,50 @@ def process_input_file(arrays: ak.Array):
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
-        "event_reco_cand_dxy": event_reco_cand_dxy,
-        "event_reco_cand_dz": event_reco_cand_dz,
-        "event_reco_cand_signed_dxy": event_reco_cand_signed_dxy,
-        "event_reco_cand_signed_dz": event_reco_cand_signed_dz,
-        "event_reco_cand_signed_d3": event_reco_cand_signed_d3,
-        "event_reco_cand_d3": event_reco_cand_d3,
-        "event_reco_cand_d0": event_reco_cand_d0,
-        "event_reco_cand_z0": event_reco_cand_z0,
-        "event_reco_cand_PCA_x": event_reco_cand_PCA_x,
-        "event_reco_cand_PCA_y": event_reco_cand_PCA_y,
-        "event_reco_cand_PCA_z": event_reco_cand_PCA_z,
-        "event_reco_cand_PV_x": event_reco_cand_PV_x,
-        "event_reco_cand_PV_y": event_reco_cand_PV_y,
-        "event_reco_cand_PV_z": event_reco_cand_PV_z,
-        "event_reco_cand_dxy_err": event_reco_cand_dxy_err,
-        "event_reco_cand_dz_err": event_reco_cand_dz_err,
-        "event_reco_cand_d3_err": event_reco_cand_d3_err,
-        "event_reco_cand_d0_err": event_reco_cand_d0_err,
-        "event_reco_cand_z0_err": event_reco_cand_z0_err,
-        "event_reco_cand_PCA_x_err": event_reco_cand_PCA_x_err,
-        "event_reco_cand_PCA_y_err": event_reco_cand_PCA_y_err,
-        "event_reco_cand_PCA_z_err": event_reco_cand_PCA_z_err,
-        "reco_cand_dxy": reco_cand_dxy,
-        "reco_cand_dz": reco_cand_dz,
-        "reco_cand_signed_dxy": reco_cand_signed_dxy,
-        "reco_cand_signed_dz": reco_cand_signed_dz,
-        "reco_cand_signed_d3": reco_cand_signed_d3,
-        "reco_cand_d3": reco_cand_d3,
-        "reco_cand_d0": reco_cand_d0,
-        "reco_cand_z0": reco_cand_z0,
-        "reco_cand_PCA_x": reco_cand_PCA_x,
-        "reco_cand_PCA_y": reco_cand_PCA_y,
-        "reco_cand_PCA_z": reco_cand_PCA_z,
-        "reco_cand_PV_x": reco_cand_PV_x,
-        "reco_cand_PV_y": reco_cand_PV_y,
-        "reco_cand_PV_z": reco_cand_PV_z,
-        "reco_cand_dxy_err": reco_cand_dxy_err,
-        "reco_cand_dz_err": reco_cand_dz_err,
-        "reco_cand_d3_err": reco_cand_d3_err,
-        "reco_cand_d0_err": reco_cand_d0_err,
-        "reco_cand_z0_err": reco_cand_z0_err,
-        "reco_cand_PCA_x_err": reco_cand_PCA_x_err,
-        "reco_cand_PCA_y_err": reco_cand_PCA_y_err,
-        "reco_cand_PCA_z_err": reco_cand_PCA_z_err,
+        "event_reco_cand_dxy": event_reco_cand_dxy,  # impact parameter in xy  for all pf in event
+        "event_reco_cand_dz": event_reco_cand_dz,  # impact parameter in z for all pf in event
+        "event_reco_cand_d3": event_reco_cand_d3,  # impact parameter in 3d for all pf in event
+        "event_reco_cand_dxy_err": event_reco_cand_dxy_err,  # xy impact parameter error (all pf)
+        "event_reco_cand_dz_err": event_reco_cand_dz_err,  # z impact parameter error (all pf)
+        "event_reco_cand_d3_err": event_reco_cand_d3_err,  # 3d impact parameter error (all pf)
+        "event_reco_cand_signed_dxy": event_reco_cand_signed_dxy,  # impact parameter in xy for all pf in event (jet sign)
+        "event_reco_cand_signed_dz": event_reco_cand_signed_dz,  # impact parameter in z for all pf in event (jet sign)
+        "event_reco_cand_signed_d3": event_reco_cand_signed_d3,  # impact parameter in 3d for all pf in event (jet sign)
+        "event_reco_cand_d0": event_reco_cand_d0,  # track parameter, xy distance to referrence point
+        "event_reco_cand_z0": event_reco_cand_z0,  # track parameter, z distance to referrence point
+        "event_reco_cand_d0_err": event_reco_cand_d0_err,  # track parameter error
+        "event_reco_cand_z0_err": event_reco_cand_z0_err,  # track parameter error
+        "event_reco_cand_PCA_x": event_reco_cand_PCA_x,  # closest approach to PV (x-comp)
+        "event_reco_cand_PCA_y": event_reco_cand_PCA_y,  # closest approach to PV (y-comp)
+        "event_reco_cand_PCA_z": event_reco_cand_PCA_z,  # closest approach to PV (z-comp)
+        "event_reco_cand_PCA_x_err": event_reco_cand_PCA_x_err,  # PCA error (x-comp)
+        "event_reco_cand_PCA_y_err": event_reco_cand_PCA_y_err,  # PCA error (y-comp)
+        "event_reco_cand_PCA_z_err": event_reco_cand_PCA_z_err,  # PCA error (z-comp)
+        "event_reco_cand_PV_x": event_reco_cand_PV_x,  # primary vertex (PX) x-comp
+        "event_reco_cand_PV_y": event_reco_cand_PV_y,  # primary vertex (PX) y-comp
+        "event_reco_cand_PV_z": event_reco_cand_PV_z,  # primary vertex (PX) z-comp
+        "reco_cand_dxy": reco_cand_dxy,  # impact parameter in xy
+        "reco_cand_dz": reco_cand_dz,  # impact parameter in z
+        "reco_cand_d3": reco_cand_d3,  # impact parameter in 3D
+        "reco_cand_signed_dxy": reco_cand_signed_dxy,  # impact parameter in xy (jet sign)
+        "reco_cand_signed_dz": reco_cand_signed_dz,  # impact parameter in z (jet sign)
+        "reco_cand_signed_d3": reco_cand_signed_d3,  # impact parameter in 3d (jet sign)
+        "reco_cand_dxy_err": reco_cand_dxy_err,  # xy impact parameter error
+        "reco_cand_dz_err": reco_cand_dz_err,  # z impact parameter error
+        "reco_cand_d3_err": reco_cand_d3_err,  # 3d impact parameter error
+        "reco_cand_d0": reco_cand_d0,  # track parameter, xy distance to referrence point
+        "reco_cand_z0": reco_cand_z0,  # track parameter, z distance to referrence point
+        "reco_cand_d0_err": reco_cand_d0_err,  # track parameter error
+        "reco_cand_z0_err": reco_cand_z0_err,  # track parameter error
+        "reco_cand_PCA_x": reco_cand_PCA_x,  # closest approach to PV (x-comp)
+        "reco_cand_PCA_y": reco_cand_PCA_y,  # closest approach to PV (y-comp)
+        "reco_cand_PCA_z": reco_cand_PCA_z,  # closest approach to PV (z-comp)
+        "reco_cand_PCA_x_err": reco_cand_PCA_x_err,  # PCA error (x-comp)
+        "reco_cand_PCA_y_err": reco_cand_PCA_y_err,  # PCA error (y-comp)
+        "reco_cand_PCA_z_err": reco_cand_PCA_z_err,  # PCA error (z-comp)
+        "reco_cand_PV_x": reco_cand_PV_x,  # primary vertex (PX) x-comp
+        "reco_cand_PV_y": reco_cand_PV_y,  # primary vertex (PX) y-comp
+        "reco_cand_PV_z": reco_cand_PV_z,  # primary vertex (PX) z-comp
         "gen_jet_p4s": vector.awk(ak.zip({"mass": gen_jets.mass, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z})),
         "gen_jet_tau_decaymode": gen_tau_jet_info["gen_jet_tau_decaymode"],
         "gen_jet_tau_vis_energy": gen_tau_jet_info["gen_jet_tau_vis_energy"],
