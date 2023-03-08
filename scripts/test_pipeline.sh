@@ -87,6 +87,14 @@ python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] builder=Grid
 mkdir -p simplednn
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=SimpleDNN use_multiprocessing=False output_dir=simplednn
 
+#run LorentzNet algo
+mkdir -p LorentzNet
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=LorentzNet use_multiprocessing=False output_dir=LorentzNet
+
+#run ParticleTransformer algo
+mkdir -p ParticleTransformer
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=ParticleTransformer use_multiprocessing=False output_dir=ParticleTransformer
+
 #list all files
 find . -type f -name "*.parquet"
 
