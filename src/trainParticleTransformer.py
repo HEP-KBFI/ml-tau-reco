@@ -185,10 +185,10 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     config_path = "./config"
-    for cfg in hydra_cfg['runtime']['config_sources']:
-        if cfg['schema'] == "file":
-            config_path = cfg['path']
-    config_name = hydra_cfg['job']['config_name'] 
+    for cfg in hydra_cfg["runtime"]["config_sources"]:
+        if cfg["schema"] == "file":
+            config_path = cfg["path"]
+    config_name = hydra_cfg["job"]["config_name"]
     print("Loading training configuration from file: %s/%s.yaml" % (config_path, config_name))
     outpath = hydra_cfg["runtime"]["output_dir"]
     print(" outpath = %s" % outpath)

@@ -121,8 +121,10 @@ class FeatureStandardization:
         cfg = {}
         for feature in self.features:
             cfg[feature] = {}
-            cfg[feature]["mean"] = [ float(mean) for mean in self.mean[feature].squeeze().detach().cpu().numpy() ]
-            cfg[feature]["one_over_sigma"] = [ float(one_over_sigma) for one_over_sigma in self.one_over_sigma[feature].squeeze().detach().cpu().numpy() ]
+            cfg[feature]["mean"] = [float(mean) for mean in self.mean[feature].squeeze().detach().cpu().numpy()]
+            cfg[feature]["one_over_sigma"] = [
+                float(one_over_sigma) for one_over_sigma in self.one_over_sigma[feature].squeeze().detach().cpu().numpy()
+            ]
             cfg[feature]["dims"] = self.dims[feature]
         if self.verbosity >= 1:
             print("cfg = %s" % cfg)
