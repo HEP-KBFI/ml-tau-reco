@@ -120,7 +120,7 @@ def read_cut(cuts, key):
     if key in cuts.keys():
         return cuts[key]
     else:
-        return -1.
+        return -1.0
 
 
 class ParticleTransformerDataset(Dataset):
@@ -143,8 +143,8 @@ class ParticleTransformerDataset(Dataset):
 
         self.min_jet_theta = read_cut(preselection, "min_jet_theta")
         self.max_jet_theta = read_cut(preselection, "max_jet_theta")
-        self.min_jet_pt    = read_cut(preselection, "min_jet_pt")
-        self.max_jet_pt    = read_cut(preselection, "max_jet_pt")
+        self.min_jet_pt = read_cut(preselection, "min_jet_pt")
+        self.max_jet_pt = read_cut(preselection, "max_jet_pt")
         print(" min_jet_theta = %1.3f" % self.min_jet_theta)
         print(" max_jet_theta = %1.3f" % self.max_jet_theta)
         print(" min_jet_pt = %1.3f" % self.min_jet_pt)
@@ -209,10 +209,12 @@ class ParticleTransformerDataset(Dataset):
                     print(" Processing entry %i" % idx)
 
                 jet_p4 = jet_p4s[idx]
-                if not ((self.min_jet_theta < 0. or jet_p4.theta >= self.min_jet_theta) and \
-                        (self.max_jet_theta < 0. or jet_p4.theta <= self.max_jet_theta) and \
-                        (self.min_jet_pt    < 0. or jet_p4.pt    >= self.min_jet_pt   ) and \
-                        (self.max_jet_pt    < 0. or jet_p4.pt    <= self.max_jet_pt   )):
+                if not (
+                    (self.min_jet_theta < 0.0 or jet_p4.theta >= self.min_jet_theta)
+                    and (self.max_jet_theta < 0.0 or jet_p4.theta <= self.max_jet_theta)
+                    and (self.min_jet_pt < 0.0 or jet_p4.pt >= self.min_jet_pt)
+                    and (self.max_jet_pt < 0.0 or jet_p4.pt <= self.max_jet_pt)
+                ):
                     continue
 
                 jet_constituent_p4s = cand_p4s[idx]

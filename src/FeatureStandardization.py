@@ -15,7 +15,7 @@ class FeatureStandardization:
         self.shapes = {}
 
     def compute_params(self, dataloader):
-        #print("<FeatureStandardization::compute_params>:")
+        # print("<FeatureStandardization::compute_params>:")
 
         xs = {}
         x2s = {}
@@ -23,7 +23,7 @@ class FeatureStandardization:
         for (X, y, weight) in dataloader:
             for feature in self.features:
                 x = X[feature]
-                #print("shape(%s) = " % feature, x.shape)
+                # print("shape(%s) = " % feature, x.shape)
 
                 self.dims[feature] = x.dim()
                 self.shapes[feature] = x.shape
@@ -44,7 +44,7 @@ class FeatureStandardization:
             mask = X["mask"]
             num_particles += mask.sum().item()
 
-        #print("num_particles = %i" % num_particles)
+        # print("num_particles = %i" % num_particles)
         if num_particles == 0:
             raise RuntimeError("Dataset given as function argument is empty !!")
 
@@ -53,11 +53,11 @@ class FeatureStandardization:
             x2 = torch.mul(x2s[feature], 1.0 / num_particles)
 
             mean = x
-            #print("mean = ", mean)
+            # print("mean = ", mean)
             var = torch.sub(x2, x * x)
             sigma = torch.sqrt(var)
-            #print("sigma = ", sigma)
-            one_over_sigma = torch.div(torch.tensor(1), torch.sqrt(var))
+            # print("sigma = ", sigma)
+            one_over_sigma = torch.div(torch.tensor(1), sigma)
             if torch.isnan(one_over_sigma).sum().item() > 0.0:
                 raise RuntimeError("Failed to compute standard deviation, because <x^2> - <x>^2 is negative !!")
 
@@ -75,21 +75,20 @@ class FeatureStandardization:
             self.print()
 
     def __call__(self, X):
-        #print("<FeatureStandardization::operator()>:")
+        # print("<FeatureStandardization::operator()>:")
         X_transformed = {}
         # apply transformation to requested features
         for feature in self.features:
             x = X[feature]
-            #print("before transformation: %s = " % feature, x[0])
+            # print("before transformation: %s = " % feature, x[0])
             x_transformed = torch.sub(x, self.mean[feature])
             x_transformed = torch.mul(x_transformed, self.one_over_sigma[feature])
             X_transformed[feature] = x_transformed
-            #print("after transformation: %s = " % feature, X_transformed[feature][0])
+            # print("after transformation: %s = " % feature, X_transformed[feature][0])
         # add features for which no transformation is requested
         for feature in X.keys():
-            if not feature in self.features:
+            if feature not in self.features:
                 X_transformed[feature] = X[feature]
-        #raise ValueError("STOP.")
         return X_transformed
 
     def load_params(self, filename):
@@ -105,7 +104,7 @@ class FeatureStandardization:
             self.mean[feature] = torch.tensor(cfg[feature]["mean"])
             self.one_over_sigma[feature] = torch.tensor(cfg[feature]["one_over_sigma"])
             self.dims[feature] = int(cfg[feature]["dims"])
-     
+
             for dim in range(self.dims[feature]):
                 if dim < self.dim:
                     self.mean[feature] = torch.unsqueeze(self.mean[feature], 0)

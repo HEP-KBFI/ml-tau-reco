@@ -34,7 +34,17 @@ def get_split_files(cfg_filename, split):
 
 
 def train_one_epoch(
-    idx_epoch, dataloader_train, dataloader_test, transform, model, dev, loss_fn, use_per_jet_weights, optimizer, lr_scheduler, tensorboard
+    idx_epoch,
+    dataloader_train,
+    dataloader_test,
+    transform,
+    model,
+    dev,
+    loss_fn,
+    use_per_jet_weights,
+    optimizer,
+    lr_scheduler,
+    tensorboard,
 ):
     num_jets_train = len(dataloader_train.dataset)
     loss_train = 0.0
@@ -95,7 +105,9 @@ def train_one_epoch(
 
     tensorboard.add_scalar("Loss/train", loss_train, global_step=idx_epoch)
     tensorboard.add_scalar("Accuracy/train", 100 * accuracy_train, global_step=idx_epoch)
-    tensorboard.add_pr_curve("ROC_curve/train", np.array(class_true_train), np.array(class_pred_train), global_step=idx_epoch)
+    tensorboard.add_pr_curve(
+        "ROC_curve/train", np.array(class_true_train), np.array(class_pred_train), global_step=idx_epoch
+    )
     false_positives_train /= num_jets_train
     false_negatives_train /= num_jets_train
     tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
@@ -157,7 +169,7 @@ def train_one_epoch(
     return loss_train, loss_test
 
 
-#def get_lr(optimizer):
+# def get_lr(optimizer):
 #    for param_group in optimizer.param_groups:
 #        return param_group['lr']
 
@@ -220,7 +232,9 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     print("Starting to build training dataset...")
     print(" current time:", datetime.datetime.now())
-    dataset_train = ParticleTransformerDataset(filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, preselection=preselection)
+    dataset_train = ParticleTransformerDataset(
+        filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, preselection=preselection
+    )
     print("Finished building training dataset.")
     print(" current time:", datetime.datetime.now())
 
@@ -282,12 +296,12 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
             dev,
             loss_fn,
             train_cfg.use_per_jet_weights,
-            optimizer, 
+            optimizer,
             lr_scheduler,
             tensorboard,
         )
         print(" lr = %1.3e" % lr_scheduler.get_last_lr()[0])
-        #print(" lr = %1.3e" % get_lr(optimizer))
+        # print(" lr = %1.3e" % get_lr(optimizer))
         tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
         if min_loss_test == -1.0 or loss_test < min_loss_test:

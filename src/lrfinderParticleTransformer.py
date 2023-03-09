@@ -56,7 +56,7 @@ def train_one_epoch(idx_epoch, dataloader_train, dataloader_test, model, dev, lo
             loss = loss_fn(pred, y)
         loss_train += loss.sum().item()
         loss_normalization_train += torch.flatten(loss).size(dim=0)
-        #print("batch #%i: loss = %1.3f" % (idx_batch, loss.mean().item()))        
+        # print("batch #%i: loss = %1.3f" % (idx_batch, loss.mean().item()))
         accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
         accuracy_train += accuracy.sum().item()
         accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
@@ -108,7 +108,7 @@ def train_one_epoch(idx_epoch, dataloader_train, dataloader_test, model, dev, lo
     accuracy_test /= accuracy_normalization_test
     print("Test: Avg loss = %1.6f, accuracy = %1.2f%%" % (loss_test, 100 * accuracy_test))
 
-    #raise ValueError("STOP.")
+    # raise ValueError("STOP.")
 
     return loss_train, loss_test
 
@@ -209,8 +209,8 @@ def lrfinderParticleTransformer(train_cfg: DictConfig) -> None:
 
         lr *= 1.2
 
-    ( graph_train, ) = plt.plot(points_lr, points_loss_train, "b", label="train")
-    ( graph_test, ) = plt.plot(points_lr, points_loss_test, "r", label="test")
+    (graph_train,) = plt.plot(points_lr, points_loss_train, "b", label="train")
+    (graph_test,) = plt.plot(points_lr, points_loss_test, "r", label="test")
     plt.xscale("log")
     plt.yscale("log")
     plt.legend(handles=[graph_train, graph_test])

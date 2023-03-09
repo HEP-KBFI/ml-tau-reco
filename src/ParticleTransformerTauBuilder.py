@@ -49,8 +49,8 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         standardize_inputs = self._builderConfig["standardize_inputs"]
         self.min_jet_theta = self._builderConfig["min_jet_theta"]
         self.max_jet_theta = self._builderConfig["max_jet_theta"]
-        self.min_jet_pt    = self._builderConfig["min_jet_pt"]
-        self.max_jet_pt    = self._builderConfig["max_jet_pt"]
+        self.min_jet_pt = self._builderConfig["min_jet_pt"]
+        self.max_jet_pt = self._builderConfig["max_jet_pt"]
 
         self.transform = None
         if standardize_inputs:
@@ -66,9 +66,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             metric=metric,
             verbosity=verbosity,
         )
-        self.model.load_state_dict(
-            torch.load(self.filename_model, map_location=torch.device("cpu"))
-        )
+        self.model.load_state_dict(torch.load(self.filename_model, map_location=torch.device("cpu")))
         self.model.eval()
 
         self.verbosity = verbosity
@@ -102,9 +100,9 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
                 print("Processing entry %i" % idx)
 
             jet_p4 = jet_p4s[idx]
-            #print("jet: pT = %1.2f, theta = %1.3f, phi = %1.3f, mass = %1.2f" % \
+            # print("jet: pT = %1.2f, theta = %1.3f, phi = %1.3f, mass = %1.2f" % \
             #  (jet_p4.pt, jet_p4.theta, jet_p4.phi, jet_p4.mass))
-            
+
             jet_constituent_p4s = cand_p4s[idx]
             jet_constituent_pdgIds = data_cand_pdgIds[idx]
             jet_constituent_qs = data_cand_qs[idx]
@@ -131,21 +129,23 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             node_mask_tensors.append(node_mask_tensor)
 
             pred_mask = None
-            if (self.min_jet_theta < 0. or jet_p4.theta >= self.min_jet_theta) and \
-               (self.max_jet_theta < 0. or jet_p4.theta <= self.max_jet_theta) and \
-               (self.min_jet_pt    < 0. or jet_p4.pt    >= self.min_jet_pt   ) and \
-               (self.max_jet_pt    < 0. or jet_p4.pt    <= self.max_jet_pt   ):
-                pred_mask = 1.
+            if (
+                (self.min_jet_theta < 0.0 or jet_p4.theta >= self.min_jet_theta)
+                and (self.max_jet_theta < 0.0 or jet_p4.theta <= self.max_jet_theta)
+                and (self.min_jet_pt < 0.0 or jet_p4.pt >= self.min_jet_pt)
+                and (self.max_jet_pt < 0.0 or jet_p4.pt <= self.max_jet_pt)
+            ):
+                pred_mask = 1.0
             else:
-                pred_mask = 0.
-            pred_mask_tensors.append(torch.tensor(pred_mask, dtype=torch.float32))            
+                pred_mask = 0.0
+            pred_mask_tensors.append(torch.tensor(pred_mask, dtype=torch.float32))
 
         x_tensor = torch.stack(x_tensors, dim=0)
         v_tensor = torch.stack(v_tensors, dim=0)
         node_mask_tensor = torch.stack(node_mask_tensors, dim=0)
-        pred_mask_tensor = torch.stack(pred_mask_tensors, dim=0) 
+        pred_mask_tensor = torch.stack(pred_mask_tensors, dim=0)
 
-        if self.transform:            
+        if self.transform:
             X = {
                 "v": v_tensor,
                 "x": x_tensor,
@@ -192,7 +192,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         tauCharges = np.zeros(num_jets)
         tau_decaymode = np.zeros(num_jets)
 
-        #raise ValueError("STOP.")
+        # raise ValueError("STOP.")
 
         return {
             "tau_p4s": tau_p4s,
