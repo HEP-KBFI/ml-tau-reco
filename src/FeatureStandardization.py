@@ -12,7 +12,6 @@ class FeatureStandardization:
         self.mean = {}
         self.one_over_sigma = {}
         self.dims = {}
-        self.shapes = {}
 
     def compute_params(self, dataloader):
         # print("<FeatureStandardization::compute_params>:")
@@ -26,7 +25,6 @@ class FeatureStandardization:
                 # print("shape(%s) = " % feature, x.shape)
 
                 self.dims[feature] = x.dim()
-                self.shapes[feature] = x.shape
 
                 if self.dim != (x.dim() - 1):
                     x = torch.swapaxes(x, self.dim, -1)
@@ -123,10 +121,9 @@ class FeatureStandardization:
         cfg = {}
         for feature in self.features:
             cfg[feature] = {}
-            cfg[feature]["mean"] = list(self.mean[feature].squeeze().detach().cpu().numpy())
-            cfg[feature]["one_over_sigma"] = list(self.one_over_sigma[feature].squeeze().detach().cpu().numpy())
+            cfg[feature]["mean"] = [ float(mean) for mean in self.mean[feature].squeeze().detach().cpu().numpy() ]
+            cfg[feature]["one_over_sigma"] = [ float(one_over_sigma) for one_over_sigma in self.one_over_sigma[feature].squeeze().detach().cpu().numpy() ]
             cfg[feature]["dims"] = self.dims[feature]
-            cfg[feature]["shape"] = "%s" % self.shape[feature]
         if self.verbosity >= 1:
             print("cfg = %s" % cfg)
         file = open(filename, "w")
