@@ -183,13 +183,23 @@ def run_command(cmd):
 def trainParticleTransformer(train_cfg: DictConfig) -> None:
     print("<trainParticleTransformer>:")
 
+    hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
+    config_path = "./config"
+    for cfg in hydra_cfg['runtime']['config_sources']:
+        if cfg['schema'] == "file":
+            config_path = cfg['path']
+    config_name = hydra_cfg['job']['config_name'] 
+    print("Loading training configuration from file: %s/%s.yaml" % (config_path, config_name))
+    outpath = hydra_cfg["runtime"]["output_dir"]
+    print(" outpath = %s" % outpath)
+
     filelist_train = get_split_files("config/datasets/train.yaml", "train")
     filelist_test = get_split_files("config/datasets/validation.yaml", "validation")
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device: %s" % dev)
 
-    jsonFileName = "./config/ParticleTransformer_cfg.json"
+    jsonFileName = "%s/%s" % (config_path, train_cfg.model_config_file)
     print("Loading model configuration from file: %s" % jsonFileName)
     ParticleTransformer_cfg = None
     if os.path.isfile(jsonFileName):
@@ -281,7 +291,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     print("Starting training...")
     print(" current time:", datetime.datetime.now())
-    tensorboard = SummaryWriter()
+    tensorboard = SummaryWriter(outpath + "/tensorboard")
     min_loss_test = -1.0
     for idx_epoch in range(train_cfg.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
