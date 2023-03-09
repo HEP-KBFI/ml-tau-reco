@@ -21,12 +21,12 @@ from deeptauTraining import DeepTau
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
-    print("Load jets from", input_path)
+    print("Opening input file %s." % input_path)
     jets = ak.from_parquet(input_path)
     print("Processing jets...")
     pjets = builder.processJets(jets)
     output_path = os.path.join(output_dir, os.path.basename(input_path))
-    print("done, saving to ", output_path)
+    print("...done, writing output file %s." % output_path)
     merged_info = {field: jets[field] for field in jets.fields}
     merged_info.update(pjets)
     ak.to_parquet(ak.Record(merged_info), output_path)
@@ -60,6 +60,7 @@ def build_taus(cfg: DictConfig) -> None:
     builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     for sample in cfg.samples_to_process:
+        print("Processing sample %s" % sample)
         output_dir = os.path.join(algo_output_dir, sample)
         samples_dir = cfg.samples[sample].output_dir
         os.makedirs(output_dir, exist_ok=True)
@@ -70,6 +71,7 @@ def build_taus(cfg: DictConfig) -> None:
         else:
             n_files = cfg.n_files
         input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
+        print("Found %i input files." % len(input_paths))
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)
             pool.starmap(process_single_file, zip(input_paths, repeat(builder), repeat(output_dir)))
