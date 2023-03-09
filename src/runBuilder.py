@@ -54,7 +54,7 @@ def build_taus(cfg: DictConfig) -> None:
     elif cfg.builder == "ParticleTransformer":
         builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "DeepTau":
-        model = torch.load("data/model_deeptau_v2.pt", map_location=torch.device("cpu"))
+        model = torch.load("/home/snandan/ml/ml-tau-reco/data/model_deeptau.pt", map_location=torch.device("cpu"))
         assert model.__class__ == DeepTau
         builder = DeepTauBuilder(model)
     builder.printConfig()
@@ -70,7 +70,7 @@ def build_taus(cfg: DictConfig) -> None:
             n_files = None
         else:
             n_files = cfg.n_files
-        input_paths = glob.glob(os.path.join(samples_dir, f"*{sample}*.parquet"))[:n_files]
+        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
         print("Found %i input files." % len(input_paths))
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)

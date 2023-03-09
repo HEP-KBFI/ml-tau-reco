@@ -8,9 +8,9 @@ algorithms:
     bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar02/LorentzNet/QCD
     compare: True
   HPS_DeepTau:
-    sig_ntuples_dir: /foo/bar
-    bkg_ntuples_dir: /foo/bar
-    compare: False
+    sig_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/QCD/
+    compare: True
   ParticleTransformer:
     sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar03/ParticleTransformer/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar03/ParticleTransformer/QCD
@@ -32,13 +32,13 @@ algorithms:
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/QCD
     compare: False
   FastCMSTau:
-    sig_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/ZH_Htautau
-    bkg_ntuples_dir: /local/tolange/CLIC_FastCMSTau/FastCMSTau/QCD
+    sig_ntuples_dir: /local/laurits/CLIC_taus_20230306/FastCMSTau/ZH_Htautau
+    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230306/FastCMSTau/QCD
     compare: True
   SimpleDNN:
     sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/ZH_Htautau/
     bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/QCD/
-    compare: True
+    compare: False
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"
@@ -51,6 +51,18 @@ metrics:
       Loose: 0.972
       Medium: 0.946
       Tight: 0.878
+    FastCMSTau:  # Temporary
+      Loose: -1
+      Medium: 0.01
+      Tight: -1
+    SimpleDNN:
+      Loose: 0.959
+      Medium: 0.284
+      Tight: 0.135
+    ParticleTransformer:
+      Loose: 0.975
+      Medium: 0.967
+      Tight: 0.930
   efficiency:
     variables:
       - name: pt
@@ -63,7 +75,7 @@ metrics:
         x_range: [-3.14, 3.14]
         n_bins: 32
   # fake_ref: reco_jet
-  # eff_obj: gen_jet/tau
+  # eff_obj: gen_jet
 defaults:
   - datasets: datasets
   - _self_
