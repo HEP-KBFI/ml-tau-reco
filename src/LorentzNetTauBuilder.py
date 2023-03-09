@@ -47,7 +47,7 @@ class LorentzNetTauBuilder(BasicTauBuilder):
             verbosity=verbosity,
         )
         self.model.load_state_dict(
-            torch.load("data/LorentzNet_model_wReweighting_2023Mar02.pt", map_location=torch.device("cpu"))
+            torch.load("data/LorentzNet_model_wReweighting_2023Mar08.pt", map_location=torch.device("cpu"))
         )
         self.model.eval()
 
