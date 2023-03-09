@@ -78,7 +78,7 @@ class LorentzNetDataset(Dataset):
 
         self.num_jets = 0
         for file in filelist:
-            print("Opening file %s." % file)
+            print("Opening file %s" % file)
             data = ak.from_parquet(file)
 
             num_jets_in_file = len(data["reco_jet_p4s"])
@@ -110,7 +110,7 @@ class LorentzNetDataset(Dataset):
                 self.y_tensors.append(y_tensor)
                 self.weight_tensors.append(weight_tensor)
 
-            print("Closing file %s." % file)
+            print("Closing file %s" % file)
 
             self.num_jets += num_jets_in_file
 
