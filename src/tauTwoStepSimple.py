@@ -72,7 +72,7 @@ class SelfAttentionLayer(nn.Module):
 
 class TauTwoStepSimple(nn.Module):
     def __init__(
-        self,
+        self, extras
     ):
         super(TauTwoStepSimple, self).__init__()
 
@@ -92,14 +92,20 @@ class TauTwoStepSimple(nn.Module):
         self.nn_pf_ga = AttentionalAggregation(ffn(5 + self.embedding_dim, 1, self.width, self.act, self.dropout))
         self.agg = torch_geometric.nn.MeanAggregation()
 
-        self.nn_pred_fromtau = ffn(4 + self.embedding_dim, 1, self.width, nn.ELU, self.droput)
+        self.nn_pred_fromtau = ffn(4 + self.embedding_dim, 1, self.width, nn.ELU, self.dropout)
 
         self.nn_pred_istau = ffn(2 * (4 + 1 + self.embedding_dim), 1, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(2 * (4 + 1 + self.embedding_dim), 4, self.width, self.act, self.dropout)
 
+        self.norm = torch.nn.BatchNorm1d(11)
+        self.jetnorm = torch.nn.BatchNorm1d(4)
+        self.extras = extras
     def forward(self, batch):
-        pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
-
+        pf_encoded = None
+        if 'batchNorm' in self.extras:
+            pf_encoded = self.nn_pf_initialembedding(self.norm(batch.jet_pf_features))
+        else:
+            pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
         # pad the PF tensors across jets
         pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.jet_pf_features_batch, 0.0)
 
@@ -125,14 +131,18 @@ class TauTwoStepSimple(nn.Module):
         perjet_feats = []
         for i in range(len(npfPerJet)):
             perjet_feats.append(torch.ones((npfPerJet[i], 1)).to(device=pf_encoded.device) * batch.jet_features[i])
-        jet_feats = torch.cat([torch.cat(perjet_feats, axis=0), pf_encoded], axis=-1)
+        jet_feats_part = torch.cat(perjet_feats, axis=0)
+        if 'batchNorm' in self.extras:
+            jet_feats_part = self.jetnorm(jet_feats_part)
+        jet_feats = torch.cat([jet_feats_part, pf_encoded], axis=-1)
+
         # get the list of per-jet features as a concat of
         # (original_features, multi-head attention features)
         # print(ones_tensor.device, batch.device)
         # jet_feats = torch.cat([torch.cat(perjet_feats, axis=0), pf_encoded.cpu()], axis=-1).to(device=batch.device)
         # print(jet_feats.device)
         # run a binary classification whether or not these pf cands are from a tau
-        pred_fromtau = self.nn_pred_fromtau(jet_feats)  # .squeeze(-1)
+        pred_fromtau = torch.sigmoid(self.nn_pred_fromtau(jet_feats))  # .squeeze(-1)
 
         # combine this with general jet features and original pfcand info
         jet_feats2 = torch.cat([jet_feats, pred_fromtau], axis=-1)
@@ -177,7 +187,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
     for batch in ds_loader:
         batch = batch.to(device=dev)
         pred_fromtau, pred_istau, pred_p4 = model(batch)
-        true_fromtau = batch.jet_pf_efrac
+        true_fromtau = batch.jet_pf_efrac_cls
         true_p4 = batch.gen_tau_p4
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
         perjetweight = batch.perjet_weight
@@ -188,13 +198,14 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
         loss_cls = 20000.0 * torch.nn.functional.binary_cross_entropy_with_logits(
             pred_istau, true_istau, weight=perjetweight
         )
-        weights_for_pf = batch.pf_weights
+        weights_for_pf = torch.flatten(batch.pf_weights)
+        tauPFClassWeight = torch.flatten(batch.tauPFClassWeight)
         # torch.nn.MSELoss
         # print(pred_fromtau.shape,true_fromtau.shape)
         # print(pred_fromtau,true_fromtau)
-        lossf_pf = torch.nn.MSELoss(reduction="none")
-        loss_pf = lossf_pf(pred_fromtau, true_fromtau)
-        weighted_loss_pf = 3 * torch.sum(weights_for_pf * loss_pf)
+        lossf_pf = torch.nn.BCELoss(reduction="none")
+        loss_pf = 50*torch.flatten(lossf_pf(pred_fromtau, true_fromtau))
+        weighted_loss_pf = 3 * torch.sum(tauPFClassWeight * weights_for_pf * loss_pf) # only for real taus atm
         # loss = loss_p4 + loss_cls + weighted_loss_pf
         # loss = weighted_loss_pf
         loss = loss_p4 + loss_cls + weighted_loss_pf
@@ -276,7 +287,7 @@ def main(cfg):
         dev = torch.device("cpu")
     print("device={}".format(dev))
 
-    model = TauTwoStepSimple().to(device=dev)
+    model = TauTwoStepSimple(extras=cfg.extras).to(device=dev)
     print("params={}".format(count_parameters(model)))
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
@@ -284,7 +295,7 @@ def main(cfg):
         optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
     )
 
-    tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
+    tensorboard_writer = SummaryWriter(outpath + "/tensorboard/"+cfg.runName)
 
     for iepoch in range(cfg.epochs):
         loss_train, loss_train_p4, loss_train_pf, loss_train_cls, _ = model_loop(

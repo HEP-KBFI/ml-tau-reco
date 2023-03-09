@@ -67,27 +67,35 @@ class TauJetDataset(Dataset):
         reco_E = p4s.energy
         perjet_weights = data["weight"]
         weights = []
+        tauPFClassWeight = []
         jet_E = self.asP4( data["reco_jet_p4s"] ).energy
         for i in range(len(jet_E)):
             e_j = jet_E[i]
             perJet_weight = perjet_weights[i]
             weights.append((perJet_weight/e_j)*reco_E[i])
+            tauPFClassWeight.append( (data["gen_jet_tau_decaymode"][i]>0) *np.ones(len(reco_E[i])) )
+        tauPFClassWeight = ak.flatten(ak.Array(tauPFClassWeight))
         weights = ak.flatten(ak.Array(weights))
         genmatched_E = data["reco_cand_matched_gen_energy"]
         fracs = ak.flatten(genmatched_E)/ak.flatten(reco_E)
+        fracs_cls = ak.values_astype(fracs>0.5, "float64")
+
         fracs_feature_tensor = [torch.tensor(fracs,dtype=torch.float32)]
         fracs_feature = torch.stack(fracs_feature_tensor, axis=1)
         weights_feature_tensor = [torch.tensor(weights, dtype=torch.float32)]
         weights_feature = torch.stack(weights_feature_tensor, axis=1)
-
+        fracs_cls_feature_tensor = [torch.tensor(fracs_cls,dtype=torch.float32)]
+        fracs_cls_feature = torch.stack(fracs_cls_feature_tensor, axis=1)
+        tauPFClassWeight_feature_tensor = [torch.tensor(tauPFClassWeight,dtype=torch.float32)]
+        tauPFClassWeight_feature = torch.stack(tauPFClassWeight_feature_tensor, axis=1)
         # create a tensor with (Ncand x 1) which assigns each PF candidate to the jet it belongs to
         # this can be treated like batch_index in downstream algos
 
         pf_per_jet = ak.num(genmatched_E, axis=1)
         pf_to_jet = torch.tensor(np.repeat(np.arange(len(jet_features)), pf_per_jet))
 
-        return fracs_feature.to(dtype=torch.float32), weights_feature.to(dtype=torch.float32) , pf_to_jet.to(dtype=torch.long)
- 
+        return fracs_feature.to(dtype=torch.float32), fracs_cls_feature.to(dtype=torch.float32), weights_feature.to(dtype=torch.float32) , pf_to_jet.to(dtype=torch.long), tauPFClassWeight_feature.to(dtype=torch.float32)
+    
     def get_pf_features(self, jet_features: torch.Tensor, data: ak.Record) -> (torch.Tensor, torch.Tensor):
         pfs = {}
         for k in data["reco_cand_p4s"].fields:
@@ -121,7 +129,7 @@ class TauJetDataset(Dataset):
 
         # collect all jet PF candidate features
         pf_features, pf_to_jet = self.get_pf_features(jet_features, data)
-        pf_efrac, pf_weights ,pf_to_jet2 = self.get_pf_adds(jet_features, data)
+        pf_efrac, pf_efrac_cls, pf_weights ,pf_to_jet2, tauPFClassWeight = self.get_pf_adds(jet_features, data)
 
         gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
         p4 = data["gen_jet_tau_p4s"]
@@ -140,8 +148,10 @@ class TauJetDataset(Dataset):
                 gen_tau_decaymode=gen_tau_decaymode[ijet : ijet + 1],
                 gen_tau_p4=gen_tau_p4[ijet : ijet + 1],
                 jet_pf_efrac = pf_efrac[pf_to_jet2 == ijet],
+                jet_pf_efrac_cls = pf_efrac_cls[pf_to_jet2 == ijet],
                 pf_weights = pf_weights[pf_to_jet2 == ijet],
-                perjet_weight = perjet_weight[ijet : ijet + 1]
+                perjet_weight = perjet_weight[ijet : ijet + 1],
+                tauPFClassWeight = tauPFClassWeight[pf_to_jet2 == ijet]
             )
             for ijet in range(len(jet_features))
         ]
