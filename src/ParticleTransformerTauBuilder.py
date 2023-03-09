@@ -151,9 +151,6 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
                 "x": x_tensor,
                 "mask": node_mask_tensor,
             }
-            print("shape(v) = ", X["v"].shape)
-            print("shape(x) = ", X["x"].shape)
-            print("shape(mask) = ", X["mask"].shape)
             X_transformed = self.transform(X)
             x_tensor = X_transformed["x"]
             v_tensor = X_transformed["v"]
