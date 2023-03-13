@@ -147,7 +147,7 @@ class TauEndToEndSimple(nn.Module):
 
 def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
     loss_p4 = torch.nn.functional.huber_loss(input=pred_tau_p4, target=true_tau_p4, reduction='none')
-    weighted_losses = loss_p4 * weights
+    weighted_losses = loss_p4 * weights[:, None]
     return weighted_losses.mean()
 
 
@@ -179,7 +179,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
         weights = batch.weight
 
-        loss_p4 = weighted_huber_loss(pred_p4[true_istau == 1], true_p4[true_istau == 1], weights)
+        loss_p4 = weighted_huber_loss(pred_p4[true_istau == 1], true_p4[true_istau == 1], weights[true_istau == 1])
         loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
 
         loss = loss_cls + loss_p4

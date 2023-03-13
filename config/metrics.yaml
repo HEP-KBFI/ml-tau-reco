@@ -4,28 +4,28 @@ plotting:
   n_files: -1
 algorithms:
   LorentzNet:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar02/LorentzNet/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar02/LorentzNet/QCD
+    sig_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/LorentzNet/ZH_Htautau
+    bkg_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/LorentzNet/QCD
     compare: True
   HPS_DeepTau:
     sig_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/QCD/
     compare: True
   ParticleTransformer:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar03/ParticleTransformer/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar03/ParticleTransformer/QCD
+    sig_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/ParticleTransformer/ZH_Htautau
+    bkg_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/ParticleTransformer/QCD
     compare: True
   MLReco_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
     compare: False
-  HPS:
-    sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau
-    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
-    compare: False
+  # HPS:
+  #   sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau
+  #   bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
+  #   compare: False
   HPS_wo_quality_cuts:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar01_woPtCuts/HPS/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar01_woPtCuts/HPS/QCD
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/QCD
     compare: True
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau

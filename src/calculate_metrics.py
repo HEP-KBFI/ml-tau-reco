@@ -24,12 +24,12 @@ hep.style.use(hep.styles.CMS)
 def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
     metrics = cfg.metrics.efficiency.variables
     for metric in metrics:
-        output_path = os.path.join(output_dir, f"{metric.name}_{key}.png")
+        output_path = os.path.join(output_dir, f"{metric.name}_{key}.pdf")
         fig, ax = plt.subplots(figsize=(12, 12))
         algorithms = eff_fake_data.keys()
         for algorithm in algorithms:
             eff_fake_numerator = eff_fake_data[algorithm]["numerator"]
-            eff_fake_numerator = eff_fake_numerator[eff_fake_numerator.tauClassifier > cut]
+            eff_fake_numerator = eff_fake_numerator[eff_fake_numerator.tauClassifier > cut[algorithm]]
             eff_fake_denominator = eff_fake_data[algorithm]["denominator"]
             eff_fake_p4_num = vector.awk(
                 ak.zip(
@@ -65,13 +65,12 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         plt.ylabel(key)
         if key == "fakerates":
             plt.yscale("log")
-        plt.title(f"tauClassifier > {cut}")
-        plt.savefig(output_path, bbox_inches="tight")
+        plt.savefig(output_path, bbox_inches="tight", format="pdf")
         plt.close("all")
 
 
 def plot_energy_resolution(sig_data, algorithm_output_dir):
-    output_path = os.path.join(algorithm_output_dir, "energy_resolution.png")
+    output_path = os.path.join(algorithm_output_dir, "energy_resolution.pdf")
     gen_tau_vis_energies = sig_data.gen_jet_tau_vis_energy
     reco_tau_energies = vector.awk(
         ak.zip(
@@ -98,7 +97,7 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
 
 
 def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, cfg):
-    output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.png")
+    output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.pdf")
     gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
     reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
     mapping = {
@@ -119,7 +118,7 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, cfg):
 
 
 def plot_roc(efficiencies, fakerates, output_dir):
-    output_path = os.path.join(output_dir, "ROC.png")
+    output_path = os.path.join(output_dir, "ROC.pdf")
     algorithms = efficiencies.keys()
     fig, ax = plt.subplots(figsize=(12, 12))
     non_ml_algos = ["FastCMSTau", "HPS", "HPS_wo_quality_cuts"]
@@ -135,7 +134,7 @@ def plot_roc(efficiencies, fakerates, output_dir):
     plt.xlabel("Efficiency")
     plt.ylim((1e-5, 1))
     plt.yscale("log")
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path, bbox_inches="tight", format="pdf")
     plt.close("all")
 
 
@@ -155,8 +154,8 @@ def plot_tauClassifier_correlation(sig_data, output_dir):
         variable = getattr(p4s, var)
         plt.scatter(variable, tc, alpha=0.3, marker="x")
         plt.title(var)
-        output_path = os.path.join(output_dir, f"tauClassifier_corr_{var}.png")
-        plt.savefig(output_path, bbox_inches="tight")
+        output_path = os.path.join(output_dir, f"tauClassifier_corr_{var}.pdf")
+        plt.savefig(output_path, bbox_inches="tight", format="pdf")
         plt.close("all")
 
 
@@ -221,6 +220,7 @@ def plot_all_metrics(cfg):
     fakerates = {}
     eff_data = {}
     fake_data = {}
+    medium_wp = {}
     tauClassifiers = {algo: {} for algo in algorithms}
     for algorithm in algorithms:
         sig_input_dir = os.path.expandvars(cfg.algorithms[algorithm].sig_ntuples_dir)
@@ -283,17 +283,17 @@ def plot_all_metrics(cfg):
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
         print(f"Plotting for {algorithm}")
-        plot_algo_tauClassifiers(tauClassifiers[algorithm], os.path.join(algorithm_output_dir, "tauClassifier.png"))
-        save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
+        plot_algo_tauClassifiers(tauClassifiers[algorithm], os.path.join(algorithm_output_dir, "tauClassifier.pdf"))
+        medium_wp[algorithm] = save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
         plot_energy_resolution(raw_numerator_data_e, algorithm_output_dir)
         plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, cfg)
     print("Staring plotting for all algorithms")
     plot_roc(efficiencies, fakerates, output_dir)
     classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
-    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
-    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=classifier_cut)
-    plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.png"))
-    plot_tauClassifiers(tauClassifiers, "bkg", os.path.join(output_dir, "tauClassifier_bkg.png"))
+    plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=medium_wp)
+    plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=medium_wp)
+    plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.pdf"))
+    plot_tauClassifiers(tauClassifiers, "bkg", os.path.join(output_dir, "tauClassifier_bkg.pdf"))
 
 
 def plot_tauClassifiers(tauClassifiers, dtype, output_path):
@@ -309,7 +309,7 @@ def plot_tauClassifiers(tauClassifiers, dtype, output_path):
         plt.xlabel("tauClassifier")
         plt.yscale("log")
         plt.legend()
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path, bbox_inches="tight", format="pdf")
     plt.close("all")
 
 
@@ -326,7 +326,7 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path):
         plt.xlabel("tauClassifier")
         plt.yscale("log")
         plt.legend()
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path, bbox_inches="tight", format="pdf")
     plt.close("all")
 
 
@@ -344,6 +344,7 @@ def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
         wp_values[wp_name] = cut
     with open(wp_file_path, "wt") as out_file:
         json.dump(wp_values, out_file, indent=4)
+    return wp_values["Medium"]
 
 
 if __name__ == "__main__":
