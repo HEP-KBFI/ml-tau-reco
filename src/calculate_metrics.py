@@ -289,7 +289,6 @@ def plot_all_metrics(cfg):
         plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, cfg)
     print("Staring plotting for all algorithms")
     plot_roc(efficiencies, fakerates, output_dir)
-    classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
     plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.pdf"))

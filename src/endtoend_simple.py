@@ -56,7 +56,7 @@ class EarlyStopper:
         elif validation_loss > (self.min_validation_loss + self.min_delta):
             self.counter += 1
             if self.counter >= self.patience:
-                print(f"val_los has not decreased in {patience} epochs, stopping")
+                print(f"val_los has not decreased in {self.patience} epochs, stopping")
                 return True
         return False
 
@@ -146,13 +146,13 @@ class TauEndToEndSimple(nn.Module):
 
 
 def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
-    loss_p4 = torch.nn.functional.huber_loss(input=pred_tau_p4, target=true_tau_p4, reduction='none')
+    loss_p4 = torch.nn.functional.huber_loss(input=pred_tau_p4, target=true_tau_p4, reduction="none")
     weighted_losses = loss_p4 * weights[:, None]
     return weighted_losses.mean()
 
 
 def weighted_bce_with_logits(pred_istau, true_istau, weights):
-    loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy_with_logits(pred_istau, true_istau, reduction='none')
+    loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy_with_logits(pred_istau, true_istau, reduction="none")
     weighted_loss_cls = loss_cls * weights
     return weighted_loss_cls.mean()
 
