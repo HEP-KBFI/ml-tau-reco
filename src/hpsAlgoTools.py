@@ -6,7 +6,7 @@ one_over_twopi = 1.0 / twopi
 
 
 def comp_angle(cand1, cand2):
-    dTheta = math.fabs(cand1.p4.theta - cand2.p4.theta)
+    dTheta = math.fabs(cand1.theta - cand2.theta)
     dPhi = math.fabs(cand1.phi - cand2.phi)
     if dPhi > math.pi:
         n = round(dPhi * one_over_twopi)
@@ -16,7 +16,7 @@ def comp_angle(cand1, cand2):
 
 
 def comp_deltaTheta(cand1, cand2):
-    dTheta = math.fabs(cand1.p4.theta - cand2.p4.theta)
+    dTheta = math.fabs(cand1.theta - cand2.theta)
     return dTheta
 
 

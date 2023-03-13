@@ -24,7 +24,9 @@ class Strip:
         self.barcode = barcode
 
     def updatePtEtaPhiMass(self):
+        self.energy = self.p4.energy
         self.pt = self.p4.pt
+        self.theta = self.p4.theta
         self.eta = self.p4.eta
         self.phi = self.p4.phi
         self.mass = self.p4.mass
@@ -32,7 +34,7 @@ class Strip:
     def print(self):
         print(
             "strip #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f"
-            % (self.barcode, self.p4.energy, self.pt, self.eta, self.phi, self.p4.mass)
+            % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass)
         )
         for cand in self.cands:
             cand.print()

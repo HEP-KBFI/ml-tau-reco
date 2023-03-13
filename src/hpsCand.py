@@ -6,9 +6,12 @@ import vector
 class Cand:
     def __init__(self, p4, pdgId, q, d0, d0err, dz, dzerr, barcode):
         self.p4 = p4
+        self.energy = p4.energy
         self.pt = p4.pt
         self.eta = p4.eta
+        self.theta = p4.theta
         self.phi = p4.phi
+        self.mass = p4.mass
         self.pdgId = pdgId
         self.abs_pdgId = abs(pdgId)
         self.q = q
@@ -21,7 +24,7 @@ class Cand:
     def print(self):
         output = (
             "cand #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, pdgId = %i, charge = %1.1f"
-            % (self.barcode, self.p4.energy, self.pt, self.eta, self.phi, self.p4.mass, self.pdgId, self.q)
+            % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, self.pdgId, self.q)
         )
         if abs(self.q) > 0.5:
             output += "d0 = %1.3f +/- %1.3f, dz = %1.3f +/- %1.3f" % (self.d0, self.d0err, self.dz, self.dzerr)

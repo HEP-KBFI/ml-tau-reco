@@ -3,4 +3,5 @@ max_num_files: -1
 batch_size: 128
 num_epochs: 25
 #do_energy_regression: True
+use_weights: True
 verbosity: 1

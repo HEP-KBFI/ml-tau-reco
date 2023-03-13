@@ -3,3 +3,5 @@ validation_files: config/datasets/validation.yaml
 epochs: 200
 batch_size: 512
 lr: 0.00001
+defaults:
+  - tau_builder

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -p gpu
 #SBATCH --gpus 1
-#SBATCH --mem-per-gpu=10G
+#SBATCH --mem-per-gpu=18G
 #SBATCH -o slurm-%x-%j-%N.out
 
 IMG=/home/software/singularity/pytorch.simg

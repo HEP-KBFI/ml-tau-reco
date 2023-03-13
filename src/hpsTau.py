@@ -47,15 +47,17 @@ class Tau:
         self.signal_gammaCands = selectCandsByPdgId(self.signal_cands, [22])
 
     def updatePtEtaPhiMass(self):
+        self.energy = self.p4.energy
         self.pt = self.p4.pt
         self.eta = self.p4.eta
+        self.theta = self.p4.theta
         self.phi = self.p4.phi
         self.mass = self.p4.mass
 
     def print(self):
         print(
-            "tau #%i: pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, idDiscr = %1.3f, decayMode = %s"
-            % (self.barcode, self.pt, self.eta, self.phi, self.mass, self.idDiscr, self.decayMode)
+            "tau #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, idDiscr = %1.3f, decayMode = %s"
+            % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, self.idDiscr, self.decayMode)
         )
         # print("signal_chargedCands:")
         # for cand in self.signal_chargedCands:

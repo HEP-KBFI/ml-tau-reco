@@ -42,6 +42,25 @@ def ffn(input_dim, output_dim, width, act, dropout):
     )
 
 
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = np.inf
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                print(f"val_los has not decreased in {self.patience} epochs, stopping")
+                return True
+        return False
+
+
 # self-attention layer that transformes [B, N, x] -> [B, N, embedding_dim]
 # by attending the N elements in each batch B
 class SelfAttentionLayer(nn.Module):
@@ -126,6 +145,18 @@ class TauEndToEndSimple(nn.Module):
         return pred_istau, pred_p4
 
 
+def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
+    loss_p4 = torch.nn.functional.huber_loss(input=pred_tau_p4, target=true_tau_p4, reduction="none")
+    weighted_losses = loss_p4 * weights[:, None]
+    return weighted_losses.mean()
+
+
+def weighted_bce_with_logits(pred_istau, true_istau, weights):
+    loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy_with_logits(pred_istau, true_istau, reduction="none")
+    weighted_loss_cls = loss_cls * weights
+    return weighted_loss_cls.mean()
+
+
 def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
@@ -146,8 +177,10 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
         true_p4 = batch.gen_tau_p4
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
-        loss_p4 = torch.nn.functional.huber_loss(pred_p4[true_istau == 1], true_p4[true_istau == 1])
-        loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy_with_logits(pred_istau, true_istau)
+        weights = batch.weight
+
+        loss_p4 = weighted_huber_loss(pred_p4[true_istau == 1], true_p4[true_istau == 1], weights[true_istau == 1])
+        loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
 
         loss = loss_cls + loss_p4
         if is_train:
@@ -249,8 +282,13 @@ def main(cfg):
     files_train = get_split_files(cfg.train_files, "train")
     files_val = get_split_files(cfg.validation_files, "validation")
 
-    ds_train = TauJetDataset(files_train)
-    ds_val = TauJetDataset(files_val)
+    if cfg.n_files == -1:
+        n_files = None
+    else:
+        n_files = cfg.n_files
+
+    ds_train = TauJetDataset(files_train[:n_files])
+    ds_val = TauJetDataset(files_val[:n_files])
 
     print("Loaded TauJetDataset with {} train steps".format(len(ds_train)))
     print("Loaded TauJetDataset with {} val steps".format(len(ds_val)))
@@ -276,6 +314,7 @@ def main(cfg):
     )
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
+    early_stopper = EarlyStopper(patience=15, min_delta=10)
 
     for iepoch in range(cfg.epochs):
         loss_cls_train, loss_p4_train, _ = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
@@ -298,6 +337,8 @@ def main(cfg):
             )
         )
         torch.save(model, "{}/model_{}.pt".format(outpath, iepoch))
+        if early_stopper.early_stop(loss_cls_val):
+            break
 
     model = model.to(device="cpu")
     torch.save(model, "data/model.pt")
