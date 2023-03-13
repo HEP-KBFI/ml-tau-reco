@@ -1,14 +1,14 @@
 """
 Helper functions tom get additional training inputs such as impact parameters
-and calometric energy deposits. For the impact parameters a linear extrapolation
+and calometric energy deposits (TODO). For the impact parameters a linear extrapolation
 of the helix at the refference point is used. The definitions of track parameters
-are taken from:
+(d0, z0, phi, tanL, Omega) are taken from:
 [1] https://flc.desy.de/lcnotes/notes/localfsExplorer_read?currentPath=/afs/desy.de/group/flc/lcnotes/LC-DET-2006-004.pdf
 Math for finding the PCA from:
 [2] https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
 
 Author: Torben Lange (KBFI), Laurits Tani (KBFI)
-Date: 22.02.2022
+Date: 08.03.2022
 """
 
 import numpy as np
@@ -391,13 +391,16 @@ def findTrackPCAs(
             pca_store = [pca[i] * 1000000.0 for i in range(3)]
             pca_error_store = [pca_error[i] * 1000000.0 for i in range(3)]
             vertex_store = [vertex[i] * 1000.0 for i in range(3)]
+            # xy impact parameter, z impact parameter , 3d impact parameter, d0/z0 track parameters, PCA and PV:
             impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0] + pca_store + vertex_store
+            # corresponding uncertainties:
             impacts_pcas_errors[ili] = [dxy_error, dz_error, d3_error, d0_error, z0_error] + pca_error_store
     return [impacts_pcas_pvs, impacts_pcas_errors]
 
 
 """
 Helper to project the impact parameters of the track on the direction jet axis.
+(currently diabled as sign seems to be random?)
 (Following BTV-11-002)
 """
 
