@@ -32,6 +32,7 @@ def get_split_files(cfg_filename, split):
         # paths = [p.replace("/local/laurits", "./data") for p in paths]
         return paths
 
+
 def train_loop(
     idx_epoch,
     dataloader_train,
@@ -111,7 +112,7 @@ def train_loop(
     tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/train", false_negatives_train, global_step=idx_epoch)
 
-    return loss_train    
+    return loss_train
 
 
 def test_loop(
@@ -255,8 +256,11 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     print("Starting to build training dataset...")
     print(" current time:", datetime.datetime.now())
     dataset_train = LorentzNetDataset(
-        filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams, 
-        preselection=preselection
+        filelist_train,
+        max_num_files=train_cfg.max_num_files,
+        max_cands=max_cands,
+        add_beams=add_beams,
+        preselection=preselection,
     )
     print("Finished building training dataset.")
     print(" current time:", datetime.datetime.now())
@@ -264,8 +268,11 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     print("Starting to build validation dataset...")
     print(" current time:", datetime.datetime.now())
     dataset_test = LorentzNetDataset(
-        filelist_test, max_num_files=train_cfg.max_num_files, max_cands=max_cands, add_beams=add_beams,
-        preselection=preselection
+        filelist_test,
+        max_num_files=train_cfg.max_num_files,
+        max_cands=max_cands,
+        add_beams=add_beams,
+        preselection=preselection,
     )
     print("Finished building validation dataset.")
     print(" current time:", datetime.datetime.now())
