@@ -2,6 +2,9 @@
 set -e
 set -x
 
+rm -r ntuple data hps simplednn grid oracle
+
+
 mkdir -p ntuple
 mkdir -p data
 cd ntuple
