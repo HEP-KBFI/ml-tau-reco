@@ -108,6 +108,8 @@ class TauJetDataset(Dataset):
         gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.tau], axis=-1)).to(dtype=torch.float32)
         assert gen_tau_p4.shape[0] == gen_tau_decaymode.shape[0]
 
+        weights = torch.tensor(data["weight"]).to(dtype=torch.float32)
+
         # Data object with:
         #   - reco jet (jet_features, jet_pf_features)
         #   - jet PF candidates (jet_pf_features, pf_to_jet)
@@ -119,6 +121,7 @@ class TauJetDataset(Dataset):
                 jet_pf_features=pf_features[pf_to_jet == ijet],
                 gen_tau_decaymode=gen_tau_decaymode[ijet : ijet + 1],
                 gen_tau_p4=gen_tau_p4[ijet : ijet + 1],
+                weight=weights[ijet : ijet + 1],
             )
             for ijet in range(len(jet_features))
         ]
