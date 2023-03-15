@@ -304,7 +304,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
 
-        loss_train = train_loop(
+        train_loop(
             idx_epoch,
             dataloader_train,
             transform,
