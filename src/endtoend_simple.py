@@ -115,7 +115,7 @@ class TauEndToEndSimple(nn.Module):
         self.width = 512
         self.embedding_dim = 512
 
-        self.nn_pf_initialembedding = ffn(14, self.embedding_dim, self.width, self.act, self.dropout)
+        self.nn_pf_initialembedding = ffn(14+22, self.embedding_dim, self.width, self.act, self.dropout)
 
         # self.nn_pf_mha = nn.ModuleList()
         # for i in range(1):
@@ -126,9 +126,10 @@ class TauEndToEndSimple(nn.Module):
         self.agg1 = torch_geometric.nn.MeanAggregation()
         self.agg2 = torch_geometric.nn.MaxAggregation()
         self.agg3 = torch_geometric.nn.StdAggregation()
+        self.agg4 = torch_geometric.nn.SoftmaxAggregation(learn=True)
 
-        self.nn_pred_istau = ffn(8 + 3*self.embedding_dim, 2, self.width, self.act, self.dropout)
-        #self.nn_pred_p4 = ffn(8 + 1*self.embedding_dim, 4, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(8 + 4*self.embedding_dim, 2, self.width, self.act, self.dropout)
+        self.nn_pred_p4 = ffn(8 + 4*self.embedding_dim, 4, self.width, self.act, self.dropout)
 
     def forward(self, batch):
         pf_encoded = self.act_obj(self.nn_pf_initialembedding(batch.jet_pf_features))
@@ -148,30 +149,30 @@ class TauEndToEndSimple(nn.Module):
         # # now collapse the PF information in each jet with a global attention layer
         jet_encoded1 = self.act_obj(self.agg1(pf_encoded, batch.jet_pf_features_batch))
         jet_encoded2 = self.act_obj(self.agg2(pf_encoded, batch.jet_pf_features_batch))
-        jet_encoded3 = self.act_obj(self.agg2(pf_encoded, batch.jet_pf_features_batch))
+        jet_encoded3 = self.act_obj(self.agg3(pf_encoded, batch.jet_pf_features_batch))
+        jet_encoded4 = self.act_obj(self.agg4(pf_encoded, batch.jet_pf_features_batch))
 
         # get the list of per-jet features as a concat of
-        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = self.nn_pred_istau(jet_feats)
 
         # run a per-jet NN for visible energy prediction
         jet_p4 = batch.jet_features[:, :4]
-        #pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
-        pred_p4 = jet_p4
+        pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
 
         return pred_istau, pred_p4
 
 
 def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
     loss_p4 = torch.nn.functional.huber_loss(input=pred_tau_p4, target=true_tau_p4, reduction="none")
-    weighted_losses = loss_p4 * weights[:, None]
+    weighted_losses = loss_p4 * weights.unsqueeze(-1)
     return weighted_losses.mean()
 
 
-#focal_loss = FocalLoss(gamma=2.0)
-focal_loss = torch.nn.CrossEntropyLoss(reduction="none")
+focal_loss = FocalLoss(gamma=2.0)
+#focal_loss = torch.nn.CrossEntropyLoss(reduction="none")
 def weighted_bce_with_logits(pred_istau, true_istau, weights):
     loss_cls = 10000.0 * focal_loss(pred_istau, true_istau.long())
     weighted_loss_cls = loss_cls * weights
@@ -203,7 +204,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
         weights = batch.weight
 
-        loss_p4 = 0.0*weighted_huber_loss(pred_p4, true_p4, weights)
+        loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
         loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
 
         loss = loss_cls + loss_p4
@@ -309,9 +310,6 @@ def main(cfg):
     files_train = get_split_files(cfg.train_files, "train")
     files_val = get_split_files(cfg.validation_files, "validation")
 
-    files_train = [f.replace("/scratch-persistent/laurits", "data") for f in files_train]
-    files_val = [f.replace("/scratch-persistent/laurits", "data") for f in files_val]
-
     if cfg.n_files == -1:
         n_files = None
     else:
@@ -345,8 +343,9 @@ def main(cfg):
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
-    early_stopper = EarlyStopper(patience=-1, min_delta=10)
+    early_stopper = EarlyStopper(patience=50, min_delta=10)
 
+    best_loss = np.inf
     for iepoch in range(cfg.epochs):
         loss_cls_train, loss_p4_train, _ = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer)
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
@@ -354,10 +353,11 @@ def main(cfg):
         tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
 
         loss_cls_val, loss_p4_val, retvals = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev, tensorboard_writer)
+        loss_val = loss_cls_val + loss_p4_val
 
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
-        tensorboard_writer.add_scalar("epoch/val_loss", loss_cls_val + loss_p4_val, iepoch)
+        tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
 
         tensorboard_writer.add_scalar("epoch/lr", scheduler.get_last_lr()[0], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
@@ -370,7 +370,11 @@ def main(cfg):
                 iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val
             )
         )
-        #torch.save(model, "{}/model_{}.pt".format(outpath, iepoch))
+
+        if loss_val < best_loss:
+            best_loss = loss_val
+            torch.save(model, "{}/model_best.pt".format(outpath))
+
         if early_stopper.early_stop(loss_cls_val):
             break
 

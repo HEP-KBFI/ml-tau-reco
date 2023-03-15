@@ -6,7 +6,7 @@ from torch_geometric.data import Data, Dataset
 import os.path as osp
 from glob import glob
 import vector
-import random
+
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -26,28 +26,28 @@ class TauJetDataset(Dataset):
         self.pf_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e", "charge", "is_ch_had", "is_n_had", "is_gamma", "is_ele", "is_mu"]
 
         self.pf_extras = [
-            # "reco_cand_dxy",
-            # "reco_cand_dz",
-            # "reco_cand_signed_dxy",
-            # "reco_cand_signed_dz",
-            # "reco_cand_signed_d3",
-            # "reco_cand_d3",
-            # "reco_cand_d0",
-            # "reco_cand_z0",
-            # "reco_cand_PCA_x",
-            # "reco_cand_PCA_y",
-            # "reco_cand_PCA_z",
-            # "reco_cand_PV_x",
-            # "reco_cand_PV_y",
-            # "reco_cand_PV_z",
-            # "reco_cand_dxy_err",
-            # "reco_cand_dz_err",
-            # "reco_cand_d3_err",
-            # "reco_cand_d0_err",
-            # "reco_cand_z0_err",
-            # "reco_cand_PCA_x_err",
-            # "reco_cand_PCA_y_err",
-            # "reco_cand_PCA_z_err",
+            "reco_cand_dxy",
+            "reco_cand_dz",
+            "reco_cand_signed_dxy",
+            "reco_cand_signed_dz",
+            "reco_cand_signed_d3",
+            "reco_cand_d3",
+            "reco_cand_d0",
+            "reco_cand_z0",
+            "reco_cand_PCA_x",
+            "reco_cand_PCA_y",
+            "reco_cand_PCA_z",
+            "reco_cand_PV_x",
+            "reco_cand_PV_y",
+            "reco_cand_PV_z",
+            "reco_cand_dxy_err",
+            "reco_cand_dz_err",
+            "reco_cand_d3_err",
+            "reco_cand_d0_err",
+            "reco_cand_z0_err",
+            "reco_cand_PCA_x_err",
+            "reco_cand_PCA_y_err",
+            "reco_cand_PCA_z_err",
         ]
         # just load all data to memory
         self.all_data = []
@@ -55,8 +55,6 @@ class TauJetDataset(Dataset):
             print(fn)
             data = ak.from_parquet(fn)
             self.all_data += self.process_file_data(data)
-
-        random.shuffle(self.all_data)
 
     @property
     def processed_file_names(self):
