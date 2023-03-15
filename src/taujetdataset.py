@@ -5,7 +5,8 @@ import numpy as np
 from torch_geometric.data import Data, Dataset
 import os.path as osp
 from glob import glob
-
+import vector
+import random
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -19,34 +20,34 @@ class TauJetDataset(Dataset):
         self.filelist = filelist
 
         # The order of features in the jet feature tensor
-        self.reco_jet_features = ["x", "y", "z", "tau"]
+        self.reco_jet_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e"]
 
         # The order of features in the PF feature tensor
-        self.pf_features = ["x", "y", "z", "tau", "charge", "pdg"]
+        self.pf_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e", "charge", "is_ch_had", "is_n_had", "is_gamma", "is_ele", "is_mu"]
 
         self.pf_extras = [
-            "reco_cand_dxy",
-            "reco_cand_dz",
-            "reco_cand_signed_dxy",
-            "reco_cand_signed_dz",
-            "reco_cand_signed_d3",
-            "reco_cand_d3",
-            "reco_cand_d0",
-            "reco_cand_z0",
-            "reco_cand_PCA_x",
-            "reco_cand_PCA_y",
-            "reco_cand_PCA_z",
-            "reco_cand_PV_x",
-            "reco_cand_PV_y",
-            "reco_cand_PV_z",
-            "reco_cand_dxy_err",
-            "reco_cand_dz_err",
-            "reco_cand_d3_err",
-            "reco_cand_d0_err",
-            "reco_cand_z0_err",
-            "reco_cand_PCA_x_err",
-            "reco_cand_PCA_y_err",
-            "reco_cand_PCA_z_err",
+            # "reco_cand_dxy",
+            # "reco_cand_dz",
+            # "reco_cand_signed_dxy",
+            # "reco_cand_signed_dz",
+            # "reco_cand_signed_d3",
+            # "reco_cand_d3",
+            # "reco_cand_d0",
+            # "reco_cand_z0",
+            # "reco_cand_PCA_x",
+            # "reco_cand_PCA_y",
+            # "reco_cand_PCA_z",
+            # "reco_cand_PV_x",
+            # "reco_cand_PV_y",
+            # "reco_cand_PV_z",
+            # "reco_cand_dxy_err",
+            # "reco_cand_dz_err",
+            # "reco_cand_d3_err",
+            # "reco_cand_d0_err",
+            # "reco_cand_z0_err",
+            # "reco_cand_PCA_x_err",
+            # "reco_cand_PCA_y_err",
+            # "reco_cand_PCA_z_err",
         ]
         # just load all data to memory
         self.all_data = []
@@ -54,6 +55,8 @@ class TauJetDataset(Dataset):
             print(fn)
             data = ak.from_parquet(fn)
             self.all_data += self.process_file_data(data)
+
+        random.shuffle(self.all_data)
 
     @property
     def processed_file_names(self):
@@ -66,6 +69,22 @@ class TauJetDataset(Dataset):
         jets = {}
         for k in data["reco_jet_p4s"].fields:
             jets[k] = data["reco_jet_p4s"][k]
+
+        jetP4 = vector.awk(
+            ak.zip(
+                {
+                    "px": data["reco_jet_p4s"].x,
+                    "py": data["reco_jet_p4s"].y,
+                    "pz": data["reco_jet_p4s"].z,
+                    "mass": data["reco_jet_p4s"].tau,
+                }
+            )
+        )
+        jets["pt"] = jetP4.pt
+        jets["eta"] = jetP4.eta
+        jets["phi"] = jetP4.phi
+        jets["e"] = jetP4.energy
+
         # collect jet features in a specific order to an (Njet x Nfeatjet) torch tensor
         jet_feature_tensors = []
         for feat in self.reco_jet_features:
@@ -80,6 +99,27 @@ class TauJetDataset(Dataset):
         pfs["charge"] = data["reco_cand_charge"]
         pfs["pdg"] = np.abs(data["reco_cand_pdg"])
 
+        pfP4 = vector.awk(
+            ak.zip(
+                {
+                    "px": data["reco_cand_p4s"].x,
+                    "py": data["reco_cand_p4s"].y,
+                    "pz": data["reco_cand_p4s"].z,
+                    "mass": data["reco_cand_p4s"].tau,
+                }
+            )
+        )
+        pfs["pt"] = pfP4.pt
+        pfs["eta"] = pfP4.eta
+        pfs["phi"] = pfP4.phi
+        pfs["e"] = pfP4.energy
+
+        pfs["is_ch_had"] = (pfs["pdg"] == 211)
+        pfs["is_n_had"] = (pfs["pdg"] == 130)
+        pfs["is_gamma"] = (pfs["pdg"] == 22)
+        pfs["is_ele"] = (pfs["pdg"] == 11)
+        pfs["is_mu"] = (pfs["pdg"] == 13)
+
         # collect PF features in a specific order to an (Ncand x Nfeatcand) torch tensor
         pf_feature_tensors = []
         for feat in self.pf_features:
@@ -93,7 +133,6 @@ class TauJetDataset(Dataset):
 
         pf_per_jet = ak.num(pfs["pdg"], axis=1)
         pf_to_jet = torch.tensor(np.repeat(np.arange(len(jet_features)), pf_per_jet))
-
         return pf_features.to(dtype=torch.float32), pf_to_jet.to(dtype=torch.long)
 
     def process_file_data(self, data):
@@ -117,7 +156,7 @@ class TauJetDataset(Dataset):
 
         ret_data = [
             Data(
-                jet_features=jet_features[ijet : ijet + 1, :],
+                jet_features=jet_features[ijet : ijet + 1],
                 jet_pf_features=pf_features[pf_to_jet == ijet],
                 gen_tau_decaymode=gen_tau_decaymode[ijet : ijet + 1],
                 gen_tau_p4=gen_tau_p4[ijet : ijet + 1],
