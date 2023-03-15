@@ -4,26 +4,22 @@ plotting:
   n_files: -1
 algorithms:
   LorentzNet:
-    sig_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/LorentzNet/ZH_Htautau
-    bkg_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/LorentzNet/QCD
+    sig_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar13/LorentzNet/ZH_Htautau
+    bkg_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar13/LorentzNet/QCD
     compare: True
   HPS_DeepTau:
     sig_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/QCD/
-    compare: True
+    compare: False
   ParticleTransformer:
-    sig_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/ParticleTransformer/ZH_Htautau
-    bkg_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09/ParticleTransformer/QCD
+    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar13/ParticleTransformer/ZH_Htautau
+    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar13/ParticleTransformer/QCD
     compare: True
   MLReco_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
     compare: False
-  # HPS:
-  #   sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau
-  #   bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/HPS/QCD
-  #   compare: False
-  HPS_wo_quality_cuts:
+  HPS:
     sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/QCD
     compare: True
@@ -36,14 +32,14 @@ algorithms:
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230306/FastCMSTau/QCD
     compare: True
   SimpleDNN:
-    sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/ZH_Htautau/
-    bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_02_22/SimpleDNN/QCD/
+    sig_ntuples_dir: /local/laurits/sDNN_230313/SimpleDNN/ZH_Htautau/
+    bkg_ntuples_dir: /local/laurits/sDNN_230313/SimpleDNN/QCD/
     compare: False
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"
   WPs:
-    HPS_wo_quality_cuts:
+    HPS:
       Loose: -1
       Medium: 0.951
       Tight: 0.467

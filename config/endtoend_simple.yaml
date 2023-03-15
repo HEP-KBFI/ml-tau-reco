@@ -2,6 +2,6 @@ train_files: config/datasets/train.yaml
 validation_files: config/datasets/validation.yaml
 epochs: 200
 batch_size: 512
-lr: 0.00001
+lr: 0.0001
 defaults:
   - tau_builder
