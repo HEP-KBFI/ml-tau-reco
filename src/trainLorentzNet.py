@@ -79,7 +79,7 @@ def train_loop(
         accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
 
         class_true_train.extend(y.detach().cpu().numpy())
-        class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
+        class_pred_train.extend(torch.softmax(pred, dim=1)[:, 1].squeeze().detach().cpu().numpy())
         false_positives_train += (
             ((y == torch.tensor(0)) * (pred.argmax(dim=1) == torch.tensor(1))).to(dtype=torch.float32).sum().item()
         )
@@ -158,7 +158,7 @@ def test_loop(
             accuracy_normalization_test += torch.flatten(accuracy).size(dim=0)
 
             class_true_test.extend(y.detach().cpu().numpy())
-            class_pred_test.extend(pred.argmax(dim=1).detach().cpu().numpy())
+            class_pred_test.extend(torch.softmax(pred, dim=1)[:, 1].squeeze().detach().cpu().numpy())
             false_positives_test += (
                 ((y == torch.tensor(0)) * (pred.argmax(dim=1) == torch.tensor(1))).to(dtype=torch.float32).sum().item()
             )
@@ -358,7 +358,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
         print(" CPU-Util = %1.2f%%" % cpu_percent)
         print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
         if dev == "cuda":
-            print("GPU: N/A")
+            print("GPU:")
             run_command("nvidia-smi --id=%i" % torch.cuda.current_device())
         else:
             print("GPU: N/A")
