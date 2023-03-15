@@ -1,8 +1,8 @@
 {
     "ParticleTransformer": {
-        "min_jet_theta": 0.17453293,
-        "max_jet_theta": 2.9670597,
-        "min_jet_pt": 20.0,
+        "min_jet_theta": 0.0,
+        "max_jet_theta": 1.0e+3,
+        "min_jet_pt": 0.0,
         "max_jet_pt": 1.0e+3,
         "max_cands": 25,
         "metric": "theta-phi",
