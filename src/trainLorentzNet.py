@@ -104,9 +104,6 @@ def train_loop(
 
     tensorboard.add_scalar("Loss/train", loss_train, global_step=idx_epoch)
     tensorboard.add_scalar("Accuracy/train", 100 * accuracy_train, global_step=idx_epoch)
-    print("class_true_train = ", class_true_train)
-    print("class_pred_train = ", class_pred_train)
-    print("class_true:class_pred = ", [ "%1.0f:%1.4f" % (class_true_train[idx], class_pred_train[idx]) for idx in range(num_jets_train) ])
     tensorboard.add_pr_curve(
         "ROC_curve/train", np.array(class_true_train), np.array(class_pred_train), global_step=idx_epoch
     )
