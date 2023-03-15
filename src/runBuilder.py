@@ -21,12 +21,12 @@ from deeptauTraining import DeepTau
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
-    print("Opening input file %s." % input_path)
+    print("Opening file %s" % input_path)
     jets = ak.from_parquet(input_path)
     print("Processing jets...")
     pjets = builder.processJets(jets)
     output_path = os.path.join(output_dir, os.path.basename(input_path))
-    print("...done, writing output file %s." % output_path)
+    print("...done, writing output file %s" % output_path)
     merged_info = {field: jets[field] for field in jets.fields}
     merged_info.update(pjets)
     ak.to_parquet(ak.Record(merged_info), output_path)

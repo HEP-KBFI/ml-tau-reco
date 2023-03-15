@@ -18,8 +18,10 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         print("<ParticleTransformerTauBuilder::ParticleTransformerTauBuilder>:")
         super(BasicTauBuilder, self).__init__()
 
-        self.filename_model = "data/ParticleTransformer_model_wReweighting_2023Mar08.pt"
-        self.filename_transform = "data/ParticleTransformer_FeatureStandardization_wReweighting_2023Mar08.json"
+        self.filename_model = "/home/veelken/ml-tau-reco/data/ParticleTransformer_model_wReweighting_2023Mar13.pt"
+        self.filename_transform = (
+            "/home/veelken/ml-tau-reco/data/ParticleTransformer_FeatureStandardization_wReweighting_2023Mar13.json"
+        )
 
         if os.path.isfile(cfgFileName):
             cfgFile = open(cfgFileName, "r")
@@ -188,8 +190,6 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         tauSigCand_p4s = data["reco_cand_p4s"]
         tauCharges = np.zeros(num_jets)
         tau_decaymode = np.zeros(num_jets)
-
-        # raise ValueError("STOP.")
 
         return {
             "tau_p4s": tau_p4s,

@@ -33,10 +33,9 @@ def get_split_files(cfg_filename, split):
         return paths
 
 
-def train_one_epoch(
+def train_loop(
     idx_epoch,
     dataloader_train,
-    dataloader_test,
     transform,
     model,
     dev,
@@ -113,6 +112,19 @@ def train_one_epoch(
     tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/train", false_negatives_train, global_step=idx_epoch)
 
+    return loss_train
+
+
+def test_loop(
+    idx_epoch,
+    dataloader_test,
+    transform,
+    model,
+    dev,
+    loss_fn,
+    use_per_jet_weights,
+    tensorboard,
+):
     num_jets_test = len(dataloader_test.dataset)
     loss_test = 0.0
     loss_normalization_test = 0.0
@@ -145,8 +157,8 @@ def train_one_epoch(
             accuracy_test += accuracy.sum().item()
             accuracy_normalization_test += torch.flatten(accuracy).size(dim=0)
 
-            class_true_train.extend(y.detach().cpu().numpy())
-            class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
+            class_true_test.extend(y.detach().cpu().numpy())
+            class_pred_test.extend(pred.argmax(dim=1).detach().cpu().numpy())
             false_positives_test += (
                 ((y == torch.tensor(0)) * (pred.argmax(dim=1) == torch.tensor(1))).to(dtype=torch.float32).sum().item()
             )
@@ -166,12 +178,7 @@ def train_one_epoch(
     tensorboard.add_scalar("false_positives/test", false_positives_test, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/test", false_negatives_test, global_step=idx_epoch)
 
-    return loss_train, loss_test
-
-
-# def get_lr(optimizer):
-#    for param_group in optimizer.param_groups:
-#        return param_group['lr']
+    return loss_test
 
 
 def run_command(cmd):
@@ -183,13 +190,23 @@ def run_command(cmd):
 def trainParticleTransformer(train_cfg: DictConfig) -> None:
     print("<trainParticleTransformer>:")
 
+    hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
+    config_path = "./config"
+    for cfg in hydra_cfg["runtime"]["config_sources"]:
+        if cfg["schema"] == "file":
+            config_path = cfg["path"]
+    config_name = hydra_cfg["job"]["config_name"]
+    print("Loading training configuration from file: %s/%s.yaml" % (config_path, config_name))
+    outpath = hydra_cfg["runtime"]["output_dir"]
+    print(" outpath = %s" % outpath)
+
     filelist_train = get_split_files("config/datasets/train.yaml", "train")
     filelist_test = get_split_files("config/datasets/validation.yaml", "validation")
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device: %s" % dev)
 
-    jsonFileName = "./config/ParticleTransformer_cfg.json"
+    jsonFileName = "%s/%s" % (config_path, train_cfg.model_config_file)
     print("Loading model configuration from file: %s" % jsonFileName)
     ParticleTransformer_cfg = None
     if os.path.isfile(jsonFileName):
@@ -281,16 +298,15 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     print("Starting training...")
     print(" current time:", datetime.datetime.now())
-    tensorboard = SummaryWriter()
+    tensorboard = SummaryWriter(outpath + "/tensorboard")
     min_loss_test = -1.0
     for idx_epoch in range(train_cfg.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
 
-        loss_train, loss_test = train_one_epoch(
+        train_loop(
             idx_epoch,
             dataloader_train,
-            dataloader_test,
             transform,
             model,
             dev,
@@ -304,6 +320,16 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         # print(" lr = %1.3e" % get_lr(optimizer))
         tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
+        loss_test = test_loop(
+            idx_epoch,
+            dataloader_test,
+            transform,
+            model,
+            dev,
+            loss_fn,
+            train_cfg.use_per_jet_weights,
+            tensorboard,
+        )
         if min_loss_test == -1.0 or loss_test < min_loss_test:
             print("Found new best model :)")
             best_model_file = train_cfg.model_file.replace(".pt", "_best.pt")

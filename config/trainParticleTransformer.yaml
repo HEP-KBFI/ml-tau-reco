@@ -1,4 +1,5 @@
 model_file: ParticleTransformer_model.pt
+model_config_file: ParticleTransformer_cfg.json
 max_num_files: -1
 #max_num_files: 1
 batch_size: 512
@@ -8,8 +9,8 @@ num_epochs: 100
 num_dataloader_workers: 4
 #do_energy_regression: True
 classweight_sig: 1
-classweight_bgr: 10
-use_class_weights: True
+classweight_bgr: 1
+use_class_weights: False
 use_per_jet_weights: True
 use_focal_loss: True
 focal_loss_gamma: 2.0
