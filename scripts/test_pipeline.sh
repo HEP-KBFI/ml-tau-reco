@@ -2,7 +2,8 @@
 set -e
 set -x
 
-rm -r ntuple data hps simplednn grid oracle
+rm -r ntuple data hps simplednn grid oracle ParticleTransformer LorentzNet
+rm val.yaml train.yaml
 
 
 mkdir -p ntuple

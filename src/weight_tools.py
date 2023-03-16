@@ -12,6 +12,7 @@ from itertools import repeat
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
 from general import load_all_data
+from matplotlib.ticker import AutoLocator
 
 hep.style.use(hep.styles.CMS)
 
@@ -25,6 +26,7 @@ def load_samples(sig_dir: str, bkg_dir: str, n_files: int = -1):
 def visualize_weights(weight_matrix, x_bin_edges, y_bin_edges, output_path, ylabel=r"$\eta$", xlabel=r"$p_T$"):
     x_labels = [f"{label:9.0f}" for label in (x_bin_edges[1:] + x_bin_edges[:-1]) / 2]
     y_labels = [f"{label:9.2f}" for label in (y_bin_edges[1:] + y_bin_edges[:-1]) / 2]
+    hep.style.use(hep.styles.CMS)
     sns.set(rc={"figure.figsize": (16, 9)})
     heatmap = sns.heatmap(weight_matrix)
     heatmap.set_xticks(range(len(x_labels)))
@@ -32,13 +34,16 @@ def visualize_weights(weight_matrix, x_bin_edges, y_bin_edges, output_path, ylab
     heatmap.set_yticks(range(len(y_labels)))
     heatmap.set_yticklabels(y_labels)
     plt.ylabel(ylabel)
+    plt.yticks(rotation=0)
     plt.xlabel(xlabel)
-    for i, label in enumerate(heatmap.xaxis.get_ticklabels()):
-        if i % 5 != 0:
-            label.set_visible(False)
-    for i, label in enumerate(heatmap.yaxis.get_ticklabels()):
-        if i % 5 != 0:
-            label.set_visible(False)
+    heatmap.yaxis.set_major_locator(AutoLocator())
+    heatmap.xaxis.set_major_locator(AutoLocator())
+    # for i, label in enumerate(heatmap.xaxis.get_ticklabels()):
+    #     if i % 5 != 0:
+    #         label.set_visible(False)
+    # for i, label in enumerate(heatmap.yaxis.get_ticklabels()):
+    #     if i % 5 != 0:
+    #         label.set_visible(False)
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
 
@@ -187,6 +192,7 @@ def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_
 @hydra.main(config_path="../config", config_name="weighting", version_base=None)
 def main(cfg: DictConfig):
     sig_data, bkg_data = load_samples(sig_dir=cfg.samples.ZH_Htautau.output_dir, bkg_dir=cfg.samples.QCD.output_dir)
+    output_dir = os.path.abspath(os.path.join(cfg.samples.QCD.output_dir, os.pardir))
     eta_bin_edges = np.linspace(
         cfg.weighting.variables.eta.range[0], cfg.weighting.variables.eta.range[1], cfg.weighting.variables.eta.n_bins
     )
@@ -198,9 +204,22 @@ def main(cfg: DictConfig):
     )
     sig_matrix = create_matrix(sig_data, eta_bin_edges, pt_bin_edges, y_property="eta", x_property="pt")
     bkg_matrix = create_matrix(bkg_data, eta_bin_edges, pt_bin_edges, y_property="eta", x_property="pt")
+    if cfg.produce_plots:
+        sig_output_path = os.path.join(output_dir, "signal_matrix.pdf")
+        visualize_weights(sig_matrix, pt_bin_edges, eta_bin_edges, sig_output_path)
+        bkg_output_path = os.path.join(output_dir, "bkg_matrix.pdf")
+        visualize_weights(bkg_matrix, pt_bin_edges, eta_bin_edges, bkg_output_path)
+        total_output_path = os.path.join(output_dir, "total_matrix.pdf")
+        visualize_weights(sig_matrix + bkg_matrix, pt_bin_edges, eta_bin_edges, total_output_path)
+        normed_total_output_path = os.path.join(output_dir, "normed_total_matrix.pdf")
+        visualize_weights(
+            (sig_matrix + bkg_matrix) / (np.sum(sig_matrix) + np.sum(bkg_matrix)),
+            pt_bin_edges,
+            eta_bin_edges,
+            normed_total_output_path
+        )
     sig_weights = get_weight_matrix(target_matrix=sig_matrix, comp_matrix=bkg_matrix)
     bkg_weights = get_weight_matrix(target_matrix=bkg_matrix, comp_matrix=sig_matrix)
-    output_dir = os.path.abspath(os.path.join(cfg.samples.QCD.output_dir, os.pardir))
     if cfg.produce_plots:
         sig_output_path = os.path.join(output_dir, "signal_weights.pdf")
         visualize_weights(sig_weights, pt_bin_edges, eta_bin_edges, sig_output_path)
@@ -209,6 +228,42 @@ def main(cfg: DictConfig):
 
     sig_matrix_p_theta = create_matrix(sig_data, theta_bin_edges, pt_bin_edges, y_property="theta", x_property="p")
     bkg_matrix_p_theta = create_matrix(bkg_data, theta_bin_edges, pt_bin_edges, y_property="theta", x_property="p")
+    if cfg.produce_plots:
+        sig_output_path_p_theta = os.path.join(output_dir, "signal_matrix_p_theta.pdf")
+        visualize_weights(
+            sig_matrix_p_theta,
+            pt_bin_edges,
+            theta_bin_edges,
+            sig_output_path_p_theta,
+            ylabel=r"$\theta$",
+            xlabel="p"
+        )
+        bkg_output_path_p_theta = os.path.join(output_dir, "bkg_matrix_p_theta.pdf")
+        visualize_weights(
+            bkg_matrix_p_theta,
+            pt_bin_edges,
+            theta_bin_edges,
+            bkg_output_path_p_theta,
+            ylabel=r"$\theta$",
+            xlabel="p"
+        )
+        total_output_path_p_theta = os.path.join(output_dir, "total_matrix_p_theta.pdf")
+        visualize_weights(
+            sig_matrix_p_theta + bkg_matrix_p_theta,
+            pt_bin_edges,
+            theta_bin_edges,
+            total_output_path_p_theta,
+            ylabel=r"$\theta$",
+            xlabel="p",)
+        normed_total_output_path_p_theta = os.path.join(output_dir, "normed_total_matrix_p_theta.pdf")
+        visualize_weights(
+            (sig_matrix_p_theta + bkg_matrix_p_theta) / (np.sum(sig_matrix_p_theta) + np.sum(bkg_matrix_p_theta)),
+            pt_bin_edges,
+            theta_bin_edges,
+            normed_total_output_path_p_theta,
+            ylabel=r"$\theta$",
+            xlabel="p",
+        )
     sig_weights_p_theta = get_weight_matrix(target_matrix=sig_matrix_p_theta, comp_matrix=bkg_matrix_p_theta)
     bkg_weights_p_theta = get_weight_matrix(target_matrix=bkg_matrix_p_theta, comp_matrix=sig_matrix_p_theta)
     if cfg.add_weights:

@@ -10,6 +10,7 @@ import os
 import json
 import hydra
 import vector
+import matplotlib
 import numpy as np
 import awkward as ak
 import mplhep as hep
@@ -17,6 +18,7 @@ import plotting as pl
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
 from general import get_reduced_decaymodes, load_data_from_paths
+matplotlib.use('Agg') 
 
 hep.style.use(hep.styles.CMS)
 
@@ -27,6 +29,9 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         output_path = os.path.join(output_dir, f"{metric.name}_{key}.pdf")
         fig, ax = plt.subplots(figsize=(12, 12))
         algorithms = eff_fake_data.keys()
+        algo_names = {algorithm: algorithm for algorithm in algorithms}
+        algo_names["FastCMSTau"] = "JINST 17 (2022) P07023"
+        algo_names["HPS"] = "HPS cut-based"
         for algorithm in algorithms:
             eff_fake_numerator = eff_fake_data[algorithm]["numerator"]
             eff_fake_numerator = eff_fake_numerator[eff_fake_numerator.tauClassifier > cut[algorithm]]
@@ -63,7 +68,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             denom_hist = Histogram(eff_fake_var_denom, bin_edges, "denominator")
             num_hist = Histogram(eff_fake_var_num, bin_edges, "numerator")
             eff_fake = num_hist / denom_hist
-            plt.plot(eff_fake.bin_centers, eff_fake.data, label=algorithm)
+            plt.plot(eff_fake.bin_centers, eff_fake.data, label=algo_names[algorithm])
             # plt.errorbar(eff_fake.bin_centers, eff_fake.data, yerr=eff_fake.uncertainties, label=algorithm)
         plt.grid()
         plt.legend()
@@ -126,22 +131,20 @@ def plot_roc(efficiencies, fakerates, output_dir):
     output_path = os.path.join(output_dir, "ROC.pdf")
     algorithms = efficiencies.keys()
     fig, ax = plt.subplots(figsize=(12, 12))
-    non_ml_algos = ["FastCMSTau", "HPS", "HPS_wo_quality_cuts"]
     algo_names = {algorithm: algorithm for algorithm in algorithms}
     algo_names["FastCMSTau"] = "JINST 17 (2022) P07023"
     algo_names["HPS"] = "HPS cut-based"
     for algorithm in algorithms:
-        if algorithm in non_ml_algos:
-            linewidth = 1
-        else:
-            linewidth = 2
         if not algorithm == "FastCMSTau":
-            plt.plot(efficiencies[algorithm], fakerates[algorithm], label=algorithm, lw=linewidth)
+            mask = np.array(fakerates[algorithm]) != 0.0
+            x_values = np.array(efficiencies[algorithm])[mask]
+            y_values = np.array(fakerates[algorithm])[mask]
+            plt.plot(x_values, y_values, label=algo_names[algorithm], lw=2)
         else:
             indices = np.array([efficiencies[algorithm].index(loc) for loc in set(efficiencies[algorithm])])
-            wp_x = np.array(efficiencies[algorithm])[indices]
-            wp_y = np.array(fakerates[algorithm])[indices]
-            plt.scatter(wp_x, wp_y, label=algorithm, marker='x', color='r')
+            wp_x = np.array(efficiencies[algorithm])[indices][1:]
+            wp_y = np.array(fakerates[algorithm])[indices][1:]
+            plt.scatter(wp_x, wp_y, label=algo_names[algorithm], marker='o', facecolors='none', edgecolors='r', s=60, linewidths=3)
     plt.grid()
     plt.legend()
     plt.ylabel("Fakerate")
@@ -304,10 +307,10 @@ def plot_all_metrics(cfg):
         )
         save_to_json(
             {"tauClassifiers": tauClassifiers[algorithm], "MediumWP": medium_wp[algorithm]},
-            os.path.join(algorithm_output_dir, "tauClassifier.pdf")
+            os.path.join(algorithm_output_dir, "tauClassifier.json")
         )
         plot_energy_resolution(raw_numerator_data_e, algorithm_output_dir)
-        plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, medium_wp[algorithm], cfg)
+        # plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, medium_wp[algorithm], cfg)
     print("Staring plotting for all algorithms")
     save_to_json({"efficiencies": efficiencies, "fakerates": fakerates}, os.path.join(output_dir, "roc.json"))
     plot_roc(efficiencies, fakerates, output_dir)
