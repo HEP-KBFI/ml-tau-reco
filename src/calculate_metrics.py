@@ -10,6 +10,7 @@ import os
 import json
 import hydra
 import vector
+import matplotlib
 import numpy as np
 import awkward as ak
 import mplhep as hep
@@ -17,6 +18,8 @@ import plotting as pl
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
 from general import get_reduced_decaymodes, load_data_from_paths
+
+matplotlib.use("Agg")
 
 hep.style.use(hep.styles.CMS)
 
@@ -27,6 +30,9 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         output_path = os.path.join(output_dir, f"{metric.name}_{key}.pdf")
         fig, ax = plt.subplots(figsize=(12, 12))
         algorithms = eff_fake_data.keys()
+        algo_names = {algorithm: algorithm for algorithm in algorithms}
+        algo_names["FastCMSTau"] = "JINST 17 (2022) P07023"
+        algo_names["HPS"] = "HPS cut-based"
         for algorithm in algorithms:
             eff_fake_numerator = eff_fake_data[algorithm]["numerator"]
             eff_fake_numerator = eff_fake_numerator[eff_fake_numerator.tauClassifier > cut[algorithm]]
@@ -53,11 +59,14 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             )
             eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name).to_numpy()
             eff_fake_var_num = getattr(eff_fake_p4_num, metric.name).to_numpy()
+            info = {"numerator": list(eff_fake_var_num), "denominator": list(eff_fake_var_denom)}
+            info_output_path = output_path.replace(".pdf", f"_{algorithm}.json")
+            save_to_json(info, info_output_path)
             bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), metric.n_bins + 1)
             denom_hist = Histogram(eff_fake_var_denom, bin_edges, "denominator")
             num_hist = Histogram(eff_fake_var_num, bin_edges, "numerator")
             eff_fake = num_hist / denom_hist
-            plt.plot(eff_fake.bin_centers, eff_fake.data, label=algorithm)
+            plt.plot(eff_fake.bin_centers, eff_fake.data, label=algo_names[algorithm])
             # plt.errorbar(eff_fake.bin_centers, eff_fake.data, yerr=eff_fake.uncertainties, label=algorithm)
         plt.grid()
         plt.legend()
@@ -96,7 +105,7 @@ def plot_energy_resolution(sig_data, algorithm_output_dir):
     )
 
 
-def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, cfg):
+def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, classifier_cut, cfg):
     output_path = os.path.join(algorithm_output_dir, "decaymode_reconstruction.pdf")
     gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
     reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
@@ -108,7 +117,6 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, cfg):
         11: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}\pi^{0}$",
         15: "Other",
     }
-    classifier_cut = cfg.metrics.WPs.HPS_wo_quality_cuts.Medium
     gen_tau_decaymodes_ = gen_tau_decaymodes[sig_data.tauClassifier > classifier_cut]
     reco_tau_decaymodes_ = reco_tau_decaymodes[sig_data.tauClassifier > classifier_cut]
     categories = [value for value in mapping.values()]
@@ -121,13 +129,22 @@ def plot_roc(efficiencies, fakerates, output_dir):
     output_path = os.path.join(output_dir, "ROC.pdf")
     algorithms = efficiencies.keys()
     fig, ax = plt.subplots(figsize=(12, 12))
-    non_ml_algos = ["FastCMSTau", "HPS", "HPS_wo_quality_cuts"]
+    algo_names = {algorithm: algorithm for algorithm in algorithms}
+    algo_names["FastCMSTau"] = "JINST 17 (2022) P07023"
+    algo_names["HPS"] = "HPS cut-based"
     for algorithm in algorithms:
-        if algorithm in non_ml_algos:
-            linewidth = 1
+        if not algorithm == "FastCMSTau":
+            mask = np.array(fakerates[algorithm]) != 0.0
+            x_values = np.array(efficiencies[algorithm])[mask]
+            y_values = np.array(fakerates[algorithm])[mask]
+            plt.plot(x_values, y_values, label=algo_names[algorithm], lw=2)
         else:
-            linewidth = 2
-        plt.plot(efficiencies[algorithm], fakerates[algorithm], label=algorithm, lw=linewidth)
+            indices = np.array([efficiencies[algorithm].index(loc) for loc in set(efficiencies[algorithm])])
+            wp_x = np.array(efficiencies[algorithm])[indices][1:]
+            wp_y = np.array(fakerates[algorithm])[indices][1:]
+            plt.scatter(
+                wp_x, wp_y, label=algo_names[algorithm], marker="o", facecolors="none", edgecolors="r", s=60, linewidths=3
+            )
     plt.grid()
     plt.legend()
     plt.ylabel("Fakerate")
@@ -242,16 +259,16 @@ def plot_all_metrics(cfg):
         ]
         sig_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files)
         bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files)
-        sig_paths_val = [
-            os.path.join(sig_input_dir, os.path.basename(path))
-            for path in cfg.datasets.validation.paths
-            if "ZH_Htautau" in path
-        ]
-        bkg_paths_val = [
-            os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.validation.paths if "QCD" in path
-        ]
-        sig_data_val = load_data_from_paths(sig_paths_val, n_files=cfg.plotting.n_files)
-        bkg_data_val = load_data_from_paths(bkg_paths_val, n_files=cfg.plotting.n_files)
+        # sig_paths_val = [
+        #     os.path.join(sig_input_dir, os.path.basename(path))
+        #     for path in cfg.datasets.validation.paths
+        #     if "ZH_Htautau" in path
+        # ]
+        # bkg_paths_val = [
+        #     os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.validation.paths if "QCD" in path
+        # ]
+        # sig_data_val = load_data_from_paths(sig_paths_val, n_files=cfg.plotting.n_files)
+        # bkg_data_val = load_data_from_paths(bkg_paths_val, n_files=cfg.plotting.n_files)
         print(f"Finished loading files for {algorithm}")
         numerator_mask_e, denominator_mask_e = get_data_masks(sig_data, ref_obj="gen_jet_tau_p4s")
         numerator_mask_f, denominator_mask_f = get_data_masks(bkg_data, ref_obj="gen_jet_p4s")
@@ -263,17 +280,19 @@ def plot_all_metrics(cfg):
         raw_numerator_data_e_train = sig_data_train[train_numerator_mask_e]
         raw_numerator_data_f_train = bkg_data_train[train_numerator_mask_f]
 
-        val_numerator_mask_e = get_data_masks(sig_data_val, ref_obj="gen_jet_tau_p4s")[0]
-        val_numerator_mask_f = get_data_masks(bkg_data_val, ref_obj="gen_jet_p4s")[0]
-        raw_numerator_data_e_val = sig_data_val[val_numerator_mask_e]
-        raw_numerator_data_f_val = bkg_data_val[val_numerator_mask_f]
+        # val_numerator_mask_e = get_data_masks(sig_data_val, ref_obj="gen_jet_tau_p4s")[0]
+        # val_numerator_mask_f = get_data_masks(bkg_data_val, ref_obj="gen_jet_p4s")[0]
+        # raw_numerator_data_e_val = sig_data_val[val_numerator_mask_e]
+        # raw_numerator_data_f_val = bkg_data_val[val_numerator_mask_f]
 
         tauClassifiers[algorithm] = {
-            "train": {"sig": raw_numerator_data_e_train.tauClassifier, "bkg": raw_numerator_data_f_train.tauClassifier},
-            "test": {"sig": raw_numerator_data_e.tauClassifier, "bkg": raw_numerator_data_f.tauClassifier},
-            "val": {"sig": raw_numerator_data_e_val.tauClassifier, "bkg": raw_numerator_data_f_val.tauClassifier},
+            "train": {
+                "sig": list(raw_numerator_data_e_train.tauClassifier),
+                "bkg": list(raw_numerator_data_f_train.tauClassifier),
+            },
+            "test": {"sig": list(raw_numerator_data_e.tauClassifier), "bkg": list(raw_numerator_data_f.tauClassifier)},
+            # "val": {"sig": raw_numerator_data_e_val.tauClassifier, "bkg": raw_numerator_data_f_val.tauClassifier},
         }
-        # Also need to calculate workingpoints
         classifier_cuts = np.linspace(start=0, stop=1, num=1001)
         print(f"Calculating efficiencies for {algorithm}")
         efficiencies[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e, classifier_cuts)
@@ -283,16 +302,28 @@ def plot_all_metrics(cfg):
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
         print(f"Plotting for {algorithm}")
-        plot_algo_tauClassifiers(tauClassifiers[algorithm], os.path.join(algorithm_output_dir, "tauClassifier.pdf"))
         medium_wp[algorithm] = save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
+        plot_algo_tauClassifiers(
+            tauClassifiers[algorithm], os.path.join(algorithm_output_dir, "tauClassifier.pdf"), medium_wp[algorithm]
+        )
+        save_to_json(
+            {"tauClassifiers": tauClassifiers[algorithm], "MediumWP": medium_wp[algorithm]},
+            os.path.join(algorithm_output_dir, "tauClassifier.json"),
+        )
         plot_energy_resolution(raw_numerator_data_e, algorithm_output_dir)
-        plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, cfg)
+        # plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, medium_wp[algorithm], cfg)
     print("Staring plotting for all algorithms")
+    save_to_json({"efficiencies": efficiencies, "fakerates": fakerates}, os.path.join(output_dir, "roc.json"))
     plot_roc(efficiencies, fakerates, output_dir)
     plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.pdf"))
     plot_tauClassifiers(tauClassifiers, "bkg", os.path.join(output_dir, "tauClassifier_bkg.pdf"))
+
+
+def save_to_json(dict_, output_path):
+    with open(output_path, "wt") as out_file:
+        json.dump(dict_, out_file, indent=4)
 
 
 def plot_tauClassifiers(tauClassifiers, dtype, output_path):
@@ -312,19 +343,25 @@ def plot_tauClassifiers(tauClassifiers, dtype, output_path):
     plt.close("all")
 
 
-def plot_algo_tauClassifiers(tauClassifiers, output_path):
+def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp):
     bin_edges = np.linspace(0, 1, 21)
-    linestyles = ["solid", "dashed", "dotted"]
-    for i, (split, values) in enumerate(tauClassifiers.items()):
-        hist_sig_ = np.histogram(values["sig"], bins=bin_edges)[0]
-        hist_sig = hist_sig_ / np.sum(hist_sig_)
-        hist_bkg_ = np.histogram(values["bkg"], bins=bin_edges)[0]
-        hist_bkg = hist_bkg_ / np.sum(hist_bkg_)
-        hep.histplot(hist_sig, bins=bin_edges, histtype="step", label=f"sig_{split}", ls=linestyles[i], color="red")
-        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", label=f"bkg_{split}", ls=linestyles[i], color="blue")
-        plt.xlabel("tauClassifier")
-        plt.yscale("log")
-        plt.legend()
+    _ = plt.figure(figsize=(16, 12))
+    hist_sig_ = np.histogram(tauClassifiers["train"]["sig"], bins=bin_edges)[0]
+    hist_sig = hist_sig_ / np.sum(hist_sig_)
+    hist_bkg_ = np.histogram(tauClassifiers["train"]["bkg"], bins=bin_edges)[0]
+    hist_bkg = hist_bkg_ / np.sum(hist_bkg_)
+    test_hist_sig_ = np.histogram(tauClassifiers["test"]["sig"], bins=bin_edges)[0]
+    test_hist_sig = test_hist_sig_ / np.sum(test_hist_sig_)
+    test_hist_bkg_ = np.histogram(tauClassifiers["test"]["bkg"], bins=bin_edges)[0]
+    test_hist_bkg = test_hist_bkg_ / np.sum(test_hist_bkg_)
+    hep.histplot(hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red")
+    hep.histplot(hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue")
+    hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red")
+    hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue")
+    plt.axvline(medium_wp, color="k")
+    plt.xlabel("tauClassifier")
+    plt.yscale("log")
+    plt.legend()
     plt.savefig(output_path, bbox_inches="tight", format="pdf")
     plt.close("all")
 

@@ -48,7 +48,10 @@ def load_data_from_paths(input_paths: list, n_files: int = None) -> ak.Array:
     input_data = []
     for file_path in input_paths[:n_files]:
         print(f"Loading from {file_path}")
-        input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
+        try:
+            input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
+        except ValueError:
+            print(f"{file_path} does not exist")
     input_data = ak.concatenate(input_data)
     return input_data
 
