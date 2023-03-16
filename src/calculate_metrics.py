@@ -18,7 +18,8 @@ import plotting as pl
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
 from general import get_reduced_decaymodes, load_data_from_paths
-matplotlib.use('Agg') 
+
+matplotlib.use("Agg")
 
 hep.style.use(hep.styles.CMS)
 
@@ -58,10 +59,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             )
             eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name).to_numpy()
             eff_fake_var_num = getattr(eff_fake_p4_num, metric.name).to_numpy()
-            info = {
-                "numerator": list(eff_fake_var_num),
-                "denominator": list(eff_fake_var_denom)
-            }
+            info = {"numerator": list(eff_fake_var_num), "denominator": list(eff_fake_var_denom)}
             info_output_path = output_path.replace(".pdf", f"_{algorithm}.json")
             save_to_json(info, info_output_path)
             bin_edges = np.linspace(min(eff_fake_var_denom), max(eff_fake_var_denom), metric.n_bins + 1)
@@ -144,7 +142,9 @@ def plot_roc(efficiencies, fakerates, output_dir):
             indices = np.array([efficiencies[algorithm].index(loc) for loc in set(efficiencies[algorithm])])
             wp_x = np.array(efficiencies[algorithm])[indices][1:]
             wp_y = np.array(fakerates[algorithm])[indices][1:]
-            plt.scatter(wp_x, wp_y, label=algo_names[algorithm], marker='o', facecolors='none', edgecolors='r', s=60, linewidths=3)
+            plt.scatter(
+                wp_x, wp_y, label=algo_names[algorithm], marker="o", facecolors="none", edgecolors="r", s=60, linewidths=3
+            )
     plt.grid()
     plt.legend()
     plt.ylabel("Fakerate")
@@ -286,7 +286,10 @@ def plot_all_metrics(cfg):
         # raw_numerator_data_f_val = bkg_data_val[val_numerator_mask_f]
 
         tauClassifiers[algorithm] = {
-            "train": {"sig": list(raw_numerator_data_e_train.tauClassifier), "bkg": list(raw_numerator_data_f_train.tauClassifier)},
+            "train": {
+                "sig": list(raw_numerator_data_e_train.tauClassifier),
+                "bkg": list(raw_numerator_data_f_train.tauClassifier),
+            },
             "test": {"sig": list(raw_numerator_data_e.tauClassifier), "bkg": list(raw_numerator_data_f.tauClassifier)},
             # "val": {"sig": raw_numerator_data_e_val.tauClassifier, "bkg": raw_numerator_data_f_val.tauClassifier},
         }
@@ -301,13 +304,11 @@ def plot_all_metrics(cfg):
         print(f"Plotting for {algorithm}")
         medium_wp[algorithm] = save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
         plot_algo_tauClassifiers(
-            tauClassifiers[algorithm],
-            os.path.join(algorithm_output_dir, "tauClassifier.pdf"),
-            medium_wp[algorithm]
+            tauClassifiers[algorithm], os.path.join(algorithm_output_dir, "tauClassifier.pdf"), medium_wp[algorithm]
         )
         save_to_json(
             {"tauClassifiers": tauClassifiers[algorithm], "MediumWP": medium_wp[algorithm]},
-            os.path.join(algorithm_output_dir, "tauClassifier.json")
+            os.path.join(algorithm_output_dir, "tauClassifier.json"),
         )
         plot_energy_resolution(raw_numerator_data_e, algorithm_output_dir)
         # plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, medium_wp[algorithm], cfg)
@@ -344,17 +345,17 @@ def plot_tauClassifiers(tauClassifiers, dtype, output_path):
 
 def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp):
     bin_edges = np.linspace(0, 1, 21)
-    fig = plt.figure(figsize=(16, 12))
-    hist_sig_ = np.histogram(tauClassifiers['train']["sig"], bins=bin_edges)[0]
+    _ = plt.figure(figsize=(16, 12))
+    hist_sig_ = np.histogram(tauClassifiers["train"]["sig"], bins=bin_edges)[0]
     hist_sig = hist_sig_ / np.sum(hist_sig_)
-    hist_bkg_ = np.histogram(tauClassifiers['train']["bkg"], bins=bin_edges)[0]
+    hist_bkg_ = np.histogram(tauClassifiers["train"]["bkg"], bins=bin_edges)[0]
     hist_bkg = hist_bkg_ / np.sum(hist_bkg_)
-    test_hist_sig_ = np.histogram(tauClassifiers['test']["sig"], bins=bin_edges)[0]
+    test_hist_sig_ = np.histogram(tauClassifiers["test"]["sig"], bins=bin_edges)[0]
     test_hist_sig = test_hist_sig_ / np.sum(test_hist_sig_)
-    test_hist_bkg_ = np.histogram(tauClassifiers['test']["bkg"], bins=bin_edges)[0]
+    test_hist_bkg_ = np.histogram(tauClassifiers["test"]["bkg"], bins=bin_edges)[0]
     test_hist_bkg = test_hist_bkg_ / np.sum(test_hist_bkg_)
-    hep.histplot(hist_sig, bins=bin_edges, histtype="step", label=f"Signal", ls="solid", color="red")
-    hep.histplot(hist_bkg, bins=bin_edges, histtype="step", label=f"Background", ls="solid", color="blue")
+    hep.histplot(hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red")
+    hep.histplot(hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue")
     hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red")
     hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue")
     plt.axvline(medium_wp, color="k")

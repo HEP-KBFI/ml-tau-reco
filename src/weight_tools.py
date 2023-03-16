@@ -216,7 +216,7 @@ def main(cfg: DictConfig):
             (sig_matrix + bkg_matrix) / (np.sum(sig_matrix) + np.sum(bkg_matrix)),
             pt_bin_edges,
             eta_bin_edges,
-            normed_total_output_path
+            normed_total_output_path,
         )
     sig_weights = get_weight_matrix(target_matrix=sig_matrix, comp_matrix=bkg_matrix)
     bkg_weights = get_weight_matrix(target_matrix=bkg_matrix, comp_matrix=sig_matrix)
@@ -231,21 +231,11 @@ def main(cfg: DictConfig):
     if cfg.produce_plots:
         sig_output_path_p_theta = os.path.join(output_dir, "signal_matrix_p_theta.pdf")
         visualize_weights(
-            sig_matrix_p_theta,
-            pt_bin_edges,
-            theta_bin_edges,
-            sig_output_path_p_theta,
-            ylabel=r"$\theta$",
-            xlabel="p"
+            sig_matrix_p_theta, pt_bin_edges, theta_bin_edges, sig_output_path_p_theta, ylabel=r"$\theta$", xlabel="p"
         )
         bkg_output_path_p_theta = os.path.join(output_dir, "bkg_matrix_p_theta.pdf")
         visualize_weights(
-            bkg_matrix_p_theta,
-            pt_bin_edges,
-            theta_bin_edges,
-            bkg_output_path_p_theta,
-            ylabel=r"$\theta$",
-            xlabel="p"
+            bkg_matrix_p_theta, pt_bin_edges, theta_bin_edges, bkg_output_path_p_theta, ylabel=r"$\theta$", xlabel="p"
         )
         total_output_path_p_theta = os.path.join(output_dir, "total_matrix_p_theta.pdf")
         visualize_weights(
@@ -254,7 +244,8 @@ def main(cfg: DictConfig):
             theta_bin_edges,
             total_output_path_p_theta,
             ylabel=r"$\theta$",
-            xlabel="p",)
+            xlabel="p",
+        )
         normed_total_output_path_p_theta = os.path.join(output_dir, "normed_total_matrix_p_theta.pdf")
         visualize_weights(
             (sig_matrix_p_theta + bkg_matrix_p_theta) / (np.sum(sig_matrix_p_theta) + np.sum(bkg_matrix_p_theta)),
