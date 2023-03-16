@@ -12,7 +12,7 @@ from oracleTauBuilder import OracleTauBuilder
 from hpsTauBuilder import HPSTauBuilder
 from build_grid import GridBuilder
 from endtoend_simple import SimpleDNNTauBuilder
-from endtoend_simple import TauEndToEndSimple, SelfAttentionLayer
+from endtoend_simple import TauEndToEndSimple
 from fastCMSTauBuilder import FastCMSTauBuilder
 from LorentzNetTauBuilder import LorentzNetTauBuilder
 from ParticleTransformerTauBuilder import ParticleTransformerTauBuilder
@@ -47,7 +47,6 @@ def build_taus(cfg: DictConfig) -> None:
     elif cfg.builder == "SimpleDNN":
         pytorch_model = torch.load("data/model.pt", map_location=torch.device("cpu"))
         assert pytorch_model.__class__ == TauEndToEndSimple
-        assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
         builder = SimpleDNNTauBuilder(pytorch_model)
     elif cfg.builder == "LorentzNet":
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
