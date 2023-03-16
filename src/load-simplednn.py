@@ -52,4 +52,8 @@ if __name__ == "__main__":
     )
 
     # test if this works, and what needs to change in the model for this to work
-    hls4ml.converters.convert_from_pytorch_model(pytorch_model, ((None, 8), (None, 36), (None, 1)))
+    hls_model = hls4ml.converters.convert_from_pytorch_model(pytorch_model, ((None, 8), (None, 36), (None, 1)))
+    hls4ml.utils.plot_model(hls_model, show_shapes=True, show_precision=True, to_file="test.png")
+
+    hls_model.compile()
+    hls4ml_pred, hls4ml_trace = hls_model.trace(x)
