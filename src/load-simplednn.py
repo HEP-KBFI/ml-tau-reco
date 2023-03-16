@@ -17,13 +17,14 @@ def get_split_files(config_path, split):
 if __name__ == "__main__":
     print(hls4ml.__version__)
 
-    pytorch_model = torch.load(
-        "/scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_03_16/SimpleDNN/model.pt", map_location=torch.device("cpu")
-    )
+    pytorch_model = torch.load("data/model.pt", map_location=torch.device("cpu"))
 
     # temporary workaround to disable aggregation layers,
     # which otherwise gives aten::scatter_reduce not supported
     pytorch_model.onnx_workaround_agg = True
+    pytorch_model.agg1 = None
+    pytorch_model.agg2 = None
+    pytorch_model.agg3 = None
 
     assert pytorch_model.__class__ == TauEndToEndSimple
     print(pytorch_model)
@@ -51,4 +52,4 @@ if __name__ == "__main__":
     )
 
     # test if this works, and what needs to change in the model for this to work
-    # hls4ml.converters.convert_from_pytorch_model(pytorch_model, ((None, 8), (None, 36), (None, 1)))
+    hls4ml.converters.convert_from_pytorch_model(pytorch_model, ((None, 8), (None, 36), (None, 1)))

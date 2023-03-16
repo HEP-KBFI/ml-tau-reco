@@ -29,23 +29,23 @@ ISTEP_GLOBAL = 0
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
-        torch.nn.LayerNorm(width),
+        # torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
+        # torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
+        # torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
+        # torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
+        # torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, output_dim),
@@ -76,7 +76,7 @@ class EarlyStopper:
 class SelfAttentionLayer(nn.Module):
     def __init__(self, embedding_dim=32, num_heads=32, width=128, dropout=0.3):
         super(SelfAttentionLayer, self).__init__()
-        self.act = nn.ELU
+        self.act = nn.ReLU
         self.act_obj = self.act()
         self.mha = torch.nn.MultiheadAttention(
             embed_dim=embedding_dim, num_heads=num_heads, batch_first=True, dropout=dropout
@@ -107,11 +107,11 @@ class TauEndToEndSimple(nn.Module):
     ):
         super(TauEndToEndSimple, self).__init__()
 
-        self.act = nn.ELU
+        self.act = nn.ReLU
         self.act_obj = self.act()
         self.dropout = 0.1
-        self.width = 512
-        self.embedding_dim = 512
+        self.width = 256
+        self.embedding_dim = 256
 
         # if set to True, disables aggregation across the batch
         # and replaces it with a fake version, just to test that ONNX export
@@ -130,10 +130,9 @@ class TauEndToEndSimple(nn.Module):
         self.agg1 = torch_geometric.nn.MeanAggregation()
         self.agg2 = torch_geometric.nn.MaxAggregation()
         self.agg3 = torch_geometric.nn.StdAggregation()
-        self.agg4 = torch_geometric.nn.SoftmaxAggregation(learn=True)
 
-        self.nn_pred_istau = ffn(8 + 4 * self.embedding_dim, 2, self.width, self.act, self.dropout)
-        self.nn_pred_p4 = ffn(8 + 4 * self.embedding_dim, 4, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(8 + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
+        self.nn_pred_p4 = ffn(8 + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
 
     def forward(self, jet_features, jet_pf_features, jet_pf_features_batch):
         pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features))
@@ -155,15 +154,13 @@ class TauEndToEndSimple(nn.Module):
             jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
             jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
             jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-            jet_encoded4 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
         else:
             jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
             jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
             jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
-            jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
 
         # get the list of per-jet features as a concat of
-        jet_feats = torch.cat([jet_features, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
+        jet_feats = torch.cat([jet_features, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = self.nn_pred_istau(jet_feats)

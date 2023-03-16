@@ -10,4 +10,4 @@ cd ~/ml-tau-reco
 #pytorch training
 #input data files should be in /scratch-persistent or /home, NOT in /local (too slow)
 singularity exec -B /scratch-persistent --nv $IMG \
-  python3 src/endtoend_simple.py
+  python3 src/endtoend_simple.py n_files=10
