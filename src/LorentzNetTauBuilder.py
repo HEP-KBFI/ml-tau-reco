@@ -18,7 +18,7 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         super(BasicTauBuilder, self).__init__()
 
         self.filename_model = "data/LorentzNet_model_wReweighting_2023Mar13.pt"
-        self.filename_transform = "data/LorentzNet_FeatureStandardization_wReweighting_2023Mar13.json"
+        self.filename_transform = ""
 
         if os.path.isfile(cfgFileName):
             cfgFile = open(cfgFileName, "r")
@@ -61,9 +61,7 @@ class LorentzNetTauBuilder(BasicTauBuilder):
             c_weight=self.c_weight,
             verbosity=verbosity,
         )
-        self.model.load_state_dict(
-            torch.load("data/LorentzNet_model_wReweighting_2023Mar08.pt", map_location=torch.device("cpu"))
-        )
+        self.model.load_state_dict(torch.load(self.filename_model, map_location=torch.device("cpu")))
         self.model.eval()
 
         self.verbosity = verbosity
