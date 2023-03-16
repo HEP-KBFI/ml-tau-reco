@@ -102,9 +102,7 @@ class SelfAttentionLayer(nn.Module):
 
 
 class TauEndToEndSimple(nn.Module):
-    def __init__(
-        self,
-    ):
+    def __init__(self, sparse_mode=False):
         super(TauEndToEndSimple, self).__init__()
 
         self.act = nn.ReLU
@@ -112,52 +110,27 @@ class TauEndToEndSimple(nn.Module):
         self.dropout = 0.1
         self.width = 256
         self.embedding_dim = 256
-
-        # if set to True, disables aggregation across the batch
-        # and replaces it with a fake version, just to test that ONNX export
-        # otherwise works. Need to replace this with something meaningful for
-        # an actually viable ONNX export!
-        self.onnx_workaround_agg = False
+        self.sparse_mode = sparse_mode
 
         self.nn_pf_initialembedding = ffn(14 + 22, self.embedding_dim, self.width, self.act, self.dropout)
 
-        # self.nn_pf_mha = nn.ModuleList()
-        # for i in range(1):
-        #     self.nn_pf_mha.append(
-        #         SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
-        #     )
-
-        self.agg1 = torch_geometric.nn.MeanAggregation()
-        self.agg2 = torch_geometric.nn.MaxAggregation()
-        self.agg3 = torch_geometric.nn.StdAggregation()
+        if self.sparse_mode:
+            self.agg1 = torch_geometric.nn.MeanAggregation()
+            self.agg2 = torch_geometric.nn.MaxAggregation()
+            self.agg3 = torch_geometric.nn.StdAggregation()
 
         self.nn_pred_istau = ffn(8 + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(8 + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
 
-    def forward(self, jet_features, jet_pf_features, jet_pf_features_batch):
+    # forward function for training with pytorch geometric
+    def forward_sparse(self, inputs):
+        jet_features, jet_pf_features, jet_pf_features_batch = inputs
         pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features))
 
-        # # pad the PF tensors across jets
-        # pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.jet_pf_features_batch, 0.0)
-
-        # # run a simple self-attention over the PF candidates in each jet
-        # for mha_layer in self.nn_pf_mha:
-        #     pfs_padded = self.act_obj(mha_layer(pfs_padded, ~mask))
-
-        # # get the encoded PF candidates after attention, undo the padding
-        # pf_encoded = torch.cat([pfs_padded[i][mask[i]] for i in range(pfs_padded.shape[0])])
-
-        # assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
-
         # # now collapse the PF information in each jet with a global attention layer
-        if self.onnx_workaround_agg:
-            jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-            jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-            jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-        else:
-            jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
-            jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
-            jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
+        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+        jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+        jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
 
         # get the list of per-jet features as a concat of
         jet_feats = torch.cat([jet_features, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
@@ -170,6 +143,46 @@ class TauEndToEndSimple(nn.Module):
         pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
 
         return pred_istau, pred_p4
+
+    # custom forward function for HLS4ML export, assuming a single 3D input
+    def forward_3d(self, inputs):
+
+        assert len(inputs.shape) == 3
+        # njet = inputs.shape[0]  # number of jets in batch
+        # npf_per_jet = inputs.shape[1]  # max PF candidates across jets + 1 (the jet itself)
+        # nfeat = inputs.shape[2]  # features of the jets / PF candidates
+
+        # get the jet properties
+        jet_feats = inputs[:, 0, :8]
+
+        # get the PF properties of each jet
+        pf_feats = inputs[:, 1:, :]
+
+        # encode the PF elements with the FFN
+        pf_encoded = self.act_obj(self.nn_pf_initialembedding(pf_feats))
+
+        # aggregate PFs across jets (need to add masking here for a fully correct implementation)
+        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=1))
+        jet_encoded2 = self.act_obj(torch.max(pf_encoded, axis=1).values)
+        jet_encoded3 = self.act_obj(torch.std(pf_encoded, axis=1))
+
+        # get the list of per-jet features as a concat of
+        jet_feats = torch.cat([jet_feats, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+
+        # run a binary classification whether or not this jet is from a tau
+        pred_istau = self.nn_pred_istau(jet_feats)
+
+        # run a per-jet NN for visible energy prediction
+        jet_p4 = jet_feats[:, :4]
+        pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
+
+        return pred_istau, pred_p4
+
+    def forward(self, inputs):
+        if self.sparse_mode:
+            return self.forward_sparse(inputs)
+        else:
+            return self.forward_3d(inputs)
 
 
 def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
@@ -202,7 +215,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
     for ibatch, batch in enumerate(tqdm.tqdm(ds_loader, total=len(ds_loader))):
         optimizer.zero_grad()
         batch = batch.to(device=dev)
-        pred_istau, pred_p4 = model(batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch)
+        pred_istau, pred_p4 = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
         true_p4 = batch.gen_tau_p4
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
@@ -262,7 +275,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
     def processJets(self, jets):
         ds = TauJetDataset()
         data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
-        pred_istau, pred_p4 = self.model(data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch)
+        pred_istau, pred_p4 = self.model((data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch))
 
         pred_istau = torch.softmax(pred_istau, axis=-1)[:, 1]
         pred_istau = pred_istau.contiguous().detach().numpy()
@@ -337,7 +350,7 @@ def main(cfg):
         dev = torch.device("cpu")
     print("device={}".format(dev))
 
-    model = TauEndToEndSimple().to(device=dev)
+    model = TauEndToEndSimple(sparse_mode=True).to(device=dev)
     print("params={}".format(count_parameters(model)))
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
