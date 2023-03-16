@@ -8,6 +8,8 @@ from LGEB import psi
 
 
 def buildLorentzNetTensors(jet_constituent_p4s, max_cands, add_beams):
+    # print("<buildLorentzNetTensors>:")
+
     jet_constituent_p4s = jet_constituent_p4s[:max_cands]
     jet_constituent_p4s_zipped = list(
         zip(jet_constituent_p4s.energy, jet_constituent_p4s.px, jet_constituent_p4s.py, jet_constituent_p4s.pz)
@@ -41,12 +43,29 @@ def buildLorentzNetTensors(jet_constituent_p4s, max_cands, add_beams):
     return x_tensor, scalars_tensor, node_mask_tensor
 
 
+def read_cut(cuts, key):
+    if key in cuts.keys():
+        return cuts[key]
+    else:
+        return -1.0
+
+
 class LorentzNetDataset(Dataset):
-    def __init__(self, filelist, max_num_files=-1, max_cands=50, add_beams=True):
+    def __init__(self, filelist, max_num_files=-1, max_cands=50, add_beams=True, preselection={}):
 
         print("<LorentzNetDataset::LorentzNetDataset>:")
         print(" #files = %i" % len(filelist))
+        print(" max_cands = %i" % max_cands)
         print(" add_beams = %s" % add_beams)
+
+        self.min_jet_theta = read_cut(preselection, "min_jet_theta")
+        self.max_jet_theta = read_cut(preselection, "max_jet_theta")
+        self.min_jet_pt = read_cut(preselection, "min_jet_pt")
+        self.max_jet_pt = read_cut(preselection, "max_jet_pt")
+        print(" min_jet_theta = %1.3f" % self.min_jet_theta)
+        print(" max_jet_theta = %1.3f" % self.max_jet_theta)
+        print(" min_jet_pt = %1.3f" % self.min_jet_pt)
+        print(" max_jet_pt = %1.3f" % self.max_jet_pt)
 
         if max_num_files != -1:
             num_sig_files = 0
@@ -78,10 +97,14 @@ class LorentzNetDataset(Dataset):
 
         self.num_jets = 0
         for file in filelist:
-            print("Opening file %s." % file)
+            print("Opening file %s" % file)
             data = ak.from_parquet(file)
 
-            num_jets_in_file = len(data["reco_jet_p4s"])
+            data_jet_p4s = data["reco_jet_p4s"]
+            jet_p4s = vector.awk(
+                ak.zip({"px": data_jet_p4s.x, "py": data_jet_p4s.y, "pz": data_jet_p4s.z, "mass": data_jet_p4s.tau})
+            )
+            num_jets_in_file = len(data_jet_p4s)
             print("File %s contains %i entries." % (file, num_jets_in_file))
 
             data_cand_p4s = data["reco_cand_p4s"]
@@ -97,6 +120,15 @@ class LorentzNetDataset(Dataset):
                 if idx > 0 and (idx % 10000) == 0:
                     print(" Processing entry %i" % idx)
 
+                jet_p4 = jet_p4s[idx]
+                if not (
+                    (self.min_jet_theta < 0.0 or jet_p4.theta >= self.min_jet_theta)
+                    and (self.max_jet_theta < 0.0 or jet_p4.theta <= self.max_jet_theta)
+                    and (self.min_jet_pt < 0.0 or jet_p4.pt >= self.min_jet_pt)
+                    and (self.max_jet_pt < 0.0 or jet_p4.pt <= self.max_jet_pt)
+                ):
+                    continue
+
                 jet_constituent_p4s = cand_p4s[idx]
                 x_tensor, scalars_tensor, node_mask_tensor = buildLorentzNetTensors(
                     jet_constituent_p4s, self.max_cands, self.add_beams
@@ -110,9 +142,9 @@ class LorentzNetDataset(Dataset):
                 self.y_tensors.append(y_tensor)
                 self.weight_tensors.append(weight_tensor)
 
-            print("Closing file %s." % file)
+                self.num_jets += 1
 
-            self.num_jets += num_jets_in_file
+            print("Closing file %s" % file)
 
         print("Dataset contains %i entries." % self.num_jets)
 

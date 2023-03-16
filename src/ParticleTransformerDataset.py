@@ -179,7 +179,7 @@ class ParticleTransformerDataset(Dataset):
 
         self.num_jets = 0
         for file in filelist:
-            print("Opening file %s." % file)
+            print("Opening file %s" % file)
             data = ak.from_parquet(file)
 
             data_jet_p4s = data["reco_jet_p4s"]
@@ -249,7 +249,7 @@ class ParticleTransformerDataset(Dataset):
 
                 self.num_jets += 1
 
-            print("Closing file %s." % file)
+            print("Closing file %s" % file)
 
         print("Dataset contains %i entries." % self.num_jets)
 
