@@ -113,6 +113,12 @@ class TauEndToEndSimple(nn.Module):
         self.width = 512
         self.embedding_dim = 512
 
+        # if set to True, disables aggregation across the batch
+        # and replaces it with a fake version, just to test that ONNX export
+        # otherwise works. Need to replace this with something meaningful for
+        # an actually viable ONNX export!
+        self.onnx_workaround_agg = False
+
         self.nn_pf_initialembedding = ffn(14 + 22, self.embedding_dim, self.width, self.act, self.dropout)
 
         # self.nn_pf_mha = nn.ModuleList()
@@ -129,8 +135,8 @@ class TauEndToEndSimple(nn.Module):
         self.nn_pred_istau = ffn(8 + 4 * self.embedding_dim, 2, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(8 + 4 * self.embedding_dim, 4, self.width, self.act, self.dropout)
 
-    def forward(self, batch):
-        pf_encoded = self.act_obj(self.nn_pf_initialembedding(batch.jet_pf_features))
+    def forward(self, jet_features, jet_pf_features, jet_pf_features_batch):
+        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features))
 
         # # pad the PF tensors across jets
         # pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.jet_pf_features_batch, 0.0)
@@ -145,19 +151,25 @@ class TauEndToEndSimple(nn.Module):
         # assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # # now collapse the PF information in each jet with a global attention layer
-        jet_encoded1 = self.act_obj(self.agg1(pf_encoded, batch.jet_pf_features_batch))
-        jet_encoded2 = self.act_obj(self.agg2(pf_encoded, batch.jet_pf_features_batch))
-        jet_encoded3 = self.act_obj(self.agg3(pf_encoded, batch.jet_pf_features_batch))
-        jet_encoded4 = self.act_obj(self.agg4(pf_encoded, batch.jet_pf_features_batch))
+        if self.onnx_workaround_agg:
+            jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+            jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+            jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+            jet_encoded4 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+        else:
+            jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
+            jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
+            jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
+            jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
 
         # get the list of per-jet features as a concat of
-        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
+        jet_feats = torch.cat([jet_features, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = self.nn_pred_istau(jet_feats)
 
         # run a per-jet NN for visible energy prediction
-        jet_p4 = batch.jet_features[:, :4]
+        jet_p4 = jet_features[:, :4]
         pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
 
         return pred_istau, pred_p4
@@ -193,7 +205,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
     for ibatch, batch in enumerate(tqdm.tqdm(ds_loader, total=len(ds_loader))):
         optimizer.zero_grad()
         batch = batch.to(device=dev)
-        pred_istau, pred_p4 = model(batch)
+        pred_istau, pred_p4 = model(batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch)
         true_p4 = batch.gen_tau_p4
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
@@ -253,7 +265,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
     def processJets(self, jets):
         ds = TauJetDataset()
         data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
-        pred_istau, pred_p4 = self.model(data_obj)
+        pred_istau, pred_p4 = self.model(data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch)
 
         pred_istau = torch.softmax(pred_istau, axis=-1)[:, 1]
         pred_istau = pred_istau.contiguous().detach().numpy()
