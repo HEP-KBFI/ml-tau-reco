@@ -6,38 +6,48 @@ import numpy as np
 import yaml
 import torch
 import torch_geometric
-import torch.nn as nn
+from torch import nn
 import sys
+import tqdm
+import sklearn
+import sklearn.metrics
 from torch_geometric.loader import DataLoader
 from torch_geometric.data.batch import Batch
 from taujetdataset import TauJetDataset
 
-from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
 
 from torch.utils.tensorboard import SummaryWriter
+
+from FocalLoss import FocalLoss
+
+focal_loss = FocalLoss(gamma=2.0)
+ISTEP_GLOBAL = 0
 
 
 # feedforward network that transformes input_dim->output_dim
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
-        torch.nn.LayerNorm(input_dim),
         nn.Linear(input_dim, width),
+        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-        torch.nn.LayerNorm(width),
         nn.Linear(width, width),
+        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-        torch.nn.LayerNorm(width),
         nn.Linear(width, width),
+        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-        torch.nn.LayerNorm(width),
         nn.Linear(width, width),
+        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
+        nn.Linear(width, width),
         torch.nn.LayerNorm(width),
+        act(),
+        nn.Dropout(dropout),
         nn.Linear(width, output_dim),
     )
 
@@ -55,7 +65,7 @@ class EarlyStopper:
             self.counter = 0
         elif validation_loss > (self.min_validation_loss + self.min_delta):
             self.counter += 1
-            if self.counter >= self.patience:
+            if self.patience >= 0 and self.counter >= self.patience:
                 print(f"val_los has not decreased in {self.patience} epochs, stopping")
                 return True
         return False
@@ -64,10 +74,13 @@ class EarlyStopper:
 # self-attention layer that transformes [B, N, x] -> [B, N, embedding_dim]
 # by attending the N elements in each batch B
 class SelfAttentionLayer(nn.Module):
-    def __init__(self, embedding_dim=32, num_heads=8, width=128, dropout=0.3):
+    def __init__(self, embedding_dim=32, num_heads=32, width=128, dropout=0.3):
         super(SelfAttentionLayer, self).__init__()
         self.act = nn.ELU
-        self.mha = torch.nn.MultiheadAttention(embedding_dim, num_heads, batch_first=True)
+        self.act_obj = self.act()
+        self.mha = torch.nn.MultiheadAttention(
+            embed_dim=embedding_dim, num_heads=num_heads, batch_first=True, dropout=dropout
+        )
         self.norm0 = torch.nn.LayerNorm(embedding_dim)
         self.norm1 = torch.nn.LayerNorm(embedding_dim)
         self.dropout = torch.nn.Dropout(dropout)
@@ -75,11 +88,13 @@ class SelfAttentionLayer(nn.Module):
 
     def forward(self, x, mask):
         xa = self.mha(x, x, x, key_padding_mask=mask)[0]
-        xa = self.dropout(xa)
         x = self.norm0(x + xa)
+        x = self.act_obj(x)
 
         xa = self.seq(x)
         x = self.norm1(x + xa)
+        x = self.act_obj(x)
+        x = self.dropout(x)
 
         # make sure masked elements are 0
         x = x * (~mask.unsqueeze(-1))
@@ -93,50 +108,53 @@ class TauEndToEndSimple(nn.Module):
         super(TauEndToEndSimple, self).__init__()
 
         self.act = nn.ELU
-        self.dropout = 0.2
-        self.width = 128
-        self.embedding_dim = 128
+        self.act_obj = self.act()
+        self.dropout = 0.1
+        self.width = 512
+        self.embedding_dim = 512
 
-        self.nn_pf_initialembedding = ffn(28, self.embedding_dim, self.width, self.act, self.dropout)
+        self.nn_pf_initialembedding = ffn(14 + 22, self.embedding_dim, self.width, self.act, self.dropout)
 
-        self.nn_pf_mha = nn.ModuleList()
-        for i in range(4):
-            self.nn_pf_mha.append(
-                SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
-            )
+        # self.nn_pf_mha = nn.ModuleList()
+        # for i in range(1):
+        #     self.nn_pf_mha.append(
+        #         SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
+        #     )
 
-        self.nn_pf_ga = AttentionalAggregation(ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
-        self.agg = torch_geometric.nn.MeanAggregation()
+        self.agg1 = torch_geometric.nn.MeanAggregation()
+        self.agg2 = torch_geometric.nn.MaxAggregation()
+        self.agg3 = torch_geometric.nn.StdAggregation()
+        self.agg4 = torch_geometric.nn.SoftmaxAggregation(learn=True)
 
-        self.nn_pred_istau = ffn(4 + 2 * self.embedding_dim, 1, self.width, self.act, self.dropout)
-        self.nn_pred_p4 = ffn(4 + 2 * self.embedding_dim, 4, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(8 + 4 * self.embedding_dim, 2, self.width, self.act, self.dropout)
+        self.nn_pred_p4 = ffn(8 + 4 * self.embedding_dim, 4, self.width, self.act, self.dropout)
 
     def forward(self, batch):
-        pf_encoded = self.nn_pf_initialembedding(batch.jet_pf_features)
+        pf_encoded = self.act_obj(self.nn_pf_initialembedding(batch.jet_pf_features))
 
-        # pad the PF tensors across jets
-        pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.jet_pf_features_batch, 0.0)
+        # # pad the PF tensors across jets
+        # pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.jet_pf_features_batch, 0.0)
 
-        # run a simple self-attention over the PF candidates in each jet
-        for mha_layer in self.nn_pf_mha:
-            pfs_padded = mha_layer(pfs_padded, ~mask)
+        # # run a simple self-attention over the PF candidates in each jet
+        # for mha_layer in self.nn_pf_mha:
+        #     pfs_padded = self.act_obj(mha_layer(pfs_padded, ~mask))
 
-        # get the encoded PF candidates after attention, undo the padding
-        pf_encoded = torch.cat([pfs_padded[i][mask[i]] for i in range(pfs_padded.shape[0])])
-        assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
+        # # get the encoded PF candidates after attention, undo the padding
+        # pf_encoded = torch.cat([pfs_padded[i][mask[i]] for i in range(pfs_padded.shape[0])])
 
-        # now collapse the PF information in each jet with a global attention layer
-        jet_encoded1 = self.nn_pf_ga(pf_encoded, batch.jet_pf_features_batch)
+        # assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
-        # also compute a simple mean aggregation
-        jet_encoded2 = self.agg(pf_encoded, batch.jet_pf_features_batch)
+        # # now collapse the PF information in each jet with a global attention layer
+        jet_encoded1 = self.act_obj(self.agg1(pf_encoded, batch.jet_pf_features_batch))
+        jet_encoded2 = self.act_obj(self.agg2(pf_encoded, batch.jet_pf_features_batch))
+        jet_encoded3 = self.act_obj(self.agg3(pf_encoded, batch.jet_pf_features_batch))
+        jet_encoded4 = self.act_obj(self.agg4(pf_encoded, batch.jet_pf_features_batch))
 
         # get the list of per-jet features as a concat of
-        # (original_features, multi-head attention features)
-        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2], axis=-1)
+        jet_feats = torch.cat([batch.jet_features, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
-        pred_istau = self.nn_pred_istau(jet_feats).squeeze(-1)
+        pred_istau = self.nn_pred_istau(jet_feats)
 
         # run a per-jet NN for visible energy prediction
         jet_p4 = batch.jet_features[:, :4]
@@ -147,17 +165,18 @@ class TauEndToEndSimple(nn.Module):
 
 def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
     loss_p4 = torch.nn.functional.huber_loss(input=pred_tau_p4, target=true_tau_p4, reduction="none")
-    weighted_losses = loss_p4 * weights[:, None]
+    weighted_losses = loss_p4 * weights.unsqueeze(-1)
     return weighted_losses.mean()
 
 
 def weighted_bce_with_logits(pred_istau, true_istau, weights):
-    loss_cls = 10000.0 * torch.nn.functional.binary_cross_entropy_with_logits(pred_istau, true_istau, reduction="none")
+    loss_cls = 10000.0 * focal_loss(pred_istau, true_istau.long())
     weighted_loss_cls = loss_cls * weights
     return weighted_loss_cls.mean()
 
 
-def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
+def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboard_writer):
+    global ISTEP_GLOBAL
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
 
@@ -171,7 +190,8 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
 
     class_true = []
     class_pred = []
-    for batch in ds_loader:
+    for ibatch, batch in enumerate(tqdm.tqdm(ds_loader, total=len(ds_loader))):
+        optimizer.zero_grad()
         batch = batch.to(device=dev)
         pred_istau, pred_p4 = model(batch)
         true_p4 = batch.gen_tau_p4
@@ -179,7 +199,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
         weights = batch.weight
 
-        loss_p4 = weighted_huber_loss(pred_p4[true_istau == 1], true_p4[true_istau == 1], weights[true_istau == 1])
+        loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
         loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
 
         loss = loss_cls + loss_p4
@@ -187,23 +207,26 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
             loss.backward()
             optimizer.step()
             scheduler.step()
+            ISTEP_GLOBAL += 1
+            tensorboard_writer.add_scalar("step/train_loss", loss.detach().cpu().item(), ISTEP_GLOBAL)
+            tensorboard_writer.add_scalar("step/num_signal", torch.sum(true_istau).cpu().item(), ISTEP_GLOBAL)
         else:
             class_true.append(true_istau.cpu().numpy())
-            class_pred.append(torch.sigmoid(pred_istau).detach().cpu().numpy())
+            class_pred.append(torch.softmax(pred_istau, axis=-1)[:, 1].detach().cpu().numpy())
         loss_cls_tot += loss_cls.detach().cpu().item()
         loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
-        print(
-            "jets={jets} pfs={pfs} max_pfs={max_pfs} ntau={ntau} loss={loss:.2f} lr={lr:.2E}".format(
-                jets=batch.jet_features.shape[0],
-                pfs=batch.jet_pf_features.shape[0],
-                max_pfs=np.max(np.unique(batch.jet_pf_features_batch.cpu().numpy(), return_counts=True)[1]),
-                ntau=true_istau.sum().cpu().item(),
-                loss=loss.detach().cpu().item(),
-                lr=scheduler.get_last_lr()[0],
-            )
-        )
+        # print(
+        #    "jets={jets} pfs={pfs} max_pfs={max_pfs} ntau={ntau} loss={loss:.2f} lr={lr:.2E}".format(
+        #        jets=batch.jet_features.shape[0],
+        #        pfs=batch.jet_pf_features.shape[0],
+        #        max_pfs=np.max(np.unique(batch.jet_pf_features_batch.cpu().numpy(), return_counts=True)[1]),
+        #        ntau=true_istau.sum().cpu().item(),
+        #        loss=loss.detach().cpu().item(),
+        #        lr=scheduler.get_last_lr()[0],
+        #    )
+        # )
         sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
@@ -232,7 +255,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
         data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
         pred_istau, pred_p4 = self.model(data_obj)
 
-        pred_istau = torch.sigmoid(pred_istau)
+        pred_istau = torch.softmax(pred_istau, axis=-1)[:, 1]
         pred_istau = pred_istau.contiguous().detach().numpy()
         # to solve "ValueError: ndarray is not contiguous"
         pred_p4 = np.asfortranarray(pred_p4.detach().contiguous().numpy())
@@ -309,34 +332,48 @@ def main(cfg):
     print("params={}".format(count_parameters(model)))
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
-    )
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #     optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
+    # )
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
-    early_stopper = EarlyStopper(patience=15, min_delta=10)
+    early_stopper = EarlyStopper(patience=50, min_delta=10)
 
+    best_loss = np.inf
     for iepoch in range(cfg.epochs):
-        loss_cls_train, loss_p4_train, _ = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
+        loss_cls_train, loss_p4_train, _ = model_loop(
+            model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
+        )
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
 
-        loss_cls_val, loss_p4_val, retvals = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev)
+        loss_cls_val, loss_p4_val, retvals = model_loop(
+            model, ds_val_loader, optimizer, scheduler, False, dev, tensorboard_writer
+        )
+        loss_val = loss_cls_val + loss_p4_val
 
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
-        tensorboard_writer.add_scalar("epoch/val_loss", loss_cls_val + loss_p4_val, iepoch)
+        tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
 
         tensorboard_writer.add_scalar("epoch/lr", scheduler.get_last_lr()[0], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
+
+        fpr, tpr, thresh = sklearn.metrics.roc_curve(retvals[0], retvals[1])
+        tensorboard_writer.add_scalar("epoch/fpr_at_tpr0p6", fpr[np.searchsorted(tpr, 0.6)], iepoch)
 
         print(
             "epoch={} cls={:.4f}/{:.4f} p4={:.4f}/{:.4f}".format(
                 iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val
             )
         )
-        torch.save(model, "{}/model_{}.pt".format(outpath, iepoch))
+
+        if loss_val < best_loss:
+            best_loss = loss_val
+            torch.save(model, "{}/model_best.pt".format(outpath))
+
         if early_stopper.early_stop(loss_cls_val):
             break
 
