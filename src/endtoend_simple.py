@@ -6,8 +6,7 @@ import numpy as np
 import yaml
 import torch
 import torch_geometric
-from torch import Tensor, nn
-from torch.nn import functional as F
+from torch import nn
 import sys
 import tqdm
 import sklearn
@@ -16,13 +15,15 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.data.batch import Batch
 from taujetdataset import TauJetDataset
 
-from torch_geometric.nn.aggr import AttentionalAggregation
 from basicTauBuilder import BasicTauBuilder
 
 from torch.utils.tensorboard import SummaryWriter
 
-from typing import Optional
 from FocalLoss import FocalLoss
+
+focal_loss = FocalLoss(gamma=2.0)
+ISTEP_GLOBAL = 0
+
 
 # feedforward network that transformes input_dim->output_dim
 def ffn(input_dim, output_dim, width, act, dropout):
@@ -31,27 +32,22 @@ def ffn(input_dim, output_dim, width, act, dropout):
         torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-
         nn.Linear(width, width),
         torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-
         nn.Linear(width, width),
         torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-
         nn.Linear(width, width),
         torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-
         nn.Linear(width, width),
         torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
-
         nn.Linear(width, output_dim),
     )
 
@@ -69,7 +65,7 @@ class EarlyStopper:
             self.counter = 0
         elif validation_loss > (self.min_validation_loss + self.min_delta):
             self.counter += 1
-            if self.patience >=0 and self.counter >= self.patience:
+            if self.patience >= 0 and self.counter >= self.patience:
                 print(f"val_los has not decreased in {self.patience} epochs, stopping")
                 return True
         return False
@@ -82,7 +78,9 @@ class SelfAttentionLayer(nn.Module):
         super(SelfAttentionLayer, self).__init__()
         self.act = nn.ELU
         self.act_obj = self.act()
-        self.mha = torch.nn.MultiheadAttention(embed_dim=embedding_dim, num_heads=num_heads, batch_first=True, dropout=dropout)
+        self.mha = torch.nn.MultiheadAttention(
+            embed_dim=embedding_dim, num_heads=num_heads, batch_first=True, dropout=dropout
+        )
         self.norm0 = torch.nn.LayerNorm(embedding_dim)
         self.norm1 = torch.nn.LayerNorm(embedding_dim)
         self.dropout = torch.nn.Dropout(dropout)
@@ -115,7 +113,7 @@ class TauEndToEndSimple(nn.Module):
         self.width = 512
         self.embedding_dim = 512
 
-        self.nn_pf_initialembedding = ffn(14+22, self.embedding_dim, self.width, self.act, self.dropout)
+        self.nn_pf_initialembedding = ffn(14 + 22, self.embedding_dim, self.width, self.act, self.dropout)
 
         # self.nn_pf_mha = nn.ModuleList()
         # for i in range(1):
@@ -128,8 +126,8 @@ class TauEndToEndSimple(nn.Module):
         self.agg3 = torch_geometric.nn.StdAggregation()
         self.agg4 = torch_geometric.nn.SoftmaxAggregation(learn=True)
 
-        self.nn_pred_istau = ffn(8 + 4*self.embedding_dim, 2, self.width, self.act, self.dropout)
-        self.nn_pred_p4 = ffn(8 + 4*self.embedding_dim, 4, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(8 + 4 * self.embedding_dim, 2, self.width, self.act, self.dropout)
+        self.nn_pred_p4 = ffn(8 + 4 * self.embedding_dim, 4, self.width, self.act, self.dropout)
 
     def forward(self, batch):
         pf_encoded = self.act_obj(self.nn_pf_initialembedding(batch.jet_pf_features))
@@ -139,7 +137,7 @@ class TauEndToEndSimple(nn.Module):
 
         # # run a simple self-attention over the PF candidates in each jet
         # for mha_layer in self.nn_pf_mha:
-        #     pfs_padded += self.act_obj(mha_layer(pfs_padded, ~mask))
+        #     pfs_padded = self.act_obj(mha_layer(pfs_padded, ~mask))
 
         # # get the encoded PF candidates after attention, undo the padding
         # pf_encoded = torch.cat([pfs_padded[i][mask[i]] for i in range(pfs_padded.shape[0])])
@@ -171,15 +169,12 @@ def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
     return weighted_losses.mean()
 
 
-focal_loss = FocalLoss(gamma=2.0)
-#focal_loss = torch.nn.CrossEntropyLoss(reduction="none")
 def weighted_bce_with_logits(pred_istau, true_istau, weights):
     loss_cls = 10000.0 * focal_loss(pred_istau, true_istau.long())
     weighted_loss_cls = loss_cls * weights
     return weighted_loss_cls.mean()
 
 
-ISTEP_GLOBAL = 0
 def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboard_writer):
     global ISTEP_GLOBAL
     loss_cls_tot = 0.0
@@ -222,7 +217,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
-        #print(
+        # print(
         #    "jets={jets} pfs={pfs} max_pfs={max_pfs} ntau={ntau} loss={loss:.2f} lr={lr:.2E}".format(
         #        jets=batch.jet_features.shape[0],
         #        pfs=batch.jet_pf_features.shape[0],
@@ -231,7 +226,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         #        loss=loss.detach().cpu().item(),
         #        lr=scheduler.get_last_lr()[0],
         #    )
-        #)
+        # )
         sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
@@ -347,12 +342,16 @@ def main(cfg):
 
     best_loss = np.inf
     for iepoch in range(cfg.epochs):
-        loss_cls_train, loss_p4_train, _ = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer)
+        loss_cls_train, loss_p4_train, _ = model_loop(
+            model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
+        )
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
 
-        loss_cls_val, loss_p4_val, retvals = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev, tensorboard_writer)
+        loss_cls_val, loss_p4_val, retvals = model_loop(
+            model, ds_val_loader, optimizer, scheduler, False, dev, tensorboard_writer
+        )
         loss_val = loss_cls_val + loss_p4_val
 
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)

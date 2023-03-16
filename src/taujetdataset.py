@@ -23,7 +23,22 @@ class TauJetDataset(Dataset):
         self.reco_jet_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e"]
 
         # The order of features in the PF feature tensor
-        self.pf_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e", "charge", "is_ch_had", "is_n_had", "is_gamma", "is_ele", "is_mu"]
+        self.pf_features = [
+            "x",
+            "y",
+            "z",
+            "tau",
+            "pt",
+            "eta",
+            "phi",
+            "e",
+            "charge",
+            "is_ch_had",
+            "is_n_had",
+            "is_gamma",
+            "is_ele",
+            "is_mu",
+        ]
 
         self.pf_extras = [
             "reco_cand_dxy",
@@ -112,11 +127,11 @@ class TauJetDataset(Dataset):
         pfs["phi"] = pfP4.phi
         pfs["e"] = pfP4.energy
 
-        pfs["is_ch_had"] = (pfs["pdg"] == 211)
-        pfs["is_n_had"] = (pfs["pdg"] == 130)
-        pfs["is_gamma"] = (pfs["pdg"] == 22)
-        pfs["is_ele"] = (pfs["pdg"] == 11)
-        pfs["is_mu"] = (pfs["pdg"] == 13)
+        pfs["is_ch_had"] = pfs["pdg"] == 211
+        pfs["is_n_had"] = pfs["pdg"] == 130
+        pfs["is_gamma"] = pfs["pdg"] == 22
+        pfs["is_ele"] = pfs["pdg"] == 11
+        pfs["is_mu"] = pfs["pdg"] == 13
 
         # collect PF features in a specific order to an (Ncand x Nfeatcand) torch tensor
         pf_feature_tensors = []
