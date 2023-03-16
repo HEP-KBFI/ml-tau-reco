@@ -113,6 +113,12 @@ class TauEndToEndSimple(nn.Module):
         self.width = 512
         self.embedding_dim = 512
 
+        # if set to True, disables aggregation across the batch
+        # and replaces it with a fake version, just to test that ONNX export
+        # otherwise works. Need to replace this with something meaningful for
+        # an actually viable ONNX export!
+        self.onnx_workaround_agg = False
+
         self.nn_pf_initialembedding = ffn(14 + 22, self.embedding_dim, self.width, self.act, self.dropout)
 
         # self.nn_pf_mha = nn.ModuleList()
@@ -145,10 +151,16 @@ class TauEndToEndSimple(nn.Module):
         # assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
 
         # # now collapse the PF information in each jet with a global attention layer
-        jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
-        jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
-        jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
-        jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
+        if self.onnx_workaround_agg:
+            jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+            jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+            jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+            jet_encoded4 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+        else:
+            jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
+            jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
+            jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
+            jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
 
         # get the list of per-jet features as a concat of
         jet_feats = torch.cat([jet_features, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
