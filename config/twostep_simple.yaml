@@ -1,8 +1,8 @@
 train_files: config/datasets/train.yaml
 validation_files: config/datasets/validation.yaml
 epochs: 500
-batch_size: 512
+batch_size: 2048
 lr: 0.0001
 outpath: /home/tolange/CLIC_paper/ml-tau-reco/twostep_gpu/
-runName: fixedPFLoss
+runName: gnn
 extras: none
