@@ -757,6 +757,7 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
     else:
         print("File already processed, skipping.")
 
+
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
 def process_all_input_files(cfg: DictConfig) -> None:
     print("Working directory : {}".format(os.getcwd()))
