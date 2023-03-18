@@ -2,6 +2,11 @@
 set -e
 set -x
 
+# Delete artifacts
+rm -rf ntuple hps simplednn grid oracle ParticleTransformer LorentzNet
+rm -f val.yaml train.yaml
+
+
 mkdir -p ntuple
 mkdir -p data
 cd ntuple

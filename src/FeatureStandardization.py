@@ -5,6 +5,11 @@ import torch
 
 class FeatureStandardization:
     def __init__(self, features, dim, verbosity=-1):
+        if verbosity >= 1:
+            print("<FeatureStandardization>:")
+            print(" features = %s" % features)
+            print(" dim = %i" % dim)
+
         self.features = features
         self.dim = dim
         self.verbosity = verbosity
@@ -14,7 +19,8 @@ class FeatureStandardization:
         self.dims = {}
 
     def compute_params(self, dataloader):
-        # print("<FeatureStandardization::compute_params>:")
+        if self.verbosity >= 1:
+            print("<FeatureStandardization::compute_params>:")
 
         xs = {}
         x2s = {}
@@ -73,16 +79,19 @@ class FeatureStandardization:
             self.print()
 
     def __call__(self, X):
-        # print("<FeatureStandardization::operator()>:")
+        if self.verbosity >= 4:
+            print("<FeatureStandardization::operator()>:")
         X_transformed = {}
         # apply transformation to requested features
         for feature in self.features:
             x = X[feature]
-            # print("before transformation: %s = " % feature, x[0])
+            if self.verbosity >= 4:
+                print("before transformation: %s = " % feature, x[0])
             x_transformed = torch.sub(x, self.mean[feature])
             x_transformed = torch.mul(x_transformed, self.one_over_sigma[feature])
             X_transformed[feature] = x_transformed
-            # print("after transformation: %s = " % feature, X_transformed[feature][0])
+            if self.verbosity >= 4:
+                print("after transformation: %s = " % feature, X_transformed[feature][0])
         # add features for which no transformation is requested
         for feature in X.keys():
             if feature not in self.features:
