@@ -1,18 +1,10 @@
 from endtoend_simple import TauEndToEndSimple
 import torch
 import hls4ml
-import yaml
 import torch_geometric
 
 from torch_geometric.data.batch import Batch
-from taujetdataset import TauJetDataset
-
-
-def get_split_files(config_path, split):
-    with open(config_path, "r") as fi:
-        data = yaml.safe_load(fi)
-        paths = data[split]["paths"]
-        return paths
+from taujetdataset import TauJetDataset, get_split_files
 
 
 if __name__ == "__main__":
@@ -34,6 +26,7 @@ if __name__ == "__main__":
 
     # prepare the input data from one file
     files_test = get_split_files(test_files, "test")[:1]
+    files_test = [f.replace("/scratch-persistent/laurits", "data") for f in files_test]
     ds = TauJetDataset(files_test)
     data_obj = Batch.from_data_list(ds.all_data, follow_batch=["jet_pf_features"])
 
@@ -46,8 +39,8 @@ if __name__ == "__main__":
     jet_and_pf = torch.concat([jet_feat_pad.unsqueeze(dim=1), pfs_padded], axis=1)  # [njet, n_max_pf_per_jet + 1, nfeat]
 
     # run the model in forward mode
-    tau_id, tau_p4 = pytorch_model(jet_and_pf)
-    print(tau_id)
+    ret = pytorch_model(jet_and_pf)
+    print(ret)
 
     # this at least does not crash
     torch.onnx.export(
@@ -60,7 +53,10 @@ if __name__ == "__main__":
     )
 
     # test if this works, and what needs to change in the model for this to work
-    hls_model = hls4ml.converters.convert_from_pytorch_model(pytorch_model, jet_and_pf.shape)
+    config = hls4ml.utils.config_from_pytorch_model(pytorch_model)
+    print(config)
+
+    hls_model = hls4ml.converters.convert_from_pytorch_model(pytorch_model, jet_and_pf.shape, hls_config=config)
     hls4ml.utils.plot_model(hls_model, show_shapes=True, show_precision=True, to_file="test.png")
 
     hls_model.compile()
