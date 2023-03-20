@@ -31,7 +31,7 @@ def process_func(args):
 
 
 class TauJetDataset(Dataset):
-    def __init__(self, processed_dir, filelist=[]):
+    def __init__(self, processed_dir="", filelist=[]):
 
         self._processed_dir = processed_dir
 
