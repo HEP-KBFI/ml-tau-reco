@@ -97,4 +97,3 @@ python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_H
 
 #list all files
 find . -type f -name "*.parquet"
-

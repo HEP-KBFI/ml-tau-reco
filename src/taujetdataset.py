@@ -9,6 +9,7 @@ import vector
 import random
 import yaml
 import multiprocessing
+import sys
 
 
 def chunks(lst, n):
@@ -245,11 +246,11 @@ class TauJetDataset(Dataset):
 
 if __name__ == "__main__":
 
-    #path to dataset yaml
+    # path to dataset yaml
     infile = sys.argv[1]
     ds = os.path.basename(infile).split(".")[0]
 
-    filelist = get_split_files(inf, ds)
+    filelist = get_split_files(infile, ds)
     outp = "data/dataset_{}".format(ds)
     os.makedirs(outp)
     ds = TauJetDataset(outp, filelist)
