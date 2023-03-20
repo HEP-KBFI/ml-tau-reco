@@ -1,5 +1,3 @@
-train_files: config/datasets/train.yaml
-validation_files: config/datasets/validation.yaml
 epochs: 100
 batch_size: 4096
 lr: 0.0001

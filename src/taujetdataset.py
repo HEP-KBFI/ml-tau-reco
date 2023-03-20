@@ -245,12 +245,14 @@ class TauJetDataset(Dataset):
 
 if __name__ == "__main__":
 
-    for ds in ["train", "validation"]:
-        conf = "config/datasets/{}.yaml".format(ds)
-        filelist = get_split_files(conf, ds)
-        outp = "data/dataset_{}".format(ds)
-        os.makedirs(outp)
-        ds = TauJetDataset(outp, filelist)
+    #path to dataset yaml
+    infile = sys.argv[1]
+    ds = os.path.basename(infile).split(".")[0]
 
-        # merge 50 files, run 16 processes
-        ds.process_parallel(50, 16)
+    filelist = get_split_files(inf, ds)
+    outp = "data/dataset_{}".format(ds)
+    os.makedirs(outp)
+    ds = TauJetDataset(outp, filelist)
+
+    # merge 50 files, run 16 processes
+    ds.process_parallel(50, 16)
