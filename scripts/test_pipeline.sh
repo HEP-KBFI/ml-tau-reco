@@ -53,9 +53,6 @@ python3 ../src/test_ntuple_shape.py -f "$QCD_FILES"
 cd ..
 ls
 
-#Load the dataset in pytorch
-python3 src/taujetdataset.py ./ntuple/
-
 #Prepare training inputs with just one file per split
 cat <<EOF > train.yaml
 train:
@@ -63,24 +60,22 @@ train:
   - ./ntuple/reco_p8_ee_ZH_Htautau_ecm380_200001.parquet
 EOF
 
-cat <<EOF > val.yaml
+cat <<EOF > validation.yaml
 validation:
   paths:
   - ./ntuple/reco_p8_ee_qq_ecm380_100001.parquet
 EOF
 
+#Load the dataset in pytorch
+python3 src/taujetdataset.py train.yaml
+python3 src/taujetdataset.py validation.yaml
+
 #Train a simple pytorch model
-python3 src/endtoend_simple.py epochs=2 train_files=train.yaml validation_files=val.yaml
+python3 src/endtoend_simple.py epochs=2
 
-# run oracle -> oracle.parquet
-mkdir -p oracle
-python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=Oracle use_multiprocessing=False output_dir=oracle
-
-# run fastCMSTauBuilder
 mkdir -p fastCMSTaus
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=FastCMSTau use_multiprocessing=False output_dir=fastCMSTaus
 
-#run HPS -> hps.parquet
 mkdir -p hps
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=HPS use_multiprocessing=False output_dir=hps
 
@@ -102,15 +97,3 @@ python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_H
 
 #list all files
 find . -type f -name "*.parquet"
-
-#run HPS + DeepTau -> hps_deeptau.parquet
-#python3 reco_hps_deeptau.py
-
-#run ML reco + DeepTau -> mlreco_deeptau.parquet
-#python3 reco_ml_deeptau.py
-
-#run end-to-end ML reco+id -> endtoend_ml.parquet
-#python3 reco_endtoend_ml.py
-
-#run metrics script
-#python3 metrics.py hps.parquet hps_deeptau.parquet mlreco_deeptau.parquet endtoend_ml.parquet

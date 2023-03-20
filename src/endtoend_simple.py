@@ -29,23 +29,18 @@ ISTEP_GLOBAL = 0
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
-        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        torch.nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, output_dim),
@@ -71,99 +66,53 @@ class EarlyStopper:
         return False
 
 
-# self-attention layer that transformes [B, N, x] -> [B, N, embedding_dim]
-# by attending the N elements in each batch B
-class SelfAttentionLayer(nn.Module):
-    def __init__(self, embedding_dim=32, num_heads=32, width=128, dropout=0.3):
-        super(SelfAttentionLayer, self).__init__()
-        self.act = nn.ELU
-        self.act_obj = self.act()
-        self.mha = torch.nn.MultiheadAttention(
-            embed_dim=embedding_dim, num_heads=num_heads, batch_first=True, dropout=dropout
-        )
-        self.norm0 = torch.nn.LayerNorm(embedding_dim)
-        self.norm1 = torch.nn.LayerNorm(embedding_dim)
-        self.dropout = torch.nn.Dropout(dropout)
-        self.seq = ffn(embedding_dim, embedding_dim, width, self.act, dropout)
-
-    def forward(self, x, mask):
-        xa = self.mha(x, x, x, key_padding_mask=mask)[0]
-        x = self.norm0(x + xa)
-        x = self.act_obj(x)
-
-        xa = self.seq(x)
-        x = self.norm1(x + xa)
-        x = self.act_obj(x)
-        x = self.dropout(x)
-
-        # make sure masked elements are 0
-        x = x * (~mask.unsqueeze(-1))
-        return x
-
-
 class TauEndToEndSimple(nn.Module):
-    def __init__(
-        self,
-    ):
+    def __init__(self, sparse_mode=False):
         super(TauEndToEndSimple, self).__init__()
 
-        self.act = nn.ELU
+        self.act = nn.ReLU
         self.act_obj = self.act()
-        self.dropout = 0.1
-        self.width = 512
-        self.embedding_dim = 512
+        self.dropout = 0.2
+        self.width = 256
+        self.embedding_dim = 256
+        self.sparse_mode = sparse_mode
 
-        # if set to True, disables aggregation across the batch
-        # and replaces it with a fake version, just to test that ONNX export
-        # otherwise works. Need to replace this with something meaningful for
-        # an actually viable ONNX export!
-        self.onnx_workaround_agg = False
+        self.num_jet_features = 8
+        self.num_pf_features = 36
 
-        self.nn_pf_initialembedding = ffn(14 + 22, self.embedding_dim, self.width, self.act, self.dropout)
+        self.nn_pf_initialembedding = ffn(self.num_pf_features, self.embedding_dim, self.width, self.act, self.dropout)
 
-        # self.nn_pf_mha = nn.ModuleList()
-        # for i in range(1):
-        #     self.nn_pf_mha.append(
-        #         SelfAttentionLayer(embedding_dim=self.embedding_dim, width=self.width, dropout=self.dropout)
-        #     )
+        self.A_mean = torch.nn.Parameter(data=torch.Tensor(self.num_jet_features), requires_grad=False)
+        self.A_std = torch.nn.Parameter(data=torch.Tensor(self.num_jet_features), requires_grad=False)
+        self.B_mean = torch.nn.Parameter(data=torch.Tensor(self.num_pf_features), requires_grad=False)
+        self.B_std = torch.nn.Parameter(data=torch.Tensor(self.num_pf_features), requires_grad=False)
 
-        self.agg1 = torch_geometric.nn.MeanAggregation()
-        self.agg2 = torch_geometric.nn.MaxAggregation()
-        self.agg3 = torch_geometric.nn.StdAggregation()
-        self.agg4 = torch_geometric.nn.SoftmaxAggregation(learn=True)
+        if self.sparse_mode:
+            self.agg1 = torch_geometric.nn.MeanAggregation()
+            self.agg2 = torch_geometric.nn.MaxAggregation()
+            self.agg3 = torch_geometric.nn.StdAggregation()
 
-        self.nn_pred_istau = ffn(8 + 4 * self.embedding_dim, 2, self.width, self.act, self.dropout)
-        self.nn_pred_p4 = ffn(8 + 4 * self.embedding_dim, 4, self.width, self.act, self.dropout)
+        self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
+        self.nn_pred_p4 = ffn(self.num_jet_features + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
 
-    def forward(self, jet_features, jet_pf_features, jet_pf_features_batch):
-        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features))
+    # forward function for training with pytorch geometric
+    def forward_sparse(self, inputs):
+        jet_features, jet_pf_features, jet_pf_features_batch = inputs
 
-        # # pad the PF tensors across jets
-        # pfs_padded, mask = torch_geometric.utils.to_dense_batch(pf_encoded, batch.jet_pf_features_batch, 0.0)
+        jet_features_normed = jet_features - self.A_mean
+        jet_features_normed = jet_features_normed / self.A_std
+        jet_pf_features_normed = jet_pf_features - self.B_mean
+        jet_pf_features_normed = jet_pf_features_normed / self.B_std
 
-        # # run a simple self-attention over the PF candidates in each jet
-        # for mha_layer in self.nn_pf_mha:
-        #     pfs_padded = self.act_obj(mha_layer(pfs_padded, ~mask))
-
-        # # get the encoded PF candidates after attention, undo the padding
-        # pf_encoded = torch.cat([pfs_padded[i][mask[i]] for i in range(pfs_padded.shape[0])])
-
-        # assert pf_encoded.shape[0] == batch.jet_pf_features.shape[0]
+        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
 
         # # now collapse the PF information in each jet with a global attention layer
-        if self.onnx_workaround_agg:
-            jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-            jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-            jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-            jet_encoded4 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-        else:
-            jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
-            jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
-            jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
-            jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
+        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+        jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+        jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
 
         # get the list of per-jet features as a concat of
-        jet_feats = torch.cat([jet_features, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
+        jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = self.nn_pred_istau(jet_feats)
@@ -174,6 +123,53 @@ class TauEndToEndSimple(nn.Module):
 
         return pred_istau, pred_p4
 
+    # custom forward function for HLS4ML export, assuming a single 3D input
+    def forward_3d(self, inputs):
+
+        assert len(inputs.shape) == 3
+        # njet = inputs.shape[0]  # number of jets in batch
+        # npf_per_jet = inputs.shape[1]  # max PF candidates across jets + 1 (the jet itself)
+        # nfeat = inputs.shape[2]  # features of the jets / PF candidates
+
+        # get the jet properties
+        jet_feats_orig = inputs[:, 0, :8]
+
+        # get the PF properties of each jet
+        pf_feats_orig = inputs[:, 1:, :]
+
+        jet_features_normed = jet_feats_orig - self.A_mean
+        jet_features_normed = jet_features_normed / self.A_std
+        jet_pf_features_normed = pf_feats_orig - self.B_mean
+        jet_pf_features_normed = jet_pf_features_normed / self.B_std
+
+        # encode the PF elements with the FFN
+        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
+
+        # aggregate PFs across jets (need to add masking here for a fully correct implementation)
+        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=1))
+        jet_encoded2 = self.act_obj(torch.max(pf_encoded, axis=1).values)
+        jet_encoded3 = self.act_obj(torch.std(pf_encoded, axis=1))
+
+        # get the list of per-jet features as a concat of
+        jet_features = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+
+        # run a binary classification whether or not this jet is from a tau
+        pred_istau = self.nn_pred_istau(jet_features)
+
+        # run a per-jet NN for visible energy prediction
+        jet_p4 = jet_feats_orig[:, :4]
+        pred_p4 = jet_p4 * self.nn_pred_p4(jet_features)
+
+        ret = torch.concat([pred_istau, pred_p4], axis=-1)
+
+        return ret
+
+    def forward(self, inputs):
+        if self.sparse_mode:
+            return self.forward_sparse(inputs)
+        else:
+            return self.forward_3d(inputs)
+
 
 def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
     loss_p4 = torch.nn.functional.huber_loss(input=pred_tau_p4, target=true_tau_p4, reduction="none")
@@ -182,7 +178,7 @@ def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
 
 
 def weighted_bce_with_logits(pred_istau, true_istau, weights):
-    loss_cls = 10000.0 * focal_loss(pred_istau, true_istau.long())
+    loss_cls = focal_loss(pred_istau, true_istau.long())
     weighted_loss_cls = loss_cls * weights
     return weighted_loss_cls.mean()
 
@@ -205,14 +201,14 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
     for ibatch, batch in enumerate(tqdm.tqdm(ds_loader, total=len(ds_loader))):
         optimizer.zero_grad()
         batch = batch.to(device=dev)
-        pred_istau, pred_p4 = model(batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch)
+        pred_istau, pred_p4 = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
         true_p4 = batch.gen_tau_p4
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
         weights = batch.weight
 
-        loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
-        loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
+        loss_p4 = 1e5 * weighted_huber_loss(pred_p4, true_p4, weights)
+        loss_cls = 1e7 * weighted_bce_with_logits(pred_istau, true_istau, weights)
 
         loss = loss_cls + loss_p4
         if is_train:
@@ -229,16 +225,6 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
-        # print(
-        #    "jets={jets} pfs={pfs} max_pfs={max_pfs} ntau={ntau} loss={loss:.2f} lr={lr:.2E}".format(
-        #        jets=batch.jet_features.shape[0],
-        #        pfs=batch.jet_pf_features.shape[0],
-        #        max_pfs=np.max(np.unique(batch.jet_pf_features_batch.cpu().numpy(), return_counts=True)[1]),
-        #        ntau=true_istau.sum().cpu().item(),
-        #        loss=loss.detach().cpu().item(),
-        #        lr=scheduler.get_last_lr()[0],
-        #    )
-        # )
         sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
@@ -265,7 +251,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
     def processJets(self, jets):
         ds = TauJetDataset()
         data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
-        pred_istau, pred_p4 = self.model(data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch)
+        pred_istau, pred_p4 = self.model((data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch))
 
         pred_istau = torch.softmax(pred_istau, axis=-1)[:, 1]
         pred_istau = pred_istau.contiguous().detach().numpy()
@@ -311,24 +297,34 @@ def get_split_files(config_path, split):
 
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
+    torch.multiprocessing.set_sharing_strategy("file_system")
+
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     outpath = hydra_cfg["runtime"]["output_dir"]
 
-    files_train = get_split_files(cfg.train_files, "train")
-    files_val = get_split_files(cfg.validation_files, "validation")
+    ds_train = TauJetDataset("data/dataset_train")
+    ds_val = TauJetDataset("data/dataset_validation")
 
-    if cfg.n_files == -1:
-        n_files = None
-    else:
-        n_files = cfg.n_files
+    # just load the whole training and validation set to memory
+    # requires about 16GB RAM and takes about 5 minutes
+    train_data = [ds_train[i] for i in range(len(ds_train))]
+    train_data = sum(train_data, [])
 
-    ds_train = TauJetDataset(files_train[:n_files])
-    ds_val = TauJetDataset(files_val[:n_files])
+    # extract mean and std of the jet and PF features in the training set
+    A = torch.concat([x.jet_features for x in train_data])
+    B = torch.concat([x.jet_pf_features for x in train_data])
+    A_mean = torch.mean(A, axis=0)
+    A_std = torch.std(A, axis=0)
+    B_mean = torch.mean(B, axis=0)
+    B_std = torch.std(B, axis=0)
 
-    print("Loaded TauJetDataset with {} train steps".format(len(ds_train)))
-    print("Loaded TauJetDataset with {} val steps".format(len(ds_val)))
-    ds_train_loader = DataLoader(ds_train, batch_size=cfg.batch_size, shuffle=True, follow_batch=["jet_pf_features"])
-    ds_val_loader = DataLoader(ds_val, batch_size=cfg.batch_size, shuffle=True, follow_batch=["jet_pf_features"])
+    val_data = [ds_val[i] for i in range(len(ds_val))]
+    val_data = sum(val_data, [])
+
+    print("Loaded TauJetDataset with {} train steps".format(len(train_data)))
+    print("Loaded TauJetDataset with {} val steps".format(len(val_data)))
+    ds_train_loader = DataLoader(train_data, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], shuffle=True)
+    ds_val_loader = DataLoader(val_data, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], shuffle=True)
 
     assert len(ds_train_loader) > 0
     assert len(ds_val_loader) > 0
@@ -340,14 +336,19 @@ def main(cfg):
         dev = torch.device("cpu")
     print("device={}".format(dev))
 
-    model = TauEndToEndSimple().to(device=dev)
+    model = TauEndToEndSimple(sparse_mode=True).to(device=dev)
+    # set the model mean and stddev parameters for data normalization
+    model.A_mean[:] = A_mean[:]
+    model.A_std[:] = A_std[:]
+    model.B_mean[:] = B_mean[:]
+    model.B_std[:] = B_std[:]
     print("params={}".format(count_parameters(model)))
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
-    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
-    #     optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
-    # )
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
+    )
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
     early_stopper = EarlyStopper(patience=50, min_delta=10)
