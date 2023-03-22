@@ -96,6 +96,44 @@ def get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition):
 
 ###############################################################################
 ###############################################################################
+#####                 TAU DECAY VERTEX FINDING                          #######
+###############################################################################
+###############################################################################
+
+
+def get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition):
+    all_decay_vertices_x = []
+    all_decay_vertices_y = []
+    all_decay_vertices_z = []
+    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
+        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
+        event_decay_vertices_x = []
+        event_decay_vertices_y = []
+        event_decay_vertices_z = []
+        if n_daughters == 0:
+            event_decay_vertices_x.append(-1)
+            event_decay_vertices_y.append(-1)
+            event_decay_vertices_z.append(-1)
+        for d_idx in range(n_daughters):
+            daughter_indices = range(
+                mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
+                mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
+            )
+            first_daughter = daughter_indices[0]
+            tau_decay_vertex_x = mc_particles['vertex.x'][e_idx][first_daughter]
+            tau_decay_vertex_y = mc_particles['vertex.y'][e_idx][first_daughter]
+            tau_decay_vertex_z = mc_particles['vertex.z'][e_idx][first_daughter]
+            event_decay_vertices_x.append(tau_decay_vertex_x)
+            event_decay_vertices_y.append(tau_decay_vertex_y)
+            event_decay_vertices_z.append(tau_decay_vertex_z)
+        all_decay_vertices_x.append(event_decay_vertices_x)
+        all_decay_vertices_y.append(event_decay_vertices_y)
+        all_decay_vertices_z.append(event_decay_vertices_z)
+    return ak.from_iter(all_decay_vertices_x), ak.from_iter(all_decay_vertices_y), ak.from_iter(all_decay_vertices_z)
+
+
+###############################################################################
+###############################################################################
 ###############              GET ALL TAU DAUGHTERS               ##############
 ###############################################################################
 ###############################################################################
@@ -374,6 +412,7 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
     vis_tau_p4s = get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
     tau_energies = vis_tau_p4s.energy
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition)
+    tau_dv_x, tau_dv_y, tau_dv_z = get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition)
     tau_charges = mc_particles.charge[tau_mask][mask_addition]
     tau_gen_jet_p4s_fill_value = vector.awk(
         ak.zip(
@@ -392,6 +431,9 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
         "tau_gen_jet_p4s": get_matched_gen_tau_property(
             gen_jets, best_combos, vis_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
         ),
+        "tau_gen_jet_DV_x": get_matched_gen_tau_property(gen_jets, best_combos, tau_dv_x),
+        "tau_gen_jet_DV_y": get_matched_gen_tau_property(gen_jets, best_combos, tau_dv_y),
+        "tau_gen_jet_DV_z": get_matched_gen_tau_property(gen_jets, best_combos, tau_dv_z),
     }
     return gen_tau_jet_info
 
@@ -733,6 +775,9 @@ def process_input_file(arrays: ak.Array):
         "gen_jet_tau_vis_energy": gen_tau_jet_info["gen_jet_tau_vis_energy"],
         "gen_jet_tau_charge": gen_tau_jet_info["tau_gen_jet_charge"],
         "gen_jet_tau_p4s": gen_tau_jet_info["tau_gen_jet_p4s"],
+        "gen_jet_tau_decay_vertex_x": gen_tau_jet_info["tau_gen_jet_DV_x"],
+        "gen_jet_tau_decay_vertex_y": gen_tau_jet_info["tau_gen_jet_DV_y"],
+        "gen_jet_tau_decay_vertex_z": gen_tau_jet_info["tau_gen_jet_DV_z"],
         "reco_cand_matched_gen_energy": get_jet_matched_constituent_gen_energy(
             arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters
         ),
@@ -756,6 +801,7 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
             print(f"Broken input file at {input_path}")
     else:
         print("File already processed, skipping.")
+
 
 
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
