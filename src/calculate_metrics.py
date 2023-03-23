@@ -12,6 +12,7 @@ import hydra
 import vector
 import matplotlib
 import numpy as np
+import general as g
 import awkward as ak
 import mplhep as hep
 import plotting as pl
@@ -37,26 +38,8 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
             eff_fake_numerator = eff_fake_data[algorithm]["numerator"]
             eff_fake_numerator = eff_fake_numerator[eff_fake_numerator.tauClassifier > cut[algorithm]]
             eff_fake_denominator = eff_fake_data[algorithm]["denominator"]
-            eff_fake_p4_num = vector.awk(
-                ak.zip(
-                    {
-                        "mass": eff_fake_numerator.gen_jet_p4s.tau,
-                        "x": eff_fake_numerator.gen_jet_p4s.x,
-                        "y": eff_fake_numerator.gen_jet_p4s.y,
-                        "z": eff_fake_numerator.gen_jet_p4s.z,
-                    }
-                )
-            )
-            eff_fake_p4_denom = vector.awk(
-                ak.zip(
-                    {
-                        "mass": eff_fake_denominator.gen_jet_p4s.tau,
-                        "x": eff_fake_denominator.gen_jet_p4s.x,
-                        "y": eff_fake_denominator.gen_jet_p4s.y,
-                        "z": eff_fake_denominator.gen_jet_p4s.z,
-                    }
-                )
-            )
+            eff_fake_p4_num = g.reinitialize_p4(eff_fake_numerator.gen_jet_p4s)
+            eff_fake_p4_denom = g.reinitialize_p4(eff_fake_denominator.gen_jet_p4s)
             eff_fake_var_denom = getattr(eff_fake_p4_denom, metric.name).to_numpy()
             eff_fake_var_num = getattr(eff_fake_p4_num, metric.name).to_numpy()
             info = {"numerator": list(eff_fake_var_num), "denominator": list(eff_fake_var_denom)}
@@ -81,16 +64,8 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
 def plot_energy_resolution(sig_data, algorithm_output_dir):
     output_path = os.path.join(algorithm_output_dir, "energy_resolution.pdf")
     gen_tau_vis_energies = sig_data.gen_jet_tau_vis_energy
-    reco_tau_energies = vector.awk(
-        ak.zip(
-            {
-                "mass": sig_data.tau_p4s.tau,
-                "x": sig_data.tau_p4s.x,
-                "y": sig_data.tau_p4s.y,
-                "z": sig_data.tau_p4s.z,
-            }
-        )
-    ).energy
+    tau_p4s = g.reinitialize_p4(sig_data.tau_p4s)
+    reco_tau_energies = tau_p4s.energy
     gen_tau_vis_energies = gen_tau_vis_energies.to_numpy()
     reco_tau_energies = reco_tau_energies.to_numpy()
     pl.plot_regression_confusion_matrix(
@@ -177,27 +152,8 @@ def plot_tauClassifier_correlation(sig_data, output_dir):
 
 
 def get_data_masks(data, ref_obj):
-    ref_p4 = vector.awk(
-        ak.zip(
-            {
-                "mass": data[ref_obj].tau,
-                "x": data[ref_obj].x,
-                "y": data[ref_obj].y,
-                "z": data[ref_obj].z,
-            }
-        )
-    )
-
-    tau_p4 = vector.awk(
-        ak.zip(
-            {
-                "mass": data.tau_p4s.tau,
-                "x": data.tau_p4s.x,
-                "y": data.tau_p4s.y,
-                "z": data.tau_p4s.z,
-            }
-        )
-    )
+    ref_p4 = g.reinitialize_p4(data[ref_obj])
+    tau_p4 = g.reinitialize_p4(data.tau_p4s)
     # Denominator
     ref_var_pt_mask = ref_p4.pt > 20
     ref_var_theta_mask1 = abs(np.rad2deg(ref_p4.theta)) < 170
@@ -249,14 +205,14 @@ def plot_all_metrics(cfg):
         bkg_paths = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
         ]
-        sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
-        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
         sig_paths_train = [
             os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "ZH_Htautau" in path
         ]
         bkg_paths_train = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "QCD" in path
         ]
+        sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
+        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
         sig_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files)
         bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files)
         # sig_paths_val = [
@@ -290,8 +246,14 @@ def plot_all_metrics(cfg):
                 "sig": list(raw_numerator_data_e_train.tauClassifier),
                 "bkg": list(raw_numerator_data_f_train.tauClassifier),
             },
-            "test": {"sig": list(raw_numerator_data_e.tauClassifier), "bkg": list(raw_numerator_data_f.tauClassifier)},
-            # "val": {"sig": raw_numerator_data_e_val.tauClassifier, "bkg": raw_numerator_data_f_val.tauClassifier},
+            "test": {
+                "sig": list(raw_numerator_data_e.tauClassifier),
+                "bkg": list(raw_numerator_data_f.tauClassifier),
+            },
+            # "val": {
+            #     "sig": list(raw_numerator_data_e_val.tauClassifier),
+            #     "bkg": list(raw_numerator_data_f_val.tauClassifier),
+            # },
         }
         classifier_cuts = np.linspace(start=0, stop=1, num=1001)
         print(f"Calculating efficiencies for {algorithm}")

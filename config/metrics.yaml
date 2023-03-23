@@ -6,7 +6,7 @@ algorithms:
   LorentzNet:
     sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar18/LorentzNet/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar18/LorentzNet/QCD
-    compare: True
+    compare: False
   HPS_DeepTau:
     sig_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/QCD/
@@ -14,15 +14,19 @@ algorithms:
   ParticleTransformer:
     sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar18/ParticleTransformer/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar18/ParticleTransformer/QCD
-    compare: True
+    compare: False
   MLReco_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
     compare: False
+  TwoStep_GNN:
+    sig_ntuples_dir: /local/tolange/CLIC_taus_20230306/TwoStepDNN/ZH_Htautau
+    bkg_ntuples_dir: /local/tolange/CLIC_taus_20230306/TwoStepDNN/QCD
+    compare: False
   HPS:
     sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar18_woPtCuts/HPS/ZH_Htautau
     bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar18_woPtCuts/HPS/QCD
-    compare: True
+    compare: False
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/QCD
@@ -30,11 +34,11 @@ algorithms:
   FastCMSTau:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230320/FastCMSTau/ZH_Htautau
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230320/FastCMSTau/QCD
-    compare: True
-  SimpleDNN:
-    sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_03_20/SimpleDNN/ZH_Htautau/
-    bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_03_20/SimpleDNN/QCD/
     compare: False
+  SimpleDNN:
+    sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_03_23/SimpleDNN/ZH_Htautau/
+    bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_03_23/SimpleDNN/QCD/
+    compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"
