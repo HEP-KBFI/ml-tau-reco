@@ -17,7 +17,7 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         print("<LorentzNetTauBuilder::LorentzNetTauBuilder>:")
         super(BasicTauBuilder, self).__init__()
 
-        self.filename_model = "data/LorentzNet_model_wReweighting_2023Mar13.pt"
+        self.filename_model = "data/LorentzNet_model_wReweighting_2023Mar18.pt"
         self.filename_transform = ""
 
         if os.path.isfile(cfgFileName):
