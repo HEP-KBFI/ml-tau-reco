@@ -206,13 +206,13 @@ def get_jet_matched_constituent_gen_energy(
 ###############################################################################
 
 
-def get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, mask_addition):
-    mc_tau_vec = ak.zip(
+def get_all_tau_best_combinations(vis_tau_p4s, gen_jets):
+    vis_tau_p4s = ak.zip(
         {
-            "pt": mc_p4[tau_mask][mask_addition].pt,
-            "eta": mc_p4[tau_mask][mask_addition].eta,
-            "phi": mc_p4[tau_mask][mask_addition].phi,
-            "energy": mc_p4[tau_mask][mask_addition].energy,
+            "pt": vis_tau_p4s.pt,
+            "eta": vis_tau_p4s.eta,
+            "phi": vis_tau_p4s.phi,
+            "energy": vis_tau_p4s.energy,
         }
     )
     gen_jets_p4 = ak.zip(
@@ -223,7 +223,7 @@ def get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, mask_addition):
             "energy": gen_jets.energy,
         }
     )
-    tau_indices, gen_indices = match_jets(mc_tau_vec, gen_jets_p4, 999.9)
+    tau_indices, gen_indices = match_jets(vis_tau_p4s, gen_jets_p4, 999.9)
     pairs = []
     for tau_idx, gen_idx in zip(tau_indices, gen_indices):
         pair = []
@@ -264,8 +264,12 @@ def match_jets(jets1, jets2, deltaR_cut):
         jet_inds_1 = []
         jet_inds_2 = []
         for ij1 in range(len(j1)):
+            if j1[ij1].energy == 0:
+                continue
             drs = np.zeros(len(j2), dtype=np.float64)
             for ij2 in range(len(j2)):
+                if j2[ij2].energy == 0:
+                    continue
                 eta1 = j1.eta[ij1]
                 eta2 = j2.eta[ij2]
                 phi1 = j1.phi[ij1]
@@ -322,10 +326,6 @@ def map_pdgid_to_candid(pdgid, charge):
         return 211
     # neutral hadron
     return 130
-
-
-def to_fourvec(jet):
-    return vector.awk(ak.zip({"tau": jet.tau, "x": jet.x, "y": jet.y, "z": jet.z}))
 
 
 def get_matched_gen_jet_p4(reco_jets, gen_jets):
@@ -393,23 +393,13 @@ def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
                     )
                 )
             )
-    all_events_tau_vis_p4s = ak.from_iter(all_events_tau_vis_p4s)
-    all_events_tau_vis_p4s = vector.awk(
-        ak.zip(
-            {
-                "mass": all_events_tau_vis_p4s.tau,
-                "x": all_events_tau_vis_p4s.x,
-                "y": all_events_tau_vis_p4s.y,
-                "z": all_events_tau_vis_p4s.z,
-            }
-        )
-    )
+    all_events_tau_vis_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_vis_p4s))
     return all_events_tau_vis_p4s
 
 
 def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4):
-    best_combos = get_all_tau_best_combinations(mc_p4, gen_jets, tau_mask, mask_addition)
     vis_tau_p4s = get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
+    best_combos = get_all_tau_best_combinations(vis_tau_p4s, gen_jets)
     tau_energies = vis_tau_p4s.energy
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition)
     tau_dv_x, tau_dv_y, tau_dv_z = get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition)
@@ -443,16 +433,7 @@ def get_stable_mc_particles(mc_particles, mc_p4):
     neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (abs(mc_particles["PDG"]) != 16)
     particle_mask = stable_pythia_mask * neutrino_mask
     mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
-    mc_p4 = vector.awk(
-        ak.zip(
-            {
-                "px": mc_p4[particle_mask].x,
-                "py": mc_p4[particle_mask].y,
-                "pz": mc_p4[particle_mask].z,
-                "mass": mc_p4[particle_mask].tau,
-            }
-        )
-    )
+    mc_p4 = g.reinitialize_p4(mc_p4[particle_mask])
     return mc_p4, mc_particles
 
 
@@ -469,16 +450,7 @@ def get_reco_particle_pdg(reco_particles):
 def clean_reco_particles(reco_particles, reco_p4):
     mask = reco_particles["type"] != 0
     reco_particles = ak.Record({field: reco_particles[field][mask] for field in reco_particles.fields})
-    reco_p4 = vector.awk(
-        ak.zip(
-            {
-                "px": reco_p4[mask].x,
-                "py": reco_p4[mask].y,
-                "pz": reco_p4[mask].z,
-                "mass": reco_p4[mask].tau,
-            }
-        )
-    )
+    reco_p4 = g.reinitialize_p4(reco_p4[mask])
     return reco_particles, reco_p4
 
 
@@ -541,9 +513,9 @@ def process_input_file(arrays: ak.Array):
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
     reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
-    reco_jets = vector.awk(ak.zip({"energy": reco_jets.t, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z}))
+    reco_jets = g.reinitialize_p4(reco_jets)
     gen_jets = ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)])
-    gen_jets = vector.awk(ak.zip({"energy": gen_jets.t, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z}))
+    gen_jets = g.reinitialize_p4(gen_jets)
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask, mask_addition = get_hadronically_decaying_hard_tau_masks(mc_particles)
     gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
@@ -801,7 +773,6 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
             print(f"Broken input file at {input_path}")
     else:
         print("File already processed, skipping.")
-
 
 
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
