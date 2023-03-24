@@ -130,46 +130,46 @@ class TauEndToEndSimple(nn.Module):
 
         return pred_istau, pred_p4
 
-    #    # custom forward function for HLS4ML export, assuming a single 3D input
-    #    def forward_3d(self, inputs):
-    #
-    #        assert len(inputs.shape) == 3
-    #        # njet = inputs.shape[0]  # number of jets in batch
-    #        # npf_per_jet = inputs.shape[1]  # max PF candidates across jets + 1 (the jet itself)
-    #        # nfeat = inputs.shape[2]  # features of the jets / PF candidates
-    #
-    #        # get the jet properties
-    #        jet_feats_orig = inputs[:, 0, :8]
-    #
-    #        # get the PF properties of each jet
-    #        pf_feats_orig = inputs[:, 1:, :]
-    #
-    #        jet_features_normed = jet_feats_orig - self.A_mean
-    #        jet_features_normed = jet_features_normed / self.A_std
-    #        jet_pf_features_normed = pf_feats_orig - self.B_mean
-    #        jet_pf_features_normed = jet_pf_features_normed / self.B_std
-    #
-    #        # encode the PF elements with the FFN
-    #        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
-    #
-    #        # aggregate PFs across jets (need to add masking here for a fully correct implementation)
-    #        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=1))
-    #        jet_encoded2 = self.act_obj(torch.max(pf_encoded, axis=1).values)
-    #        jet_encoded3 = self.act_obj(torch.std(pf_encoded, axis=1))
-    #
-    #        # get the list of per-jet features as a concat of
-    #        jet_features = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
-    #
-    #        # run a binary classification whether or not this jet is from a tau
-    #        pred_istau = self.nn_pred_istau(jet_features)
-    #
-    #        # run a per-jet NN for visible energy prediction
-    #        jet_p4 = jet_feats_orig[:, :4]
-    #        pred_p4 = jet_p4 * self.nn_pred_p4(jet_features)
-    #
-    #        ret = torch.concat([pred_istau, pred_p4], axis=-1)
-    #
-    #        return ret
+    # custom forward function for HLS4ML export, assuming a single 3D input
+    def forward_3d(self, inputs):
+
+        assert len(inputs.shape) == 3
+        # njet = inputs.shape[0]  # number of jets in batch
+        # npf_per_jet = inputs.shape[1]  # max PF candidates across jets + 1 (the jet itself)
+        # nfeat = inputs.shape[2]  # features of the jets / PF candidates
+
+        # get the jet properties
+        jet_feats_orig = inputs[:, 0, :8]
+
+        # get the PF properties of each jet
+        pf_feats_orig = inputs[:, 1:, :]
+
+        jet_features_normed = jet_feats_orig - self.A_mean
+        jet_features_normed = jet_features_normed / self.A_std
+        jet_pf_features_normed = pf_feats_orig - self.B_mean
+        jet_pf_features_normed = jet_pf_features_normed / self.B_std
+
+        # encode the PF elements with the FFN
+        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
+
+        # aggregate PFs across jets (need to add masking here for a fully correct implementation)
+        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=1))
+        jet_encoded2 = self.act_obj(torch.max(pf_encoded, axis=1).values)
+        jet_encoded3 = self.act_obj(torch.std(pf_encoded, axis=1))
+
+        # get the list of per-jet features as a concat of
+        jet_features = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+
+        # run a binary classification whether or not this jet is from a tau
+        pred_istau = self.nn_pred_istau(jet_features)
+
+        # run a per-jet NN for visible energy prediction
+        jet_p4 = jet_feats_orig[:, :4]
+        pred_p4 = jet_p4 * self.nn_pred_p4(jet_features)
+
+        ret = torch.concat([pred_istau, pred_p4], axis=-1)
+
+        return ret
 
     def forward(self, inputs):
         if self.sparse_mode:
