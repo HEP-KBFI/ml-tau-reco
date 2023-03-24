@@ -111,6 +111,10 @@ def train_loop(
     false_negatives_train /= num_jets_train
     tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/train", false_negatives_train, global_step=idx_epoch)
+    is_sig = np.array(class_true_train) == 1
+    is_bgr = np.array(class_true_train) == 0
+    tensorboard.add_histogram("tauClassifier_sig/train", np.array(class_pred_train)[is_sig], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_bgr/train", np.array(class_pred_train)[is_bgr], global_step=idx_epoch)
 
     return loss_train
 
@@ -177,6 +181,10 @@ def test_loop(
     false_negatives_test /= num_jets_test
     tensorboard.add_scalar("false_positives/test", false_positives_test, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/test", false_negatives_test, global_step=idx_epoch)
+    is_sig = np.array(class_true_test) == 1
+    is_bgr = np.array(class_true_test) == 0
+    tensorboard.add_histogram("tauClassifier_sig/test", np.array(class_pred_test)[is_sig], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_bgr/test", np.array(class_pred_test)[is_bgr], global_step=idx_epoch)
 
     return loss_test
 
