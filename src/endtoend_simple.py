@@ -10,6 +10,9 @@ from torch import nn
 import sys
 import sklearn
 import sklearn.metrics
+import random
+import math
+import tqdm
 from torch_geometric.loader import DataLoader
 from torch_geometric.data.batch import Batch
 from taujetdataset import TauJetDataset
@@ -205,7 +208,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
 
     class_true = []
     class_pred = []
-    for ibatch, batch in enumerate(ds_loader):
+    for ibatch, batch in enumerate(tqdm.tqdm(ds_loader, total=len(ds_loader))):
         optimizer.zero_grad()
         batch = batch.to(device=dev)
         pred_istau, pred_p4 = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
@@ -232,7 +235,6 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
-        print(loss.detach().cpu().item())
         sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
@@ -304,19 +306,41 @@ def get_split_files(config_path, split):
 
 
 # Loops over files in the base dataset, yields jets from each file in order
+# The input files are shuffled and chunked, the resulting jets in the chunks of files are shuffled as well
 class MyIterableDataset(torch.utils.data.IterableDataset):
     def __init__(self, ds):
         super(MyIterableDataset).__init__()
         self.ds = ds
 
+        # this will be overridden later
+        self.num_jets = 0
+
     def __iter__(self):
 
+        worker_info = torch.utils.data.get_worker_info()
+
+        if worker_info is None:
+            range_per_worker = range(len(self.ds))
+        else:  # in a worker process
+            per_worker = int(math.ceil(len(self.ds) / worker_info.num_workers))
+            tw = worker_info.id
+            range_per_worker = range(tw * per_worker, min((tw + 1) * per_worker, len(self.ds)))
+
         # loop over files in the .pt dataset
-        for ifile in range(len(self.ds)):
+        for idx in range_per_worker:
+
+            # get jets from this file
+            jets = self.ds.get(idx)
+
+            # shuffle jets from the file
+            random.shuffle(jets)
 
             # loop over jets in file
-            for jet in self.ds.get(ifile):
+            for jet in jets:
                 yield jet
+
+    def __len__(self):
+        return self.num_jets
 
 
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
@@ -346,12 +370,23 @@ def main(cfg):
     ds_val_iter = MyIterableDataset(ds_val)
 
     # batch the jets from the iterated dataset
-    ds_train_loader = DataLoader(ds_train_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"])
-    ds_val_loader = DataLoader(ds_val_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"])
+    ds_train_loader = DataLoader(
+        ds_train_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], num_workers=4, prefetch_factor=4
+    )
+    ds_val_loader = DataLoader(
+        ds_val_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], num_workers=4, prefetch_factor=4
+    )
 
-    # just loop over the training dataset and print each data object
+    # just loop over the training dataset and print each data object for debugging
+    print("getting number of jets per dataset")
+    num_jets = 0
     for x in ds_train_loader:
-        print(x)
+        num_jets += x.gen_tau_decaymode.shape[0]
+    ds_train_iter.num_jets = num_jets
+    num_jets = 0
+    for x in ds_val_iter:
+        num_jets += x.gen_tau_decaymode.shape[0]
+    ds_val_iter.num_jets = num_jets
 
     if "CUDA_VISIBLE_DEVICES" in os.environ:
         dev = torch.device("cuda")
