@@ -67,11 +67,11 @@ validation:
 EOF
 
 #Load the dataset in pytorch
-# python3 src/taujetdataset.py train.yaml
-# python3 src/taujetdataset.py validation.yaml
+python3 src/taujetdataset.py train.yaml
+python3 src/taujetdataset.py validation.yaml
 
 #Train a simple pytorch model
-# python3 src/endtoend_simple.py epochs=2
+python3 src/endtoend_simple.py epochs=2
 
 mkdir -p fastCMSTaus
 python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=FastCMSTau use_multiprocessing=False output_dir=fastCMSTaus
@@ -85,7 +85,7 @@ python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] builder=Grid
 
 #run simple DNN reco
 mkdir -p simplednn
-# python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=SimpleDNN use_multiprocessing=False output_dir=simplednn
+python3 src/runBuilder.py n_files=1 samples_to_process=[ZH_Htautau] samples.ZH_Htautau.output_dir=ntuple builder=SimpleDNN use_multiprocessing=False output_dir=simplednn
 
 #run LorentzNet algo
 mkdir -p LorentzNet
