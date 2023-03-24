@@ -354,7 +354,7 @@ def main(cfg):
     ds_val = TauJetDataset("data/dataset_validation")
 
     # load a part of the training set to memory to get feature standardization coefficients
-    train_data = [ds_train.get(i) for i in range(10)]
+    train_data = [ds_train.get(i) for i in range(min(10, len(ds_train)))]
     train_data = sum(train_data, [])
 
     # extract mean and std of the jet and PF features in the training set
