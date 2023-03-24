@@ -8,9 +8,11 @@ import torch
 import torch_geometric
 from torch import nn
 import sys
-import tqdm
 import sklearn
 import sklearn.metrics
+import random
+import math
+import tqdm
 from torch_geometric.loader import DataLoader
 from torch_geometric.data.batch import Batch
 from taujetdataset import TauJetDataset
@@ -29,18 +31,23 @@ ISTEP_GLOBAL = 0
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, output_dim),
@@ -72,9 +79,9 @@ class TauEndToEndSimple(nn.Module):
 
         self.act = nn.ReLU
         self.act_obj = self.act()
-        self.dropout = 0.2
-        self.width = 256
-        self.embedding_dim = 256
+        self.dropout = 0.1
+        self.width = 512
+        self.embedding_dim = 512
         self.sparse_mode = sparse_mode
 
         self.num_jet_features = 8
@@ -91,6 +98,8 @@ class TauEndToEndSimple(nn.Module):
             self.agg1 = torch_geometric.nn.MeanAggregation()
             self.agg2 = torch_geometric.nn.MaxAggregation()
             self.agg3 = torch_geometric.nn.StdAggregation()
+            # self.agg4 = torch_geometric.nn.AttentionalAggregation(
+            # ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
 
         self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(self.num_jet_features + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
@@ -107,9 +116,10 @@ class TauEndToEndSimple(nn.Module):
         pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
 
         # # now collapse the PF information in each jet with a global attention layer
-        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-        jet_encoded2 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
-        jet_encoded3 = self.act_obj(torch.mean(pf_encoded, axis=0).unsqueeze(axis=0).repeat(jet_features.shape[0], 1))
+        jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
+        jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
+        jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
+        # jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
 
         # get the list of per-jet features as a concat of
         jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
@@ -295,6 +305,44 @@ def get_split_files(config_path, split):
         return paths
 
 
+# Loops over files in the base dataset, yields jets from each file in order
+# The input files are shuffled and chunked, the resulting jets in the chunks of files are shuffled as well
+class MyIterableDataset(torch.utils.data.IterableDataset):
+    def __init__(self, ds):
+        super(MyIterableDataset).__init__()
+        self.ds = ds
+
+        # this will be overridden later
+        self.num_jets = 0
+
+    def __iter__(self):
+
+        worker_info = torch.utils.data.get_worker_info()
+
+        if worker_info is None:
+            range_per_worker = range(len(self.ds))
+        else:  # in a worker process
+            per_worker = int(math.ceil(len(self.ds) / worker_info.num_workers))
+            tw = worker_info.id
+            range_per_worker = range(tw * per_worker, min((tw + 1) * per_worker, len(self.ds)))
+
+        # loop over files in the .pt dataset
+        for idx in range_per_worker:
+
+            # get jets from this file
+            jets = self.ds.get(idx)
+
+            # shuffle jets from the file
+            random.shuffle(jets)
+
+            # loop over jets in file
+            for jet in jets:
+                yield jet
+
+    def __len__(self):
+        return self.num_jets
+
+
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
     torch.multiprocessing.set_sharing_strategy("file_system")
@@ -305,9 +353,8 @@ def main(cfg):
     ds_train = TauJetDataset("data/dataset_train")
     ds_val = TauJetDataset("data/dataset_validation")
 
-    # just load the whole training and validation set to memory
-    # requires about 16GB RAM and takes about 5 minutes
-    train_data = [ds_train[i] for i in range(len(ds_train))]
+    # load a part of the training set to memory to get feature standardization coefficients
+    train_data = [ds_train.get(i) for i in range(10)]
     train_data = sum(train_data, [])
 
     # extract mean and std of the jet and PF features in the training set
@@ -318,17 +365,28 @@ def main(cfg):
     B_mean = torch.mean(B, axis=0)
     B_std = torch.std(B, axis=0)
 
-    val_data = [ds_val[i] for i in range(len(ds_val))]
-    val_data = sum(val_data, [])
+    # define a dataset that yields jets from each file
+    ds_train_iter = MyIterableDataset(ds_train)
+    ds_val_iter = MyIterableDataset(ds_val)
 
-    print("Loaded TauJetDataset with {} train steps".format(len(train_data)))
-    print("Loaded TauJetDataset with {} val steps".format(len(val_data)))
-    ds_train_loader = DataLoader(train_data, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], shuffle=True)
-    ds_val_loader = DataLoader(val_data, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], shuffle=True)
+    # batch the jets from the iterated dataset
+    ds_train_loader = DataLoader(
+        ds_train_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], num_workers=4, prefetch_factor=4
+    )
+    ds_val_loader = DataLoader(
+        ds_val_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], num_workers=4, prefetch_factor=4
+    )
 
-    assert len(ds_train_loader) > 0
-    assert len(ds_val_loader) > 0
-    print("train={} val={}".format(len(ds_train_loader), len(ds_val_loader)))
+    # just loop over the training dataset and print each data object for debugging
+    print("getting number of jets per dataset")
+    num_jets = 0
+    for x in ds_train_loader:
+        num_jets += x.gen_tau_decaymode.shape[0]
+    ds_train_iter.num_jets = num_jets
+    num_jets = 0
+    for x in ds_val_iter:
+        num_jets += x.gen_tau_decaymode.shape[0]
+    ds_val_iter.num_jets = num_jets
 
     if "CUDA_VISIBLE_DEVICES" in os.environ:
         dev = torch.device("cuda")
@@ -345,10 +403,10 @@ def main(cfg):
     print("params={}".format(count_parameters(model)))
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
-    )
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #     optimizer, max_lr=cfg.lr, steps_per_epoch=len(ds_train_loader), epochs=cfg.epochs
+    # )
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
 
     tensorboard_writer = SummaryWriter(outpath + "/tensorboard")
     early_stopper = EarlyStopper(patience=50, min_delta=10)
