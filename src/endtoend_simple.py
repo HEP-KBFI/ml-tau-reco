@@ -8,7 +8,6 @@ import torch
 import torch_geometric
 from torch import nn
 import sys
-import tqdm
 import sklearn
 import sklearn.metrics
 from torch_geometric.loader import DataLoader
@@ -29,23 +28,23 @@ ISTEP_GLOBAL = 0
 def ffn(input_dim, output_dim, width, act, dropout):
     return nn.Sequential(
         nn.Linear(input_dim, width),
-        #nn.LayerNorm(width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        #nn.LayerNorm(width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        #nn.LayerNorm(width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        #nn.LayerNorm(width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, width),
-        #nn.LayerNorm(width),
+        # nn.LayerNorm(width),
         act(),
         nn.Dropout(dropout),
         nn.Linear(width, output_dim),
@@ -96,7 +95,8 @@ class TauEndToEndSimple(nn.Module):
             self.agg1 = torch_geometric.nn.MeanAggregation()
             self.agg2 = torch_geometric.nn.MaxAggregation()
             self.agg3 = torch_geometric.nn.StdAggregation()
-            # self.agg4 = torch_geometric.nn.AttentionalAggregation(ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
+            # self.agg4 = torch_geometric.nn.AttentionalAggregation(
+            # ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
 
         self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(self.num_jet_features + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
@@ -114,9 +114,9 @@ class TauEndToEndSimple(nn.Module):
 
         # # now collapse the PF information in each jet with a global attention layer
         jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
-        jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch)) 
-        jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch)) 
-        # jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch)) 
+        jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
+        jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
+        # jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
 
         # get the list of per-jet features as a concat of
         jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
@@ -130,46 +130,46 @@ class TauEndToEndSimple(nn.Module):
 
         return pred_istau, pred_p4
 
-#    # custom forward function for HLS4ML export, assuming a single 3D input
-#    def forward_3d(self, inputs):
-#
-#        assert len(inputs.shape) == 3
-#        # njet = inputs.shape[0]  # number of jets in batch
-#        # npf_per_jet = inputs.shape[1]  # max PF candidates across jets + 1 (the jet itself)
-#        # nfeat = inputs.shape[2]  # features of the jets / PF candidates
-#
-#        # get the jet properties
-#        jet_feats_orig = inputs[:, 0, :8]
-#
-#        # get the PF properties of each jet
-#        pf_feats_orig = inputs[:, 1:, :]
-#
-#        jet_features_normed = jet_feats_orig - self.A_mean
-#        jet_features_normed = jet_features_normed / self.A_std
-#        jet_pf_features_normed = pf_feats_orig - self.B_mean
-#        jet_pf_features_normed = jet_pf_features_normed / self.B_std
-#
-#        # encode the PF elements with the FFN
-#        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
-#
-#        # aggregate PFs across jets (need to add masking here for a fully correct implementation)
-#        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=1))
-#        jet_encoded2 = self.act_obj(torch.max(pf_encoded, axis=1).values)
-#        jet_encoded3 = self.act_obj(torch.std(pf_encoded, axis=1))
-#
-#        # get the list of per-jet features as a concat of
-#        jet_features = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
-#
-#        # run a binary classification whether or not this jet is from a tau
-#        pred_istau = self.nn_pred_istau(jet_features)
-#
-#        # run a per-jet NN for visible energy prediction
-#        jet_p4 = jet_feats_orig[:, :4]
-#        pred_p4 = jet_p4 * self.nn_pred_p4(jet_features)
-#
-#        ret = torch.concat([pred_istau, pred_p4], axis=-1)
-#
-#        return ret
+    #    # custom forward function for HLS4ML export, assuming a single 3D input
+    #    def forward_3d(self, inputs):
+    #
+    #        assert len(inputs.shape) == 3
+    #        # njet = inputs.shape[0]  # number of jets in batch
+    #        # npf_per_jet = inputs.shape[1]  # max PF candidates across jets + 1 (the jet itself)
+    #        # nfeat = inputs.shape[2]  # features of the jets / PF candidates
+    #
+    #        # get the jet properties
+    #        jet_feats_orig = inputs[:, 0, :8]
+    #
+    #        # get the PF properties of each jet
+    #        pf_feats_orig = inputs[:, 1:, :]
+    #
+    #        jet_features_normed = jet_feats_orig - self.A_mean
+    #        jet_features_normed = jet_features_normed / self.A_std
+    #        jet_pf_features_normed = pf_feats_orig - self.B_mean
+    #        jet_pf_features_normed = jet_pf_features_normed / self.B_std
+    #
+    #        # encode the PF elements with the FFN
+    #        pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
+    #
+    #        # aggregate PFs across jets (need to add masking here for a fully correct implementation)
+    #        jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=1))
+    #        jet_encoded2 = self.act_obj(torch.max(pf_encoded, axis=1).values)
+    #        jet_encoded3 = self.act_obj(torch.std(pf_encoded, axis=1))
+    #
+    #        # get the list of per-jet features as a concat of
+    #        jet_features = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+    #
+    #        # run a binary classification whether or not this jet is from a tau
+    #        pred_istau = self.nn_pred_istau(jet_features)
+    #
+    #        # run a per-jet NN for visible energy prediction
+    #        jet_p4 = jet_feats_orig[:, :4]
+    #        pred_p4 = jet_p4 * self.nn_pred_p4(jet_features)
+    #
+    #        ret = torch.concat([pred_istau, pred_p4], axis=-1)
+    #
+    #        return ret
 
     def forward(self, inputs):
         if self.sparse_mode:
@@ -205,7 +205,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
 
     class_true = []
     class_pred = []
-    for ibatch, batch in enumerate(tqdm.tqdm(ds_loader, total=len(ds_loader))):
+    for ibatch, batch in enumerate(ds_loader):
         optimizer.zero_grad()
         batch = batch.to(device=dev)
         pred_istau, pred_p4 = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
@@ -232,6 +232,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
+        print(loss.detach().cpu().item())
         sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
@@ -302,6 +303,22 @@ def get_split_files(config_path, split):
         return paths
 
 
+# Loops over files in the base dataset, yields jets from each file in order
+class MyIterableDataset(torch.utils.data.IterableDataset):
+    def __init__(self, ds):
+        super(MyIterableDataset).__init__()
+        self.ds = ds
+
+    def __iter__(self):
+
+        # loop over files in the .pt dataset
+        for ifile in range(len(self.ds)):
+
+            # loop over jets in file
+            for jet in self.ds.get(ifile):
+                yield jet
+
+
 @hydra.main(config_path="../config", config_name="endtoend_simple", version_base=None)
 def main(cfg):
     torch.multiprocessing.set_sharing_strategy("file_system")
@@ -312,10 +329,8 @@ def main(cfg):
     ds_train = TauJetDataset("data/dataset_train")
     ds_val = TauJetDataset("data/dataset_validation")
 
-    # just load the whole training and validation set to memory
-    # requires about 16GB RAM and takes about 5 minutes
-    train_data = [ds_train[i] for i in range(len(ds_train))]
-    #train_data = [ds_train[i] for i in range(5)]
+    # load a part of the training set to memory to get feature standardization coefficients
+    train_data = [ds_train.get(i) for i in range(10)]
     train_data = sum(train_data, [])
 
     # extract mean and std of the jet and PF features in the training set
@@ -326,18 +341,17 @@ def main(cfg):
     B_mean = torch.mean(B, axis=0)
     B_std = torch.std(B, axis=0)
 
-    val_data = [ds_val[i] for i in range(len(ds_val))]
-    #val_data = [ds_val[i] for i in range(5)]
-    val_data = sum(val_data, [])
+    # define a dataset that yields jets from each file
+    ds_train_iter = MyIterableDataset(ds_train)
+    ds_val_iter = MyIterableDataset(ds_val)
 
-    print("Loaded TauJetDataset with {} train steps".format(len(train_data)))
-    print("Loaded TauJetDataset with {} val steps".format(len(val_data)))
-    ds_train_loader = DataLoader(train_data, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], shuffle=True)
-    ds_val_loader = DataLoader(val_data, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"], shuffle=True)
+    # batch the jets from the iterated dataset
+    ds_train_loader = DataLoader(ds_train_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"])
+    ds_val_loader = DataLoader(ds_val_iter, batch_size=cfg.batch_size, follow_batch=["jet_pf_features"])
 
-    assert len(ds_train_loader) > 0
-    assert len(ds_val_loader) > 0
-    print("train={} val={}".format(len(ds_train_loader), len(ds_val_loader)))
+    # just loop over the training dataset and print each data object
+    for x in ds_train_loader:
+        print(x)
 
     if "CUDA_VISIBLE_DEVICES" in os.environ:
         dev = torch.device("cuda")
