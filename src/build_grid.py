@@ -77,24 +77,24 @@ class GridBuilder(BasicTauBuilder):
             list_part_var[offset + Var.dxy.value][etaidx, phiidx] = self.pt_sorted_cand_dxy[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]
-            list_part_var[offset + Var.dxy_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dxy_sig[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
+            list_part_var[offset + Var.dxy_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dxy_sig[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             list_part_var[offset + Var.dz.value][etaidx, phiidx] = self.pt_sorted_cand_dz[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]
-            list_part_var[offset + Var.dz_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dz_sig[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
+            list_part_var[offset + Var.dz_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dz_sig[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             list_part_var[offset + Var.d0.value][etaidx, phiidx] = self.pt_sorted_cand_d0[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]
-            list_part_var[offset + Var.d0_sig.value][etaidx, phiidx] = self.pt_sorted_cand_d0_sig[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
-            list_part_var[offset + Var.isele.value][etaidx, phiidx] = self.pt_sorted_cand_isele[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
+            list_part_var[offset + Var.d0_sig.value][etaidx, phiidx] = self.pt_sorted_cand_d0_sig[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
+            list_part_var[offset + Var.isele.value][etaidx, phiidx] = self.pt_sorted_cand_isele[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             list_part_var[offset + Var.ismu.value][etaidx, phiidx] = self.pt_sorted_cand_ismu[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]
@@ -104,9 +104,9 @@ class GridBuilder(BasicTauBuilder):
             list_part_var[offset + Var.isnh.value][etaidx, phiidx] = self.pt_sorted_cand_isnh[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]
-            list_part_var[offset + Var.isgamma.value][etaidx, phiidx] = self.pt_sorted_cand_isgamma[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
+            list_part_var[offset + Var.isgamma.value][etaidx, phiidx] = self.pt_sorted_cand_isgamma[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             self.filledgrid[etaidx, phiidx] += 1
         return list_part_var
 
@@ -126,11 +126,15 @@ class GridBuilder(BasicTauBuilder):
         self.pt_sorted_cand_dphi = ak.where(self.pt_sorted_cand_dphi <= -pi, mask_less, self.pt_sorted_cand_dphi)
 
     def mask_pdgid(self, pdgid):
-        return ak.where(self.pt_sorted_cand_pdgid == pdgid, ak.ones_like(self.pt_sorted_cand_pdgid), ak.zeros_like(self.pt_sorted_cand_pdgid))
+        return ak.where(
+            self.pt_sorted_cand_pdgid == pdgid,
+            ak.ones_like(self.pt_sorted_cand_pdgid),
+            ak.zeros_like(self.pt_sorted_cand_pdgid),
+        )
 
     def calcuclate_sig(self, neu, deno):
-        sig = neu/deno
-        return ak.where(deno==0, ak.zeros_like(deno), sig)
+        sig = neu / deno
+        return ak.where(deno == 0, ak.zeros_like(deno), sig)
 
     def pt_sorted_ftrs(self):
         self.part_p4 = self.build_p4("event_reco_cand_p4s")

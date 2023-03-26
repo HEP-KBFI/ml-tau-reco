@@ -7,12 +7,11 @@ import os
 from glob import glob
 import json
 import numpy as np
-import time
 import multiprocessing
 from build_grid import GridBuilder
 
 from part_var import Var
-from auxiliary import *
+from auxiliary import get_split_files, chunks, process_func
 
 
 class TauJetDatasetWithGrid:
@@ -42,12 +41,14 @@ class TauJetDatasetWithGrid:
     @property
     def processed_dir(self):
         return self._processed_dir
-    '''
+
+    """
     for fn in self.filelist:
     print(f"Processing file: {fn} at ", time.strftime("%H:%M"))
     data = ak.from_parquet(fn)
     self.all_data += self.process_file_data(data)
-    '''
+    """
+
     def process_file_data(self, data):
         if "inner_grid" not in data.fields:
             data = self.buildGrid.processJets(data)
@@ -159,8 +160,8 @@ if __name__ == "__main__":
 
     infile = sys.argv[1]
     ds = osp.basename(infile).split(".")[0]
-    sig_ntuples_dir = '/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/ZH_Htautau'
-    bkg_ntuples_dir = '/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/QCD'
+    sig_ntuples_dir = "/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/ZH_Htautau"
+    bkg_ntuples_dir = "/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/QCD"
 
     filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
     outp = "data/dataset_{}".format(ds)
@@ -169,9 +170,9 @@ if __name__ == "__main__":
 
     # merge 50 files, run 16 processes
     ds.process_parallel(50, 8)
-    #filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
-    #ds = TauJetDatasetWithGrid(filelist)
-    #print("Loaded TauJetDataset with {} files".format(len(ds)))
+    # filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
+    # ds = TauJetDatasetWithGrid(filelist)
+    # print("Loaded TauJetDataset with {} files".format(len(ds)))
 
     # treat each input file like a batch
     for ibatch in range(len(ds)):

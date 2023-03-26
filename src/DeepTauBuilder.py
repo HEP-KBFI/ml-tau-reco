@@ -23,14 +23,23 @@ class DeepTauBuilder(BasicTauBuilder):
         pred_istau, pred_p4 = self.model(data_obj)
         pred_istau = list(torch.softmax(pred_istau, axis=-1)[:, 1].contiguous().detach().numpy())
         njets = len(data["tau_p4s"])
-        #pred_p4 = np.zeros((njets, 4))
+        # pred_p4 = np.zeros((njets, 4))
         pred_p4 = np.asfortranarray(pred_p4.contiguous().detach().numpy())
         # dummy placeholders for now
         tauCharges = np.zeros(njets)
         dmode = np.zeros(njets)
         # as a dummy placeholder, just return the first PFCand for each jet
         tau_cand_p4s = data["reco_cand_p4s"][:, 0:1]
-        tauP4 = vector.awk(ak.zip({"px": data["reco_jet_p4s"].x, "py": data["reco_jet_p4s"].y, "pz": data["reco_jet_p4s"].z, "mass": data["reco_jet_p4s"].tau}))
+        tauP4 = vector.awk(
+            ak.zip(
+                {
+                    "px": data["reco_jet_p4s"].x,
+                    "py": data["reco_jet_p4s"].y,
+                    "pz": data["reco_jet_p4s"].z,
+                    "mass": data["reco_jet_p4s"].tau,
+                }
+            )
+        )
         return {
             "tau_p4s": tauP4,
             "tauSigCand_p4s": tau_cand_p4s,
