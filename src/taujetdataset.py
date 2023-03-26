@@ -1,11 +1,15 @@
-import sys
 import awkward as ak
 import torch
 import numpy as np
 from torch_geometric.data import Data, Dataset
+import os
 import os.path as osp
 from glob import glob
 import vector
+import random
+import yaml
+import multiprocessing
+import sys
 
 
 def chunks(lst, n):
@@ -14,10 +18,25 @@ def chunks(lst, n):
         yield lst[i : i + n]
 
 
+def get_split_files(config_path, split):
+    with open(config_path, "r") as fi:
+        data = yaml.safe_load(fi)
+        paths = data[split]["paths"]
+        return paths
+
+
+def process_func(args):
+    self, fns, idx_file = args
+    return self.process_multiple_files(fns, idx_file)
+
+
 class TauJetDataset(Dataset):
-    def __init__(self, filelist=[]):
+    def __init__(self, processed_dir="", filelist=[]):
+
+        self._processed_dir = processed_dir
 
         self.filelist = filelist
+        random.shuffle(self.filelist)
 
         # The order of features in the jet feature tensor
         self.reco_jet_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e"]
@@ -64,19 +83,22 @@ class TauJetDataset(Dataset):
             "reco_cand_PCA_y_err",
             "reco_cand_PCA_z_err",
         ]
-        # just load all data to memory
-        self.all_data = []
-        for fn in self.processed_file_names:
-            print(fn)
-            data = ak.from_parquet(fn)
-            self.all_data += self.process_file_data(data)
+
+    @property
+    def raw_file_names(self):
+        return self.filelist
 
     @property
     def processed_file_names(self):
-        return self.filelist
+        proc_list = glob(osp.join(self.processed_dir, "*.pt"))
+        return sorted(proc_list)
+
+    @property
+    def processed_dir(self):
+        return self._processed_dir
 
     def __len__(self):
-        return len(self.all_data)
+        return len(self.processed_file_names)
 
     def get_jet_features(self, data: ak.Record) -> torch.Tensor:
         jets = {}
@@ -179,18 +201,59 @@ class TauJetDataset(Dataset):
         ]
         return ret_data
 
+    def process_multiple_files(self, filenames, idx_file):
+        datas = []
+        for fn in filenames:
+            data = ak.from_parquet(fn)
+            x = self.process_file_data(data)
+            if x is None:
+                continue
+            datas.append(x)
+
+        assert len(datas) > 0
+        datas = sum(datas[1:], datas[0])
+        p = osp.join(self.processed_dir, "data_{}.pt".format(idx_file))
+        print("saved {} samples to {}".format(len(datas), p))
+        torch.save(datas, p)
+
+    def process(self, num_files_to_batch):
+        idx_file = 0
+        for fns in chunks(self.raw_file_names, num_files_to_batch):
+            self.process_multiple_files(fns, idx_file)
+            idx_file += 1
+
+    def process_parallel(self, num_files_to_batch, num_proc):
+        pars = []
+        idx_file = 0
+        for fns in chunks(self.raw_file_names, num_files_to_batch):
+            pars += [(self, fns, idx_file)]
+            idx_file += 1
+        pool = multiprocessing.Pool(num_proc)
+        pool.map(process_func, pars)
+        # for p in pars:
+        #     process_func(p)
+
+    def get(self, idx):
+        fn = "data_{}.pt".format(idx)
+        p = osp.join(self.processed_dir, fn)
+        data = torch.load(p, map_location="cpu")
+        print("loaded {}, N={}".format(fn, len(data)))
+        return data
+
     def __getitem__(self, idx):
-        return self.all_data[idx]
+        return self.get(idx)
 
 
 if __name__ == "__main__":
-    filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
-    ds = TauJetDataset(filelist)
-    print("Loaded TauJetDataset with {} files".format(len(ds)))
 
-    # treat each input file like a batch
-    for ibatch in range(len(ds)):
-        batch = ds[ibatch]
-        print(ibatch, batch.jet_features.shape, batch.jet_pf_features.shape)
-        assert batch.jet_features.shape[0] == batch.gen_tau_decaymode.shape[0]
-        assert batch.jet_features.shape[0] == batch.gen_tau_p4.shape[0]
+    # path to dataset yaml
+    infile = sys.argv[1]
+    ds = os.path.basename(infile).split(".")[0]
+
+    filelist = get_split_files(infile, ds)
+    outp = "data/dataset_{}".format(ds)
+    os.makedirs(outp)
+    ds = TauJetDataset(outp, filelist)
+
+    # merge 50 files, run 16 processes
+    ds.process_parallel(50, 16)
