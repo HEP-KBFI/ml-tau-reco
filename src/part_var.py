@@ -6,10 +6,19 @@ class Var(Enum):
     dtheta = auto()
     dphi = auto()
     mass = auto()
-
+    dxy = auto()
+    dxy_sig = auto()
+    dz = auto()
+    dz_sig = auto()
+    d0 = auto()
+    d0_sig = auto()
+    isele = auto()
+    ismu = auto()
+    isch = auto()
+    isnh = auto()
     ##### it should be last variable#####
-    pdgid = auto()
+    isgamma = auto()
 
     @classmethod
     def max_value(cls):
-        return cls.pdgid.value
+        return cls.isgamma.value
