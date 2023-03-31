@@ -12,6 +12,7 @@ from LorentzNetDataset import buildLorentzNetTensors
 from FeatureStandardization import FeatureStandardization
 from sklearn.preprocessing import OneHotEncoder
 
+
 class LorentzNetTauBuilder(BasicTauBuilder):
     def __init__(self, cfgFileName="./config/LorentzNet_cfg.json", verbosity=0):
         print("<LorentzNetTauBuilder::LorentzNetTauBuilder>:")
@@ -43,7 +44,7 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         self.use_pdgId = self._builderConfig["use_pdgId"]
         self.pdgId_embedding = None
         if self.use_pdgId:
-            self.pdgId_embedding = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(
+            self.pdgId_embedding = OneHotEncoder(handle_unknown="ignore", sparse_output=False).fit(
                 [[11], [13], [15], [22], [130], [211], [2212]]
             )
         self.n_scalar = 8 if self.use_pdgId else 2
@@ -104,13 +105,13 @@ class LorentzNetTauBuilder(BasicTauBuilder):
             jet_constituent_pdgIds = data_cand_pdgIds[idx]
             jet_constituent_qs = data_cand_qs[idx]
             x_tensor, scalars_tensor, node_mask_tensor = buildLorentzNetTensors(
-                jet_constituent_p4s, 
+                jet_constituent_p4s,
                 jet_constituent_pdgIds,
                 jet_constituent_qs,
                 self.max_cands,
                 self.add_beams,
                 self.use_pdgId,
-                self.pdgId_embedding
+                self.pdgId_embedding,
             )
             x_tensors.append(x_tensor)
             scalars_tensors.append(scalars_tensor)

@@ -18,9 +18,10 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         print("<ParticleTransformerTauBuilder::ParticleTransformerTauBuilder>:")
         super(BasicTauBuilder, self).__init__()
 
-        self.filename_model = "/home/veelken/ml-tau-reco/data/ParticleTransformer_model_wReweighting_2023Mar25_woLifetime.pt"
-        self.filename_transform = (
-            "/home/veelken/ml-tau-reco/data/ParticleTransformer_FeatureStandardization_wReweighting_2023Mar25_woLifetime.json"
+        filepath = "/home/veelken/ml-tau-reco/data/"
+        self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wReweighting_2023Mar25_woLifetime.pt")
+        self.filename_transform = os.path.join(
+            filepath, "ParticleTransformer_FeatureStandardization_wReweighting_2023Mar25_woLifetime.json"
         )
 
         if os.path.isfile(cfgFileName):

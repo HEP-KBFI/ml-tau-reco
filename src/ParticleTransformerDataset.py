@@ -75,21 +75,25 @@ def buildParticleTransformerTensors(
             part_deltaR,
         ]
         if use_pdgId:
-            part_features.extend([
-                part_charge,
-                part_isElectron,
-                part_isMuon,
-                part_isPhoton,
-                part_isChargedHadron,
-                part_isNeutralHadron,
-            ])
+            part_features.extend(
+                [
+                    part_charge,
+                    part_isElectron,
+                    part_isMuon,
+                    part_isPhoton,
+                    part_isChargedHadron,
+                    part_isNeutralHadron,
+                ]
+            )
         if use_lifetime:
-            part_features.extend([
-                part_d0,
-                part_d0err,
-                part_dz,
-                part_dzerr,
-        ])
+            part_features.extend(
+                [
+                    part_d0,
+                    part_d0err,
+                    part_dz,
+                    part_dzerr,
+                ]
+            )
         jet_constituent_features.append(part_features)
 
     x_tensor = torch.tensor(jet_constituent_features, dtype=torch.float32)
@@ -132,7 +136,9 @@ def read_cut(cuts, key):
 
 
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, filelist, max_num_files=-1, max_cands=50, metric="eta-phi", use_pdgId=True, use_lifetime=True, preselection={}):
+    def __init__(
+        self, filelist, max_num_files=-1, max_cands=50, metric="eta-phi", use_pdgId=True, use_lifetime=True, preselection={}
+    ):
         print("<ParticleTransformerDataset::ParticleTransformerDataset>:")
         print(" #files = %i" % len(filelist))
         print(" max_cands = %i" % max_cands)

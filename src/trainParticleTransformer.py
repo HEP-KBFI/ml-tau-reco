@@ -270,7 +270,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         max_cands=max_cands,
         use_pdgId=use_pdgId,
         use_lifetime=use_lifetime,
-        preselection=preselection
+        preselection=preselection,
     )
     print("Finished building training dataset.")
     print(" current time:", datetime.datetime.now())
@@ -284,7 +284,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         max_cands=max_cands,
         use_pdgId=use_pdgId,
         use_lifetime=use_lifetime,
-        preselection=preselection
+        preselection=preselection,
     )
     print("Finished building validation dataset.")
     print(" current time:", datetime.datetime.now())

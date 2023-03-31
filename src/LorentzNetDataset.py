@@ -7,14 +7,9 @@ from torch.utils.data import Dataset
 from LGEB import psi
 from sklearn.preprocessing import OneHotEncoder
 
+
 def buildLorentzNetTensors(
-    jet_constituent_p4s,
-    jet_constituent_pdgIds,
-    jet_constituent_qs,
-    max_cands,
-    add_beams, 
-    use_pdgId,
-    pdgId_embedding
+    jet_constituent_p4s, jet_constituent_pdgIds, jet_constituent_qs, max_cands, add_beams, use_pdgId, pdgId_embedding
 ):
     # print("<buildLorentzNetTensors>:")
 
@@ -29,15 +24,19 @@ def buildLorentzNetTensors(
     scalars_tensor = None
     if use_pdgId:
         jet_constituent_abs_pdgIds = abs(jet_constituent_pdgIds)
-        jet_constituent_abs_pdgIds = [ [ jet_constituent_pdgId ] for jet_constituent_pdgId in jet_constituent_pdgIds ]
+        jet_constituent_abs_pdgIds = [[jet_constituent_pdgId] for jet_constituent_pdgId in jet_constituent_pdgIds]
         one_hot = pdgId_embedding.transform(jet_constituent_abs_pdgIds[:max_cands])
         one_hot_tensor = torch.tensor(one_hot, dtype=torch.float32)
         charge_tensor = torch.tensor(jet_constituent_qs[:max_cands], dtype=torch.float32).unsqueeze(-1)
-        scalars_tensor = torch.cat(( one_hot_tensor, charge_tensor ), dim=1)
-        scalars_tensor = torch.nn.functional.pad(scalars_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
+        scalars_tensor = torch.cat((one_hot_tensor, charge_tensor), dim=1)
+        scalars_tensor = torch.nn.functional.pad(
+            scalars_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0
+        )
     else:
         scalars_tensor = psi(torch.tensor(jet_constituent_p4s.mass, dtype=torch.float32)).unsqueeze(-1)
-        scalars_tensor = torch.nn.functional.pad(scalars_tensor, (0, 1, 0, max_cands - num_jet_constituents), "constant", 0.0)
+        scalars_tensor = torch.nn.functional.pad(
+            scalars_tensor, (0, 1, 0, max_cands - num_jet_constituents), "constant", 0.0
+        )
 
     node_mask_tensor = torch.ones(num_jet_constituents, dtype=torch.float32)
     node_mask_tensor = torch.nn.functional.pad(node_mask_tensor, (0, max_cands - num_jet_constituents), "constant", 0.0)
@@ -50,10 +49,10 @@ def buildLorentzNetTensors(
         x_tensor = torch.cat([x_beams, x_tensor], dim=0)
 
         if use_pdgId:
-            one_hot = pdgId_embedding.transform([[ 2212 ], [ 2212 ] ])
+            one_hot = pdgId_embedding.transform([[2212], [2212]])
             one_hot_beams = torch.tensor(one_hot, dtype=torch.float32)
-            charge_beams = torch.tensor([ +1.0, -1.0 ], dtype=torch.float32).unsqueeze(-1)
-            scalars_beams = torch.cat(( one_hot_beams, charge_beams ), dim=1)
+            charge_beams = torch.tensor([+1.0, -1.0], dtype=torch.float32).unsqueeze(-1)
+            scalars_beams = torch.cat((one_hot_beams, charge_beams), dim=1)
             scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
         else:
             scalars_beams = psi(torch.tensor([beam_mass, beam_mass], dtype=torch.float32)).unsqueeze(-1)
@@ -117,7 +116,7 @@ class LorentzNetDataset(Dataset):
         self.use_pdgId = use_pdgId
         self.pdgId_embedding = None
         if self.use_pdgId:
-            self.pdgId_embedding = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(
+            self.pdgId_embedding = OneHotEncoder(handle_unknown="ignore", sparse_output=False).fit(
                 [[11], [13], [15], [22], [130], [211], [2212]]
             )
 
@@ -167,13 +166,13 @@ class LorentzNetDataset(Dataset):
                 jet_constituent_pdgIds = data_cand_pdgIds[idx]
                 jet_constituent_qs = data_cand_qs[idx]
                 x_tensor, scalars_tensor, node_mask_tensor = buildLorentzNetTensors(
-                    jet_constituent_p4s, 
+                    jet_constituent_p4s,
                     jet_constituent_pdgIds,
                     jet_constituent_qs,
                     self.max_cands,
                     self.add_beams,
                     self.use_pdgId,
-                    self.pdgId_embedding
+                    self.pdgId_embedding,
                 )
 
                 y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
