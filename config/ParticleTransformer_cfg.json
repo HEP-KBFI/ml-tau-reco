@@ -7,6 +7,8 @@
         "max_cands": 25,
         "metric": "theta-phi",
         "standardize_inputs": true,
-        "json_file_FeatureStandardization": "ParticleTransformer_FeatureStandardization.json"
+        "json_file_FeatureStandardization": "ParticleTransformer_FeatureStandardization.json",
+        "use_pdgId": true,
+        "use_lifetime": false
     }
 }

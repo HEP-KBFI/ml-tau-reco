@@ -1,6 +1,5 @@
 {
     "LorentzNet": {
-        "n_scalar": 2,
         "n_hidden": 72,
         "n_class": 2,
         "dropout": 0.2,
@@ -13,6 +12,7 @@
         "min_jet_pt": 0.0,
         "max_jet_pt": 1.0e+3,
         "standardize_inputs": false,
-        "json_file_FeatureStandardization": ""
+        "json_file_FeatureStandardization": "",
+        "use_pdgId": true
     }
 }
