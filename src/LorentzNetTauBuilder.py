@@ -10,14 +10,14 @@ from basicTauBuilder import BasicTauBuilder
 from LorentzNet import LorentzNet
 from LorentzNetDataset import buildLorentzNetTensors
 from FeatureStandardization import FeatureStandardization
-
+from sklearn.preprocessing import OneHotEncoder
 
 class LorentzNetTauBuilder(BasicTauBuilder):
     def __init__(self, cfgFileName="./config/LorentzNet_cfg.json", verbosity=0):
         print("<LorentzNetTauBuilder::LorentzNetTauBuilder>:")
         super(BasicTauBuilder, self).__init__()
 
-        self.filename_model = "data/LorentzNet_model_wReweighting_2023Mar18.pt"
+        self.filename_model = "data/LorentzNet_model_wReweighting_2023Mar24_wPdgId.pt"
         self.filename_transform = ""
 
         if os.path.isfile(cfgFileName):
@@ -33,7 +33,6 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         else:
             raise RuntimeError("Failed to read config file %s !!")
 
-        self.n_scalar = self._builderConfig["n_scalar"]
         self.n_hidden = self._builderConfig["n_hidden"]
         self.n_class = self._builderConfig["n_class"]
         self.dropout = self._builderConfig["dropout"]
@@ -41,6 +40,13 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         self.c_weight = self._builderConfig["c_weight"]
         self.max_cands = self._builderConfig["max_cands"]
         self.add_beams = self._builderConfig["add_beams"]
+        self.use_pdgId = self._builderConfig["use_pdgId"]
+        self.pdgId_embedding = None
+        if self.use_pdgId:
+            self.pdgId_embedding = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(
+                [[11], [13], [15], [22], [130], [211], [2212]]
+            )
+        self.n_scalar = 8 if self.use_pdgId else 2
         standardize_inputs = self._builderConfig["standardize_inputs"]
         self.min_jet_theta = self._builderConfig["min_jet_theta"]
         self.max_jet_theta = self._builderConfig["max_jet_theta"]
@@ -79,6 +85,8 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         cand_p4s = vector.awk(
             ak.zip({"px": data_cand_p4s.x, "py": data_cand_p4s.y, "pz": data_cand_p4s.z, "mass": data_cand_p4s.tau})
         )
+        data_cand_pdgIds = data["reco_cand_pdg"]
+        data_cand_qs = data["reco_cand_charge"]
 
         x_tensors = []
         scalars_tensors = []
@@ -93,9 +101,16 @@ class LorentzNetTauBuilder(BasicTauBuilder):
             #  (jet_p4.pt, jet_p4.theta, jet_p4.phi, jet_p4.mass))
 
             jet_constituent_p4s = cand_p4s[idx]
-
+            jet_constituent_pdgIds = data_cand_pdgIds[idx]
+            jet_constituent_qs = data_cand_qs[idx]
             x_tensor, scalars_tensor, node_mask_tensor = buildLorentzNetTensors(
-                jet_constituent_p4s, self.max_cands, self.add_beams
+                jet_constituent_p4s, 
+                jet_constituent_pdgIds,
+                jet_constituent_qs,
+                self.max_cands,
+                self.add_beams,
+                self.use_pdgId,
+                self.pdgId_embedding
             )
             x_tensors.append(x_tensor)
             scalars_tensors.append(scalars_tensor)

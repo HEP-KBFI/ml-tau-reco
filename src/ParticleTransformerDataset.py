@@ -21,6 +21,8 @@ def buildParticleTransformerTensors(
     metric_dR_or_angle,
     metric_dEta_or_dTheta,
     max_cands,
+    use_pdgId,
+    use_lifetime,
 ):
     # print("<buildParticleTransformerTensors>:")
 
@@ -41,17 +43,19 @@ def buildParticleTransformerTensors(
         jet_constituent_dz = math.fabs(jet_constituent_dzs[idx])
         jet_constituent_dzerr = jet_constituent_dzerrs[idx]
 
-        part_pt_log = math.log(jet_constituent_p4.pt)
-        part_e_log = math.log(jet_constituent_p4.energy)
+        part_deta = metric_dEta_or_dTheta(jet_constituent_p4, jet_p4)
+        part_dphi = comp_deltaPhi(jet_constituent_p4, jet_p4)
+        part_logpt = math.log(jet_constituent_p4.pt)
+        part_loge = math.log(jet_constituent_p4.energy)
         part_logptrel = math.log(jet_constituent_p4.pt / jet_p4.pt)
         part_logerel = math.log(jet_constituent_p4.energy / jet_p4.energy)
         part_deltaR = metric_dR_or_angle(jet_constituent_p4, jet_p4)
         part_charge = jet_constituent_q
-        part_isChargedHadron = 1.0 if jet_constituent_abs_pdgId == 211 else 0.0
-        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId in [130, 2112] else 0.0
-        part_isPhoton = 1.0 if jet_constituent_abs_pdgId == 22 else 0.0
         part_isElectron = 1.0 if jet_constituent_abs_pdgId == 11 else 0.0
         part_isMuon = 1.0 if jet_constituent_abs_pdgId == 13 else 0.0
+        part_isPhoton = 1.0 if jet_constituent_abs_pdgId == 22 else 0.0
+        part_isChargedHadron = 1.0 if jet_constituent_abs_pdgId == 211 else 0.0
+        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId == 130 else 0.0
         part_d0 = 0.0
         part_d0err = 0.0
         part_dz = 0.0
@@ -61,29 +65,33 @@ def buildParticleTransformerTensors(
             part_d0err = jet_constituent_d0 / max(0.01 * jet_constituent_d0, jet_constituent_d0err)
             part_dz = math.tanh(jet_constituent_dz)
             part_dzerr = jet_constituent_dz / max(0.01 * jet_constituent_dz, jet_constituent_dzerr)
-        part_deta = metric_dEta_or_dTheta(jet_constituent_p4, jet_p4)
-        part_dphi = comp_deltaPhi(jet_constituent_p4, jet_p4)
-        jet_constituent_features.append(
-            [
-                part_pt_log,
-                part_e_log,
-                part_logptrel,
-                part_logerel,
-                part_deltaR,
+        part_features = [
+            part_deta,
+            part_dphi,
+            part_logpt,
+            part_loge,
+            part_logptrel,
+            part_logerel,
+            part_deltaR,
+        ]
+        if use_pdgId:
+            part_features.extend([
                 part_charge,
-                part_isChargedHadron,
-                part_isNeutralHadron,
-                part_isPhoton,
                 part_isElectron,
                 part_isMuon,
+                part_isPhoton,
+                part_isChargedHadron,
+                part_isNeutralHadron,
+            ])
+        if use_lifetime:
+            part_features.extend([
                 part_d0,
                 part_d0err,
                 part_dz,
                 part_dzerr,
-                part_deta,
-                part_dphi,
-            ]
-        )
+        ])
+        jet_constituent_features.append(part_features)
+
     x_tensor = torch.tensor(jet_constituent_features, dtype=torch.float32)
     x_tensor = torch.nn.functional.pad(x_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
     # print(" shape(x_tensor@1) = ", x_tensor.shape)
@@ -124,11 +132,13 @@ def read_cut(cuts, key):
 
 
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, filelist, max_num_files=-1, max_cands=50, metric="eta-phi", preselection={}):
+    def __init__(self, filelist, max_num_files=-1, max_cands=50, metric="eta-phi", use_pdgId=True, use_lifetime=True, preselection={}):
         print("<ParticleTransformerDataset::ParticleTransformerDataset>:")
         print(" #files = %i" % len(filelist))
         print(" max_cands = %i" % max_cands)
         print(" metric = '%s'" % metric)
+        print(" use_pdgId = %s" % use_pdgId)
+        print(" use_lifetime = %s" % use_lifetime)
 
         self.metric_dR_or_angle = None
         self.metric_dEta_or_dTheta = None
@@ -170,6 +180,8 @@ class ParticleTransformerDataset(Dataset):
 
         self.filelist = filelist
         self.max_cands = max_cands
+        self.use_pdgId = use_pdgId
+        self.use_lifetime = use_lifetime
 
         self.x_tensors = []
         self.v_tensors = []
@@ -237,6 +249,8 @@ class ParticleTransformerDataset(Dataset):
                     self.metric_dR_or_angle,
                     self.metric_dEta_or_dTheta,
                     self.max_cands,
+                    self.use_pdgId,
+                    self.use_lifetime,
                 )
                 y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
                 weight_tensor = torch.tensor([data_weights[idx]], dtype=torch.float32)
