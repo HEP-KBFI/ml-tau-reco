@@ -3,18 +3,20 @@ import awkward as ak
 import torch
 from torch_geometric.data import Data
 import os.path as osp
+import os
 from glob import glob
 import json
 import numpy as np
-import time
-
+import multiprocessing
 from build_grid import GridBuilder
 
 from part_var import Var
+from auxiliary import get_split_files, chunks, process_func
 
 
 class TauJetDatasetWithGrid:
-    def __init__(self, filelist=[], cfgFileName="./config/grid_builder.json"):
+    def __init__(self, processed_dir="", filelist=[], cfgFileName="./config/grid_builder.json"):
+        self._processed_dir = processed_dir
         self.tau_p4_features = ["x", "y", "z", "tau"]
         self.filelist = filelist
         self.all_data = []
@@ -27,10 +29,25 @@ class TauJetDatasetWithGrid:
         self.len_part_features = Var.max_value()
         self.num_particles_in_grid = cfg["num_particles_in_grid"]
 
-        for fn in self.filelist:
-            print(f"Processing file: {fn} at ", time.strftime("%H:%M"))
-            data = ak.from_parquet(fn)
-            self.all_data += self.process_file_data(data)
+    @property
+    def raw_file_names(self):
+        return self.filelist
+
+    @property
+    def processed_file_names(self):
+        proc_list = glob(osp.join(self.processed_dir, "*.pt"))
+        return sorted(proc_list)
+
+    @property
+    def processed_dir(self):
+        return self._processed_dir
+
+    """
+    for fn in self.filelist:
+    print(f"Processing file: {fn} at ", time.strftime("%H:%M"))
+    data = ak.from_parquet(fn)
+    self.all_data += self.process_file_data(data)
+    """
 
     def process_file_data(self, data):
         if "inner_grid" not in data.fields:
@@ -41,6 +58,7 @@ class TauJetDatasetWithGrid:
         assert gen_tau_p4.shape[0] == gen_tau_decaymode.shape[0]
         tau_features = self.get_tau_features(data)
         part_block_features = self.get_part_block_features(data)
+        weights = torch.tensor(data["weight"]).to(dtype=torch.float32)
         ret_data = [
             Data(
                 gen_tau_decaymode=gen_tau_decaymode[itau : itau + 1],
@@ -48,6 +66,7 @@ class TauJetDatasetWithGrid:
                 tau_features=tau_features[itau : itau + 1, :],
                 inner_grid=part_block_features["inner_grid"][itau : itau + 1, :],
                 outer_grid=part_block_features["outer_grid"][itau : itau + 1, :],
+                weight=weights[itau : itau + 1],
             )
             for itau in range(len(tau_features))
         ]
@@ -91,21 +110,73 @@ class TauJetDatasetWithGrid:
             concatenated_part_frs[f"{block}"] = torch.concatenate((first_block_feature, second_block_feature), axis=1)
         return concatenated_part_frs
 
+    def process_multiple_files(self, filenames, idx_file):
+        datas = []
+        for fn in filenames:
+            data = ak.from_parquet(fn)
+            x = self.process_file_data(data)
+            if x is None:
+                continue
+            datas.append(x)
+
+        assert len(datas) > 0
+        datas = sum(datas[1:], datas[0])
+        p = osp.join(self.processed_dir, "data_{}.pt".format(idx_file))
+        print("saved {} samples to {}".format(len(datas), p))
+        torch.save(datas, p)
+
+    def process(self, num_files_to_batch):
+        idx_file = 0
+        for fns in chunks(self.raw_file_names, num_files_to_batch):
+            self.process_multiple_files(fns, idx_file)
+            idx_file += 1
+
+    def process_parallel(self, num_files_to_batch, num_proc):
+        pars = []
+        idx_file = 0
+        for fns in chunks(self.raw_file_names, num_files_to_batch):
+            pars += [(self, fns, idx_file)]
+            idx_file += 1
+        pool = multiprocessing.Pool(num_proc)
+        pool.map(process_func, pars)
+        # for p in pars:
+        #     process_func(p)
+
+    def get(self, idx):
+        fn = "data_{}.pt".format(idx)
+        p = osp.join(self.processed_dir, fn)
+        data = torch.load(p, map_location="cpu")
+        print("loaded {}, N={}".format(fn, len(data)))
+        return data
+
     def __getitem__(self, idx):
-        return self.all_data[idx]
+        return self.get(idx)
 
     def __len__(self):
-        return len(self.all_data)
+        return len(self.processed_file_names)
 
 
 if __name__ == "__main__":
-    filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
-    ds = TauJetDatasetWithGrid(filelist)
-    print("Loaded TauJetDataset with {} files".format(len(ds)))
+
+    infile = sys.argv[1]
+    ds = osp.basename(infile).split(".")[0]
+    sig_ntuples_dir = "/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/ZH_Htautau"
+    bkg_ntuples_dir = "/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/QCD"
+
+    filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
+    outp = "data/dataset_{}".format(ds)
+    os.makedirs(outp, exist_ok=True)
+    ds = TauJetDatasetWithGrid(outp, filelist)
+
+    # merge 50 files, run 16 processes
+    ds.process_parallel(50, 8)
+    # filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
+    # ds = TauJetDatasetWithGrid(filelist)
+    # print("Loaded TauJetDataset with {} files".format(len(ds)))
 
     # treat each input file like a batch
     for ibatch in range(len(ds)):
-        batch = ds[ibatch]
-        print("shape of inner grid ", batch["inner_grid"].shape)
-        print("shape of outer grid ", batch["outer_grid"].shape)
+        data = ds[ibatch]
+        print("shape of inner grid ", data[0]["inner_grid"].shape)
+        print("shape of outer grid ", data[0]["outer_grid"].shape)
         break

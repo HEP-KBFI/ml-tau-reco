@@ -27,7 +27,7 @@ def process_single_file(input_path: str, builder, output_dir) -> None:
     pjets = builder.processJets(jets)
     output_path = os.path.join(output_dir, os.path.basename(input_path))
     print("...done, writing output file %s" % output_path)
-    merged_info = {field: jets[field] for field in jets.fields}
+    merged_info = {field: jets[field] for field in jets.fields if "grid" not in field}
     merged_info.update(pjets)
     ak.to_parquet(ak.Record(merged_info), output_path)
 
@@ -53,7 +53,9 @@ def build_taus(cfg: DictConfig) -> None:
     elif cfg.builder == "ParticleTransformer":
         builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "DeepTau":
-        model = torch.load("/home/snandan/ml/ml-tau-reco/data/model_deeptau.pt", map_location=torch.device("cpu"))
+        model = torch.load(
+            "/home/snandan/mltaureco/ml-tau-reco/outputs/2023-03-24/10-24-01/model_best.pt", map_location=torch.device("cpu")
+        )
         assert model.__class__ == DeepTau
         builder = DeepTauBuilder(model)
     builder.printConfig()
@@ -69,7 +71,11 @@ def build_taus(cfg: DictConfig) -> None:
             n_files = None
         else:
             n_files = cfg.n_files
-        input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
+        if "parquet" in samples_dir:
+            input_paths = [samples_dir]
+            assert n_files == 1
+        else:
+            input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[cfg.start : n_files]
         print("Found %i input files." % len(input_paths))
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)
