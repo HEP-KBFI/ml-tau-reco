@@ -5,6 +5,8 @@ import hydra
 import yaml
 import torch.nn as nn
 import torch
+import math
+import random
 
 torch.cuda.empty_cache()
 from torch_geometric.loader import DataLoader
@@ -17,7 +19,33 @@ import collections
 from taujetdataset_withgrid import TauJetDatasetWithGrid
 
 from part_var import Var
+#https://pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset
+class MyIterableDataset(torch.utils.data.IterableDataset):
+    def __init__(self, ds):
+        super(MyIterableDataset).__init__()
+        self.ds = ds
+        # this will be overridden later
+        self.num_jets = 0
+    def __iter__(self):
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            range_per_worker = range(len(self.ds))
+        else:  # in a worker process
+            per_worker = int(math.ceil(len(self.ds)) / worker_info.num_workers)
+            tw = worker_info.id
+            range_per_worker = range(tw * per_worker, min((tw + 1) * per_worker, len(self.ds)))
+        # loop over files in the .pt dataset
+        for idx in range_per_worker:
+            # get jets from this file
+            jets = self.ds.get(idx)
+            # shuffle jets from the file
+            random.shuffle(jets)
+            # loop over jets in file
+            for jet in jets:
+                yield jet
 
+    def __len__(self):
+        return self.num_jets
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -50,53 +78,61 @@ def weighted_bce_with_logits(pred_istau, true_istau, weights):
     return weighted_loss_cls.mean()
 
 
-def ffn(input_dim, output_dim, width, act, drop_out=0.2):
+def ffn(input_dim, output_dim, width, act, drop_out=0.0):
     return nn.Sequential(
         nn.LayerNorm(input_dim),
         nn.Linear(input_dim, width),
-        act(),
+        act,
         nn.Dropout(drop_out),
         nn.LayerNorm(width),
         nn.Linear(width, width),
-        act(),
+        act,
         nn.Dropout(drop_out),
         nn.LayerNorm(width),
         nn.Linear(width, width),
-        act(),
+        act,
         nn.Dropout(drop_out),
         nn.LayerNorm(width),
         nn.Linear(width, output_dim),
-        # nn.Sigmoid(),
     )
 
 
-def conv(input_dim, outputdim, width1, width2, dim, act, kernel=1, dropout=0.2):
+def conv(input_dim, outputdim, width1, width2, dim, act, kernel=1, dropout=0.0):
     return nn.Sequential(
         nn.LayerNorm([input_dim, dim, dim]),
         nn.Conv2d(input_dim, width1, kernel),
-        act(),
+        act,
         nn.Dropout(dropout),
         nn.LayerNorm([width1, dim, dim]),
         nn.Conv2d(width1, width2, kernel),
-        act(),
+        act,
         nn.Dropout(dropout),
         nn.LayerNorm([width2, dim, dim]),
         nn.Conv2d(width2, outputdim, kernel),
-        act(),
+        act,
         nn.Dropout(dropout),
     )
 
+def reduce_2d(current_dim, shape_1, dev, act):
+    reduce_2d_layer = nn.Sequential()
+    while current_dim != 1:
+        reduce_2d_layer += nn.Sequential(nn.LayerNorm([shape_1, current_dim, current_dim], device=dev))
+        reduce_2d_layer += nn.Sequential(nn.Conv2d(shape_1, shape_1, 3, device=dev))
+        reduce_2d_layer += nn.Sequential(act)
+        reduce_2d_layer += nn.Sequential(nn.Dropout(0.0))
+        current_dim -= 2
+    return reduce_2d_layer
 
 class DeepTau(nn.Module):
     def __init__(self, grid_cfg, dev):
         super(DeepTau, self).__init__()
         self.device = dev
-        self.act = nn.PReLU
+        self.act = nn.PReLU(device=self.device)
         self.grid_config = grid_cfg["GridAlgo"]
         self.grid_blocks = collections.OrderedDict()
         self.output_from_grid = 64
         self.num_particles_in_grid = grid_cfg["num_particles_in_grid"]
-        self.grid_blocks["inner_grid"] = conv(
+        self.inner_grid = conv(
             self.num_particles_in_grid * Var.max_value(),
             self.output_from_grid,
             104,
@@ -104,7 +140,7 @@ class DeepTau(nn.Module):
             self.grid_config["inner_grid"]["n_cells"],
             self.act,
         )
-        self.grid_blocks["outer_grid"] = conv(
+        self.outer_grid = conv(
             self.num_particles_in_grid * Var.max_value(),
             self.output_from_grid,
             104,
@@ -112,39 +148,28 @@ class DeepTau(nn.Module):
             self.grid_config["outer_grid"]["n_cells"],
             self.act,
         )
-        self.grid_blocks["inner_grid"].to(device=self.device)
-        self.grid_blocks["outer_grid"].to(device=self.device)
+        self.inner_grid.to(device=self.device) 
+        self.outer_grid.to(device=self.device)
         self.pred_istau = ffn(2 * self.output_from_grid + 18, 2, 100, self.act)
         self.pred_p4 = ffn(2 * self.output_from_grid + 18, 4, 100, self.act)
-        # self.pred_istau = ffn(18, 2, 100, self.act)
-        # self.pred_p4 = ffn(18, 4, 100, self.act)
-        self.reduce_2d = collections.OrderedDict()
-        for grid in self.grid_blocks.keys():
-            reduce_2d_layer = nn.Sequential()
-            current_dim = self.grid_config[grid]["n_cells"]
-            shape_1 = self.output_from_grid
-            while current_dim != 1:
-                reduce_2d_layer += nn.Sequential(nn.LayerNorm([shape_1, current_dim, current_dim], device=self.device))
-                reduce_2d_layer += nn.Sequential(nn.Conv2d(shape_1, shape_1, 3, device=self.device))
-                reduce_2d_layer += nn.Sequential(self.act(device=self.device))
-                reduce_2d_layer += nn.Sequential(nn.Dropout(0.2))
-                current_dim -= 2
-            self.reduce_2d[grid] = reduce_2d_layer
-        # self.ffn = ffn(18, 1, 200, self.act)
-        # self.ffn = ffn(2*self.output_from_grid, 1, 100, self.act)
+        #self.pred_istau = ffn(18, 2, 100, self.act)
+        #self.pred_p4 = ffn(18, 4, 100, self.act)
+        self.reduce_2d_inner_grid = reduce_2d(self.grid_config['inner_grid']["n_cells"], self.output_from_grid, self.device, self.act)
+        self.reduce_2d_outer_grid = reduce_2d(self.grid_config['outer_grid']["n_cells"], self.output_from_grid, self.device, self.act)
+            
 
     # x represents our data
     def forward(self, batch):
         # Pass data through conv1
         tau_ftrs_plus_part_ftrs = [batch.tau_features]
         # tau_ftrs_plus_part_ftrs = []
-        for (grid, conv) in self.grid_blocks.items():
-            layer = conv(batch[f"{grid}"])
-            layer = self.reduce_2d[grid](layer)
+        for grid in ['inner_grid', 'outer_grid']:
+            layer = self.inner_grid(batch[f"{grid}"]) if 'inner' in grid else self.outer_grid(batch[f"{grid}"])
+            layer = self.reduce_2d_inner_grid(layer) if 'inner' in grid else self.reduce_2d_outer_grid(layer)
             flatten_features = torch.flatten(layer, start_dim=1)
             tau_ftrs_plus_part_ftrs.append(flatten_features)
         tau_all_block_features = torch.concatenate(tau_ftrs_plus_part_ftrs, axis=-1)
-        pred_istau = self.pred_istau(tau_all_block_features)  # .squeeze(-1)
+        pred_istau = self.pred_istau(tau_all_block_features)
         pred_p4 = batch.tau_features[0 : batch.tau_features.shape[0], 0:4] * self.pred_p4(tau_all_block_features)
         return pred_istau, pred_p4
 
@@ -153,7 +178,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def model_loop(model, ds_loader, optimizer, loss_cls_fn, loss_p4_fn, scheduler, is_train, dev):
+def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
     if is_train:
@@ -223,6 +248,9 @@ def main(cfg):
     ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataloader")
     ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataloader_validation")
 
+    ds_train_iter = MyIterableDataset(ds_train)
+    ds_val_iter = MyIterableDataset(ds_val)
+
     train_data = [ds_train[i] for i in range(5)]  # len(ds_train))]
     train_data = sum(train_data, [])
     val_data = [ds_val[i] for i in range(5)]  # len(ds_val))]
@@ -230,13 +258,8 @@ def main(cfg):
 
     print("Loaded TauJetDatasetWithGrid with {} train steps".format(len(ds_train)))
     print("Loaded TauJetDatasetWithGrid with {} val steps".format(len(ds_val)))
-    ds_train_loader = DataLoader(train_data, batch_size=cfg.DeepTau_training.batch_size, shuffle=True)
-    ds_val_loader = DataLoader(val_data, batch_size=cfg.DeepTau_training.batch_size, shuffle=True)
-    """for x in ds_train_loader:
-    print(len(x))"""
-    assert len(ds_train_loader) > 0
-    assert len(ds_val_loader) > 0
-    print("train={} val={}".format(len(ds_train_loader), len(ds_val_loader)))
+    ds_train_loader = DataLoader(ds_train_iter, batch_size=cfg.DeepTau_training.batch_size, num_workers=4, prefetch_factor=4)
+    ds_val_loader = DataLoader(ds_val_iter, batch_size=cfg.DeepTau_training.batch_size, num_workers=4, prefetch_factor=4)
 
     if "CUDA_VISIBLE_DEVICES" in os.environ:
         dev = torch.device("cuda")
@@ -245,17 +268,15 @@ def main(cfg):
     print("device={}".format(dev))
 
     model = DeepTau(grid_cfg, dev)
+    print(model)
     model.to(device=dev)
-    # for name, conv in model.grid_blocks.items():
-    # name = conv.to(device=dev)
     print("params={}".format(count_parameters(model)))
-    loss_cls_fn = torch.nn.BCELoss()
-    loss_p4_fn = torch.nn.MSELoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
-    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
-    # optimizer, max_lr=0.000001, steps_per_epoch=len(ds_train_loader), epochs=cfg.DeepTau_training.epochs
-    # )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
+    #scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #optimizer, max_lr=0.1, steps_per_epoch=len(ds_train_loader), epochs=cfg.DeepTau_training.epochs
+    #)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
+    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.01, threshold=0.01, verbose=True, patience=5)
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     outpath = hydra_cfg["runtime"]["output_dir"]
     # outpath = hydra_cfg["runtime"]["output_dir"]('home/snandan')
@@ -265,19 +286,19 @@ def main(cfg):
 
     for iepoch in range(cfg.DeepTau_training.epochs):
         loss_cls_train, loss_p4_train, _, acc_cls_train, acc_p4_train = model_loop(
-            model, ds_train_loader, optimizer, loss_cls_fn, loss_p4_fn, scheduler, True, dev
+            model, ds_train_loader, optimizer, scheduler, True, dev
         )
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
 
         loss_cls_val, loss_p4_val, retvals, acc_cls_val, acc_p4_val = model_loop(
-            model, ds_val_loader, optimizer, loss_cls_fn, loss_p4_fn, scheduler, False, dev
+            model, ds_val_loader, optimizer, scheduler, False, dev
         )
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_cls_val + loss_p4_val, iepoch)
-        tensorboard_writer.add_scalar("epoch/lr", scheduler.get_last_lr()[0], iepoch)
+        tensorboard_writer.add_scalar("epoch/lr", optimizer.param_groups[0]['lr'], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
         print(
             "epoch={} loss_cls={:.4f}/{:.4f} loss_p4={:.4f}/{:.4f} acc={:.3f}/{:.3f} acc_p4={:.3f}/{:.3f}".format(
@@ -292,6 +313,7 @@ def main(cfg):
                 acc_p4_val,
             )
         )
+        #scheduler.step(loss_cls_val+loss_p4_val)
         if loss_cls_val + loss_p4_val < best_loss:
             best_loss = loss_cls_val + loss_p4_val
             print("best model is saved in {}/model_best_epoch_{}.pt".format(outpath, iepoch))
