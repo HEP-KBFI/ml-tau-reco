@@ -7,12 +7,12 @@ from hpsAlgoTools import comp_deltaPhi, comp_pt_sum, selectCandsByDeltaR, select
 
 class Tau:
     def __init__(self, chargedCands=[], strips=[], barcode=-1):
-        cands_and_strips = [c.p4 for c in chargedCands] + [s.p4 for s in strips]
-        cands_and_strips = np.array([[v.px, v.py, v.pz, v.E] for v in cands_and_strips])
-        if len(cands_and_strips) == 0:
+        chargedCand_and_strip_p4s = [chargedCand.p4 for chargedCand in chargedCands] + [strip.p4 for strip in strips]
+        chargedCand_and_strip_p4s = np.array([[p4.px, p4.py, p4.pz, p4.E] for p4 in chargedCand_and_strip_p4s])
+        if len(chargedCand_and_strip_p4s) == 0:
             self.p4 = vector.obj(px=0, py=0, pz=0, E=0)
         else:
-            sum_p4 = np.sum(cands_and_strips, axis=0)
+            sum_p4 = np.sum(chargedCand_and_strip_p4s, axis=0)
             self.p4 = vector.obj(px=sum_p4[0], py=sum_p4[1], pz=sum_p4[2], E=sum_p4[3])
 
         self.updatePtEtaPhiMass()
