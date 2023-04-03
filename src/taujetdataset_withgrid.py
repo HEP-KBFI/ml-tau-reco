@@ -4,6 +4,7 @@ import torch
 from torch_geometric.data import Data
 import os.path as osp
 import os
+import random
 from glob import glob
 import json
 import numpy as np
@@ -19,7 +20,7 @@ class TauJetDatasetWithGrid:
         self._processed_dir = processed_dir
         self.tau_p4_features = ["x", "y", "z", "tau"]
         self.filelist = filelist
-        self.all_data = []
+        random.shuffle(self.filelist)
         cfgFile = open(cfgFileName, "r")
         cfg = json.load(cfgFile)
         self._builderConfig = cfg["GridAlgo"]
@@ -42,12 +43,6 @@ class TauJetDatasetWithGrid:
     def processed_dir(self):
         return self._processed_dir
 
-    """
-    for fn in self.filelist:
-    print(f"Processing file: {fn} at ", time.strftime("%H:%M"))
-    data = ak.from_parquet(fn)
-    self.all_data += self.process_file_data(data)
-    """
 
     def process_file_data(self, data):
         if "inner_grid" not in data.fields:
