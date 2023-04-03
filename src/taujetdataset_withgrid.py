@@ -43,7 +43,6 @@ class TauJetDatasetWithGrid:
     def processed_dir(self):
         return self._processed_dir
 
-
     def process_file_data(self, data):
         if "inner_grid" not in data.fields:
             data = self.buildGrid.processJets(data)
