@@ -18,9 +18,10 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         print("<ParticleTransformerTauBuilder::ParticleTransformerTauBuilder>:")
         super(BasicTauBuilder, self).__init__()
 
-        self.filename_model = "/home/veelken/ml-tau-reco/data/ParticleTransformer_model_wReweighting_2023Mar18.pt"
-        self.filename_transform = (
-            "/home/veelken/ml-tau-reco/data/ParticleTransformer_FeatureStandardization_wReweighting_2023Mar18.json"
+        filepath = "/home/veelken/ml-tau-reco/data/"
+        self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wReweighting_2023Mar25_woLifetime.pt")
+        self.filename_transform = os.path.join(
+            filepath, "ParticleTransformer_FeatureStandardization_wReweighting_2023Mar25_woLifetime.json"
         )
 
         if os.path.isfile(cfgFileName):
@@ -37,6 +38,13 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             raise RuntimeError("Failed to read config file %s !!")
 
         self.max_cands = self._builderConfig["max_cands"]
+        self.use_pdgId = self._builderConfig["use_pdgId"]
+        self.use_lifetime = self._builderConfig["use_lifetime"]
+        self.input_dim = 7
+        if self.use_pdgId:
+            self.input_dim += 6
+        if self.use_lifetime:
+            self.input_dim += 4
         metric = self._builderConfig["metric"]
         self.metric_dR_or_angle = None
         self.metric_dEta_or_dTheta = None
@@ -60,7 +68,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             self.transform.load_params(self.filename_transform)
 
         self.model = ParticleTransformer(
-            input_dim=17,
+            input_dim=self.input_dim,
             num_classes=2,
             use_pre_activation_pair=False,
             for_inference=False,  # CV: keep same as for training and apply softmax function on NN output manually
@@ -125,6 +133,8 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
                 self.metric_dR_or_angle,
                 self.metric_dEta_or_dTheta,
                 self.max_cands,
+                self.use_pdgId,
+                self.use_lifetime,
             )
             x_tensors.append(x_tensor)
             v_tensors.append(v_tensor)

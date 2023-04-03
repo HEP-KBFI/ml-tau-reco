@@ -229,7 +229,6 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     else:
         raise RuntimeError("Failed to read config file %s !!")
 
-    n_scalar = LorentzNet_cfg["n_scalar"]
     n_hidden = LorentzNet_cfg["n_hidden"]
     n_class = LorentzNet_cfg["n_class"]
     dropout = LorentzNet_cfg["dropout"]
@@ -237,6 +236,8 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     c_weight = LorentzNet_cfg["c_weight"]
     max_cands = LorentzNet_cfg["max_cands"]
     add_beams = LorentzNet_cfg["add_beams"]
+    use_pdgId = LorentzNet_cfg["use_pdgId"]
+    n_scalar = 8 if use_pdgId else 2
     standardize_inputs = LorentzNet_cfg["standardize_inputs"]
     preselection = {
         "min_jet_theta": LorentzNet_cfg["min_jet_theta"],
@@ -268,6 +269,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
         max_num_files=train_cfg.max_num_files,
         max_cands=max_cands,
         add_beams=add_beams,
+        use_pdgId=use_pdgId,
         preselection=preselection,
     )
     print("Finished building training dataset.")
@@ -280,6 +282,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
         max_num_files=train_cfg.max_num_files,
         max_cands=max_cands,
         add_beams=add_beams,
+        use_pdgId=use_pdgId,
         preselection=preselection,
     )
     print("Finished building validation dataset.")
