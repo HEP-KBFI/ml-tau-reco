@@ -19,13 +19,17 @@ import collections
 from taujetdataset_withgrid import TauJetDatasetWithGrid
 
 from part_var import Var
-#https://pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset
+
+# https://pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset
+
+
 class MyIterableDataset(torch.utils.data.IterableDataset):
     def __init__(self, ds):
         super(MyIterableDataset).__init__()
         self.ds = ds
         # this will be overridden later
         self.num_jets = 0
+
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is None:
@@ -46,6 +50,7 @@ class MyIterableDataset(torch.utils.data.IterableDataset):
 
     def __len__(self):
         return self.num_jets
+
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -113,6 +118,7 @@ def conv(input_dim, outputdim, width1, width2, dim, act, kernel=1, dropout=0.0):
         nn.Dropout(dropout),
     )
 
+
 def reduce_2d(current_dim, shape_1, dev, act):
     reduce_2d_layer = nn.Sequential()
     while current_dim != 1:
@@ -122,6 +128,7 @@ def reduce_2d(current_dim, shape_1, dev, act):
         reduce_2d_layer += nn.Sequential(nn.Dropout(0.0))
         current_dim -= 2
     return reduce_2d_layer
+
 
 class DeepTau(nn.Module):
     def __init__(self, grid_cfg, dev):
@@ -148,24 +155,27 @@ class DeepTau(nn.Module):
             self.grid_config["outer_grid"]["n_cells"],
             self.act,
         )
-        self.inner_grid.to(device=self.device) 
+        self.inner_grid.to(device=self.device)
         self.outer_grid.to(device=self.device)
         self.pred_istau = ffn(2 * self.output_from_grid + 18, 2, 100, self.act)
         self.pred_p4 = ffn(2 * self.output_from_grid + 18, 4, 100, self.act)
-        #self.pred_istau = ffn(18, 2, 100, self.act)
-        #self.pred_p4 = ffn(18, 4, 100, self.act)
-        self.reduce_2d_inner_grid = reduce_2d(self.grid_config['inner_grid']["n_cells"], self.output_from_grid, self.device, self.act)
-        self.reduce_2d_outer_grid = reduce_2d(self.grid_config['outer_grid']["n_cells"], self.output_from_grid, self.device, self.act)
-            
+        # self.pred_istau = ffn(18, 2, 100, self.act)
+        # self.pred_p4 = ffn(18, 4, 100, self.act)
+        self.reduce_2d_inner_grid = reduce_2d(
+            self.grid_config["inner_grid"]["n_cells"], self.output_from_grid, self.device, self.act
+        )
+        self.reduce_2d_outer_grid = reduce_2d(
+            self.grid_config["outer_grid"]["n_cells"], self.output_from_grid, self.device, self.act
+        )
 
     # x represents our data
     def forward(self, batch):
         # Pass data through conv1
         tau_ftrs_plus_part_ftrs = [batch.tau_features]
         # tau_ftrs_plus_part_ftrs = []
-        for grid in ['inner_grid', 'outer_grid']:
-            layer = self.inner_grid(batch[f"{grid}"]) if 'inner' in grid else self.outer_grid(batch[f"{grid}"])
-            layer = self.reduce_2d_inner_grid(layer) if 'inner' in grid else self.reduce_2d_outer_grid(layer)
+        for grid in ["inner_grid", "outer_grid"]:
+            layer = self.inner_grid(batch[f"{grid}"]) if "inner" in grid else self.outer_grid(batch[f"{grid}"])
+            layer = self.reduce_2d_inner_grid(layer) if "inner" in grid else self.reduce_2d_outer_grid(layer)
             flatten_features = torch.flatten(layer, start_dim=1)
             tau_ftrs_plus_part_ftrs.append(flatten_features)
         tau_all_block_features = torch.concatenate(tau_ftrs_plus_part_ftrs, axis=-1)
@@ -272,11 +282,12 @@ def main(cfg):
     model.to(device=dev)
     print("params={}".format(count_parameters(model)))
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
-    #scheduler = torch.optim.lr_scheduler.OneCycleLR(
-    #optimizer, max_lr=0.1, steps_per_epoch=len(ds_train_loader), epochs=cfg.DeepTau_training.epochs
-    #)
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    # optimizer, max_lr=0.1, steps_per_epoch=len(ds_train_loader), epochs=cfg.DeepTau_training.epochs
+    # )
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1.0)
-    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.01, threshold=0.01, verbose=True, patience=5)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.01
+    # , threshold=0.01, verbose=True, patience=5)
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     outpath = hydra_cfg["runtime"]["output_dir"]
     # outpath = hydra_cfg["runtime"]["output_dir"]('home/snandan')
@@ -298,7 +309,7 @@ def main(cfg):
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_cls_val + loss_p4_val, iepoch)
-        tensorboard_writer.add_scalar("epoch/lr", optimizer.param_groups[0]['lr'], iepoch)
+        tensorboard_writer.add_scalar("epoch/lr", optimizer.param_groups[0]["lr"], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
         print(
             "epoch={} loss_cls={:.4f}/{:.4f} loss_p4={:.4f}/{:.4f} acc={:.3f}/{:.3f} acc_p4={:.3f}/{:.3f}".format(
@@ -313,7 +324,7 @@ def main(cfg):
                 acc_p4_val,
             )
         )
-        #scheduler.step(loss_cls_val+loss_p4_val)
+        # scheduler.step(loss_cls_val+loss_p4_val)
         if loss_cls_val + loss_p4_val < best_loss:
             best_loss = loss_cls_val + loss_p4_val
             print("best model is saved in {}/model_best_epoch_{}.pt".format(outpath, iepoch))
