@@ -46,7 +46,7 @@ class HPSAlgo:
         self.signalCand_minChargedHadronPt = getParameter(cfgSignalCands, "minChargedHadronPt", 0.5)
         self.signalCand_minElectronPt = getParameter(cfgSignalCands, "minElectronPt", 0.5)
         # CV: don't use muons when building the signal constituents of the tau
-        self.signalCand_minMuonPt = getParameter(cfgSignalCands, "minChargedHadronPt", 1.0e6)
+        self.signalCand_minMuonPt = getParameter(cfgSignalCands, "minMuonPt", 1.0e12)
         if verbosity >= 1:
             print("signalCands:")
             print(" minChargedHadronPt = %1.2f" % self.signalCand_minChargedHadronPt)
@@ -131,7 +131,7 @@ class HPSAlgo:
                 or (cand.abs_pdgId == 13 and cand.pt > self.isolationCand_minMuonPt)
                 or (cand.abs_pdgId == 22 and cand.pt > self.isolationCand_minGammaPt)
                 or (cand.abs_pdgId == 211 and cand.pt > self.isolationCand_minChargedHadronPt)
-                or (cand.abs_pdgId in [130, 2112] and cand.pt > self.isolationCand_minNeutralHadronPt)
+                or (cand.abs_pdgId == 130 and cand.pt > self.isolationCand_minNeutralHadronPt)
             ):
                 isolationCands.append(cand)
         return isolationCands
@@ -173,7 +173,7 @@ class HPSAlgo:
 
         signal_strips = self.stripAlgo.buildStrips(jet.constituents)
         # CV: reverse=True argument needed in order to sort strips in order of decreasing (and NOT increasing) pT
-        signal_strips.sort(key=lambda cand: cand.pt, reverse=True)
+        signal_strips.sort(key=lambda strip: strip.pt, reverse=True)
         if self.verbosity >= 2:
             print("#signal_strips = %i" % len(signal_strips))
             if self.verbosity >= 3:
@@ -293,7 +293,7 @@ class HPSAlgo:
                         tau_candidate.iso_cands = tau_iso_cands
                         tau_candidate.iso_chargedCands = selectCandsByPdgId(tau_iso_cands, [11, 13, 211])
                         tau_candidate.iso_gammaCands = selectCandsByPdgId(tau_iso_cands, [22])
-                        tau_candidate.iso_neutralHadronCands = selectCandsByPdgId(tau_iso_cands, [130, 2112])
+                        tau_candidate.iso_neutralHadronCands = selectCandsByPdgId(tau_iso_cands, [130])
                         tau_candidate.chargedIso_dR0p5 = comp_pt_sum(tau_candidate.iso_chargedCands)
                         tau_candidate.gammaIso_dR0p5 = comp_pt_sum(tau_candidate.iso_gammaCands)
                         tau_candidate.neutralHadronIso_dR0p5 = comp_pt_sum(tau_candidate.iso_neutralHadronCands)

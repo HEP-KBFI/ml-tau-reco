@@ -3,7 +3,7 @@
         "signalCands": {
             "minChargedHadronPt": -1.0,
             "minElectronPt": -1.0,
-            "minMuonPt": 1.0e6
+            "minMuonPt": 1.0e12
         },
         "isolationCands": {
             "minChargedHadronPt": -1.0,
