@@ -154,8 +154,8 @@ if __name__ == "__main__":
 
     infile = sys.argv[1]
     ds = osp.basename(infile).split(".")[0]
-    sig_ntuples_dir = "/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/ZH_Htautau"
-    bkg_ntuples_dir = "/scratch-persistent/snandan/CLIC_tau_ntuples/Grid/QCD"
+    sig_ntuples_dir = "/scratch/persistent/snandan/CLIC_tau_ntuples/Grid/ZH_Htautau"
+    bkg_ntuples_dir = "/scratch/persistent/snandan/CLIC_tau_ntuples/Grid/QCD"
 
     filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
     outp = "data/dataset_{}".format(ds)
