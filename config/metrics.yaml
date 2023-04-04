@@ -4,24 +4,24 @@ plotting:
   n_files: -1
 algorithms:
   LorentzNet:
-    sig_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar15/LorentzNet/ZH_Htautau
-    bkg_ntuples_dir:  /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar15/LorentzNet/QCD
+    sig_ntuples_dir:  /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar15/LorentzNet/ZH_Htautau
+    bkg_ntuples_dir:  /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar15/LorentzNet/QCD
     compare: True
   HPS_DeepTau:
-    sig_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/snandan/DeepTau/DeepTau/QCD/
+    sig_ntuples_dir: /scratch/persistent/snandan/DeepTau/DeepTau/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/snandan/DeepTau/DeepTau/QCD/
     compare: False
   ParticleTransformer:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar13/ParticleTransformer/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar13/ParticleTransformer/QCD
+    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar13/ParticleTransformer/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar13/ParticleTransformer/QCD
     compare: True
   MLReco_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
     compare: False
   HPS:
-    sig_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/ZH_Htautau
-    bkg_ntuples_dir: /scratch-persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/QCD
+    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar09_woPtCuts/HPS/QCD
     compare: True
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
@@ -32,8 +32,8 @@ algorithms:
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230306/FastCMSTau/QCD
     compare: True
   SimpleDNN:
-    sig_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_03_16/SimpleDNN/ZH_Htautau/
-    bkg_ntuples_dir: /scratch-persistent/joosep/ml-tau-reco/CLIC_data/2023_03_16/SimpleDNN/QCD/
+    sig_ntuples_dir: /scratch/persistent/joosep/ml-tau-reco/CLIC_data/2023_03_16/SimpleDNN/ZH_Htautau/
+    bkg_ntuples_dir: /scratch/persistent/joosep/ml-tau-reco/CLIC_data/2023_03_16/SimpleDNN/QCD/
     compare: True
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
