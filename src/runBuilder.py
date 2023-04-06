@@ -54,14 +54,18 @@ def build_taus(cfg: DictConfig) -> None:
         builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "DeepTau":
         model = torch.load(
-            "/home/snandan/mltaureco/ml-tau-reco/outputs/2023-03-29/09-13-34/model_best_epoch_13.pt" #wconv
-            #"/home/snandan/mltaureco/ml-tau-reco/outputs/2023-03-29/09-05-01/model_best_epoch_100.pt" #w/o conv
-            , map_location=torch.device("cpu")
+            "/home/snandan/mltaureco/ml-tau-reco/outputs/2023-03-29/09-13-34/model_best_epoch_13.pt"  # wconv
+            # "/home/snandan/mltaureco/ml-tau-reco/outputs/2023-03-29/09-05-01/model_best_epoch_100.pt" #w/o conv
+            #"/home/snandan/mltaureco/ml-tau-reco/outputs/2023-04-04/21-32-14/model_best_epoch_12.pt" #with outer grid included in the whole"
+            #"/home/snandan/mltaureco/ml-tau-reco/outputs/2023-04-05/22-03-59/model_best_epoch_7.pt" #w/ correct grid
+            ,
+            map_location=torch.device("cpu"),
         )
         assert model.__class__ == DeepTau
         builder = DeepTauBuilder(model)
     builder.printConfig()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
+    sampletype = list(cfg.datasets['test']['paths'])
     for sample in cfg.samples_to_process:
         print("Processing sample %s" % sample)
         output_dir = os.path.join(algo_output_dir, sample)
@@ -78,6 +82,8 @@ def build_taus(cfg: DictConfig) -> None:
             assert n_files == 1
         else:
             input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[cfg.start : n_files]
+        if cfg.test_only:
+            input_paths = [input_path for input_path in input_paths if os.path.basename(input_path) in [os.path.basename(sample) for sample in sampletype]]
         print("Found %i input files." % len(input_paths))
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=8)
