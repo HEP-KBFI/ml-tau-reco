@@ -33,10 +33,10 @@ class DeepTauBuilder(BasicTauBuilder):
         tauP4 = vector.awk(
             ak.zip(
                 {
-                    "px": data["reco_jet_p4s"].x,
-                    "py": data["reco_jet_p4s"].y,
-                    "pz": data["reco_jet_p4s"].z,
-                    "mass": data["reco_jet_p4s"].tau,
+                    "px": pred_p4[:,0],
+                    "py": pred_p4[:,1],
+                    "pz": pred_p4[:,2],
+                    "mass": pred_p4[:,3],
                 }
             )
         )
