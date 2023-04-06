@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     # prepare the input data from one file
     files_test = get_split_files(test_files, "test")[:1]
-    files_test = [f.replace("/scratch-persistent/laurits", "data") for f in files_test]
+    files_test = [f.replace("/scratch/persistent/laurits", "data") for f in files_test]
     ds = TauJetDataset(files_test)
     data_obj = Batch.from_data_list(ds.all_data, follow_batch=["jet_pf_features"])
 
