@@ -246,7 +246,8 @@ class GridBuilder(BasicTauBuilder):
 
 if __name__ == "__main__":
     grid = GridBuilder()
-    inputfile = "/scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18_woPtCuts/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200001.parquet"
+    inputfile = "/scratch/persistent/veelken/CLIC_tau_ntuples/\
+    2023Mar18_woPtCuts/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200001.parquet"
     data = ak.from_parquet(inputfile)
     print("Time: ", time.strftime("%H:%M"))
     data = grid.processJets(data)
