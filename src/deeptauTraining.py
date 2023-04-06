@@ -255,19 +255,12 @@ def main(cfg):
     cfgFile = open(gridFileName, "r")
     grid_cfg = json.load(cfgFile)
 
-    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataloader")
-    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataloader_validation")
+    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectgrid/dataloader/")
+    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectgrid/dataloader_validation/")
 
     ds_train_iter = MyIterableDataset(ds_train)
     ds_val_iter = MyIterableDataset(ds_val)
 
-    train_data = [ds_train[i] for i in range(5)]  # len(ds_train))]
-    train_data = sum(train_data, [])
-    val_data = [ds_val[i] for i in range(5)]  # len(ds_val))]
-    val_data = sum(val_data, [])
-
-    print("Loaded TauJetDatasetWithGrid with {} train steps".format(len(ds_train)))
-    print("Loaded TauJetDatasetWithGrid with {} val steps".format(len(ds_val)))
     ds_train_loader = DataLoader(ds_train_iter, batch_size=cfg.DeepTau_training.batch_size, num_workers=4, prefetch_factor=4)
     ds_val_loader = DataLoader(ds_val_iter, batch_size=cfg.DeepTau_training.batch_size, num_workers=4, prefetch_factor=4)
 
