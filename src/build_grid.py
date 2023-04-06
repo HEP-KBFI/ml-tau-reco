@@ -229,13 +229,13 @@ class GridBuilder(BasicTauBuilder):
             self.bin_idx_phi = ak.unflatten(
                 np.searchsorted(self.bins_phi, ak.flatten(self.maskdphi)), ak.count(self.maskdphi, axis=-1), axis=-1
             )
+            grid_all_jets = []
             for idx, eta in enumerate(self.bin_idx_eta):  # this loops over all jet?
                 self.jetidx = idx
                 list_part_info_perjet = self.process_onejet(self.maskdeta[idx], self.maskdphi[idx], cone)
-                if idx == 0:
-                    list_part_info_alljet = list_part_info_perjet
-                else:
-                    list_part_info_alljet = np.concatenate((list_part_info_perjet, list_part_info_alljet))
+                grid_all_jets.append(list_part_info_perjet)
+
+            list_part_info_alljet = np.stack(grid_all_jets, axis=0)
             list_ak = ak.from_numpy(list_part_info_alljet)
             write_info.update({f"{cone}": list_ak})
             if self.do_plot:
@@ -246,7 +246,8 @@ class GridBuilder(BasicTauBuilder):
 
 if __name__ == "__main__":
     grid = GridBuilder()
-    inputfile = "/scratch/persistent/laurits/CLIC_data_20230316/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201503.parquet"
+    inputfile = "/scratch/persistent/veelken/CLIC_tau_ntuples/\
+    2023Mar18_woPtCuts/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200001.parquet"
     data = ak.from_parquet(inputfile)
     print("Time: ", time.strftime("%H:%M"))
     data = grid.processJets(data)
