@@ -4,6 +4,8 @@ n_files: -1
 start: 0
 verbosity: 0
 use_multiprocessing: True
+test_only: False
 defaults:
+  - datasets: datasets
   - ntupelizer
   - _self_

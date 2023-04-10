@@ -13,13 +13,14 @@ from build_grid import GridBuilder
 
 from part_var import Var
 from auxiliary import get_split_files, chunks, process_func
-
+#np.set_printoptions(threshold=sys.maxsize)
 
 class TauJetDatasetWithGrid:
-    def __init__(self, processed_dir="", filelist=[], cfgFileName="./config/grid_builder.json"):
+    def __init__(self, processed_dir="", filelist=[], outputdir="", cfgFileName="./config/grid_builder.json"):
         self._processed_dir = processed_dir
         self.tau_p4_features = ["x", "y", "z", "tau"]
         self.filelist = filelist
+        self.od = outputdir
         random.shuffle(self.filelist)
         cfgFile = open(cfgFileName, "r")
         cfg = json.load(cfgFile)
@@ -87,12 +88,7 @@ class TauJetDatasetWithGrid:
         for cone in ["inner_grid", "outer_grid"]:
             block_name = f"{cone}"
             part_block_features = torch.tensor(data[block_name].to_numpy(), dtype=torch.float32)
-            part_block = part_block_features.reshape(
-                self.data_len,
-                self.len_part_features * self.num_particles_in_grid,
-                self._builderConfig[cone]["n_cells"],
-                self._builderConfig[cone]["n_cells"],
-            )
+            part_block = part_block_features
             part_block_frs[cone] = part_block
         return part_block_frs
 
@@ -116,8 +112,10 @@ class TauJetDatasetWithGrid:
         assert len(datas) > 0
         datas = sum(datas[1:], datas[0])
         p = osp.join(self.processed_dir, "data_{}.pt".format(idx_file))
-        print("saved {} samples to {}".format(len(datas), p))
         torch.save(datas, p)
+        print("saved {} samples to {}".format(len(datas), p))
+        os.makedirs(self.od, exist_ok=True)
+        os.system(f'mv {p} {self.od}')
 
     def process(self, num_files_to_batch):
         idx_file = 0
@@ -154,21 +152,18 @@ if __name__ == "__main__":
 
     infile = sys.argv[1]
     ds = osp.basename(infile).split(".")[0]
-    sig_ntuples_dir = "/scratch/persistent/snandan/CLIC_tau_ntuples/Grid/ZH_Htautau"
-    bkg_ntuples_dir = "/scratch/persistent/snandan/CLIC_tau_ntuples/Grid/QCD"
+    sig_ntuples_dir = "/local/snandan/grid_withcorrectgrid/Grid/ZH_Htautau"
+    bkg_ntuples_dir = "/local/snandan/grid_withcorrectgrid/Grid/QCD"
 
     filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
     outp = "data/dataset_{}".format(ds)
     os.makedirs(outp, exist_ok=True)
-    ds = TauJetDatasetWithGrid(outp, filelist)
+    outputdir = os.path.join(sys.argv[2], "dataset_{}".format(ds))
+    ds = TauJetDatasetWithGrid(outp, filelist, outputdir)
 
     # merge 50 files, run 16 processes
     ds.process_parallel(50, 8)
-    # filelist = list(glob(osp.join(sys.argv[1], "*.parquet")))
-    # ds = TauJetDatasetWithGrid(filelist)
-    # print("Loaded TauJetDataset with {} files".format(len(ds)))
 
-    # treat each input file like a batch
     for ibatch in range(len(ds)):
         data = ds[ibatch]
         print("shape of inner grid ", data[0]["inner_grid"].shape)
