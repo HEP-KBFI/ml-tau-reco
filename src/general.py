@@ -148,7 +148,7 @@ def get_reduced_decaymodes(decaymodes: np.array):
 
 
 def reinitialize_p4(p4_obj):
-    if 't' in p4_obj.fields:
+    if "t" in p4_obj.fields:
         p4 = vector.awk(
             ak.zip(
                 {
@@ -174,6 +174,6 @@ def reinitialize_p4(p4_obj):
 
 
 def load_json(path):
-    with open(path, 'rt') as in_file:
+    with open(path, "rt") as in_file:
         data = json.load(in_file)
     return data

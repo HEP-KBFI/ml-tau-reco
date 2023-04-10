@@ -1,0 +1,25 @@
+input_dir: '/home/laurits/230329_full_metric_info'
+plotting_algorithms:
+  HPS: ''
+  HPS_DeepTau: ''
+  LorentzNet: ''
+  ParticleTransformer: ''
+  # MLReco_DeepTau: ''
+  FastCMSTau: ''
+  # TwoStep_GNN
+  # HPS_with_quality_cuts: '/home/laurits/230326_HPS_cutHPS'
+  # SimpleDNN: ''
+plotting_metrics:
+  ROC: True
+  fakerate: True
+  efficiency: True
+  tauClassifier: True
+  energy_resolution: False
+  decaymode: True
+  HPS_comparison: True
+HPS_comparison:
+  HPS_with_quality_cuts: '/home/laurits/230329_full_metric_info'
+  HPS: '/home/laurits/230329_full_metric_info'
+defaults:
+  - metrics
+  - _self_

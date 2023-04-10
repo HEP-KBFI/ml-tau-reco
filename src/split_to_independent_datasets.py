@@ -17,12 +17,12 @@ def split_to_datasets(cfg: DictConfig) -> None:
             all_sample_paths.extend(glob.glob(os.path.join(cfg.samples[sample].output_dir, "*.parquet")))
         for dataset in datasets_l:
             output_path = os.path.join(list_dir, f"{dataset}.yaml")
-            with open(output_path, 'rt') as in_file:
-                paths = list(yaml.safe_load(in_file)[dataset]['paths'])
+            with open(output_path, "rt") as in_file:
+                paths = list(yaml.safe_load(in_file)[dataset]["paths"])
                 datasets[dataset] = paths
                 all_previous_samples.extend(paths)
         new_samples = list(set(all_sample_paths) - set(all_previous_samples))
-        datasets['test'].extend(new_samples)
+        datasets["test"].extend(new_samples)
         test_output_path = os.path.join(list_dir, "test.yaml")
         output_info = {"test": {"paths": datasets["test"]}}
         print(f"Outputting to: {output_path}")

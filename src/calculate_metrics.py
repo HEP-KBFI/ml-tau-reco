@@ -24,6 +24,7 @@ matplotlib.use("Agg")
 
 hep.style.use(hep.styles.CMS)
 
+
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -36,7 +37,7 @@ class NpEncoder(json.JSONEncoder):
 
 
 def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
-    if key == 'fakerates':
+    if key == "fakerates":
         metrics = cfg.metrics.fakerate.variables
     else:
         metrics = cfg.metrics.efficiency.variables
@@ -129,7 +130,7 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, classifier_cut
     )
 
 
-def plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-5, 1), xlim=(0, 1), title=''):
+def plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-5, 1), xlim=(0, 1), title=""):
     hep.style.use(hep.styles.CMS)
     output_path = os.path.join(output_dir, "ROC.pdf")
     algorithms = efficiencies.keys()
@@ -218,9 +219,9 @@ def calculate_efficiencies_fakerates(raw_numerator_data, denominator_data, class
 def calculate_region_eff_fake(raw_numerator_data, denominator_data, classifier_cuts, region):
     eff_fakes = []
     raw_numerator_data_p4 = g.reinitialize_p4(raw_numerator_data.tau_p4s)
-    if region == 'barrel':
+    if region == "barrel":
         region_mask = 90 - np.abs(np.rad2deg(raw_numerator_data_p4.theta) - 90) > 45
-    elif region == 'endcap':
+    elif region == "endcap":
         region_mask = 90 - np.abs(np.rad2deg(raw_numerator_data_p4.theta) - 90) < 45
     else:
         raise ValueError("Incorrect region")
@@ -314,10 +315,18 @@ def plot_all_metrics(cfg):
         efficiencies[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e, classifier_cuts)
         fakerates[algorithm] = calculate_efficiencies_fakerates(raw_numerator_data_f, denominator_data_f, classifier_cuts)
 
-        endcap_efficiencies[algorithm] = calculate_region_eff_fake(raw_numerator_data_e, denominator_data_e, classifier_cuts, region='endcap')
-        barrel_efficiencies[algorithm] = calculate_region_eff_fake(raw_numerator_data_e, denominator_data_e, classifier_cuts, region='barrel')
-        endcap_fakerates[algorithm] = calculate_region_eff_fake(raw_numerator_data_f, denominator_data_f, classifier_cuts, region='endcap')
-        barrel_fakerates[algorithm] = calculate_region_eff_fake(raw_numerator_data_f, denominator_data_f, classifier_cuts, region='barrel')
+        endcap_efficiencies[algorithm] = calculate_region_eff_fake(
+            raw_numerator_data_e, denominator_data_e, classifier_cuts, region="endcap"
+        )
+        barrel_efficiencies[algorithm] = calculate_region_eff_fake(
+            raw_numerator_data_e, denominator_data_e, classifier_cuts, region="barrel"
+        )
+        endcap_fakerates[algorithm] = calculate_region_eff_fake(
+            raw_numerator_data_f, denominator_data_f, classifier_cuts, region="endcap"
+        )
+        barrel_fakerates[algorithm] = calculate_region_eff_fake(
+            raw_numerator_data_f, denominator_data_f, classifier_cuts, region="barrel"
+        )
 
         eff_data[algorithm] = {"numerator": raw_numerator_data_e, "denominator": denominator_data_e}
         fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
@@ -329,7 +338,7 @@ def plot_all_metrics(cfg):
             tauClassifiers[algorithm],
             os.path.join(algorithm_output_dir, "tauClassifier.pdf"),
             medium_wp[algorithm],
-            plot_train=algorithm!='HPS' and algorithm!='HPS_with_quality_cuts'
+            plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
         )
         save_to_json(
             {"tauClassifiers": tauClassifiers[algorithm], "MediumWP": medium_wp[algorithm]},
@@ -340,9 +349,9 @@ def plot_all_metrics(cfg):
     print("Staring plotting for all algorithms")
     save_to_json({"efficiencies": efficiencies, "fakerates": fakerates}, os.path.join(output_dir, "roc.json"))
     plot_roc(efficiencies, fakerates, output_dir)
-    barrel_output_dir = os.path.join(output_dir, 'barrel')
+    barrel_output_dir = os.path.join(output_dir, "barrel")
     os.makedirs(barrel_output_dir, exist_ok=True)
-    endcap_output_dir = os.path.join(output_dir, 'endcap')
+    endcap_output_dir = os.path.join(output_dir, "endcap")
     os.makedirs(endcap_output_dir, exist_ok=True)
     create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir)
     plot_roc(endcap_efficiencies, endcap_fakerates, endcap_output_dir)
@@ -361,23 +370,25 @@ def create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir):
         fake_uncertainties = []
         fakerates = []
         eff_denom = len(eff_data[algorithm]["denominator"].tauClassifier)
-        eff_denom_err = 1 / np.sqrt(eff_denom)
+        # eff_denom_err = 1 / np.sqrt(eff_denom)
         fake_denom = len(fake_data[algorithm]["denominator"].tauClassifier)
-        fake_denom_err = 1 / np.sqrt(fake_denom)
+        # fake_denom_err = 1 / np.sqrt(fake_denom)
         for classifier_cut in classifier_cuts:
             eff_num = sum(eff_data[algorithm]["numerator"].tauClassifier > classifier_cut)
             fake_num = sum(fake_data[algorithm]["numerator"].tauClassifier > classifier_cut)
-            eff_num_err = 1 / np.sqrt(eff_num)
-            fake_num_err = 1 / np.sqrt(fake_num)
-            fakerate = fake_num/fake_denom
-            efficiency = eff_num/eff_denom
+            # eff_num_err = 1 / np.sqrt(eff_num)
+            # fake_num_err = 1 / np.sqrt(fake_num)
+            fakerate = fake_num / fake_denom
+            efficiency = eff_num / eff_denom
             fake_binomial_err = np.sqrt(np.abs(fakerate * (1 - fakerate) / fake_denom))
             eff_binomial_err = np.sqrt(np.abs(efficiency * (1 - efficiency) / eff_denom))
             efficiencies.append(efficiency)
             eff_uncertainties.append(eff_binomial_err)
             fakerates.append(fakerate)
             fake_uncertainties.append(fake_binomial_err)
-        create_table_entries(efficiencies, eff_uncertainties, fakerates, fake_uncertainties, classifier_cuts, algorithm_output_dir)
+        create_table_entries(
+            efficiencies, eff_uncertainties, fakerates, fake_uncertainties, classifier_cuts, algorithm_output_dir
+        )
 
 
 def create_table_entries(efficiencies, eff_err, fakerates, fake_err, classifier_cuts, output_dir):
@@ -388,7 +399,6 @@ def create_table_entries(efficiencies, eff_err, fakerates, fake_err, classifier_
     inverse_fake = 1 / fakerates
     relative_fake_err = fake_err / fakerates
     rel_fake_errs = inverse_fake * relative_fake_err
-    eff_fake_info = {}
     working_points = {"Loose": 0.4, "Medium": 0.6, "Tight": 0.8}
     wp_values = {}
     for wp_name, wp_value in working_points.items():
@@ -403,7 +413,7 @@ def create_table_entries(efficiencies, eff_err, fakerates, fake_err, classifier_
                 "eff_err": eff_err[idx],
                 "fake_err": fake_err[idx],
                 "1/fake": inverse_fake[idx],
-                "1/fake_err": rel_fake_errs[idx]
+                "1/fake_err": rel_fake_errs[idx],
             }
         else:
             wp_values[wp_name] = {
@@ -413,10 +423,10 @@ def create_table_entries(efficiencies, eff_err, fakerates, fake_err, classifier_
                 "eff_err": -1,
                 "fake_err": -1,
                 "1/fake": -1,
-                "1/fake_err": -1
+                "1/fake_err": -1,
             }
     output_path = os.path.join(output_dir, "paper_table_entries.json")
-    with open(output_path, 'wt') as out_file:
+    with open(output_path, "wt") as out_file:
         json.dump(wp_values, out_file, indent=4)
     return wp_values
 
@@ -443,7 +453,7 @@ def plot_tauClassifiers(tauClassifiers, dtype, output_path):
     plt.close("all")
 
 
-def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=True, algo_name=''):
+def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=True, algo_name=""):
     hep.style.use(hep.styles.CMS)
     bin_edges = np.linspace(0, 1, 21)
     # _ = plt.figure(figsize=(16, 12))
@@ -463,8 +473,8 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=
     # plt.axvline(medium_wp, color="k")
     plt.xlabel(r"$\mathcal{D}_{\tau}$", fontdict={"size": 28})
     plt.yscale("log")
-    plt.title(algo_name, loc='left')
-    plt.legend(prop={'size': 28})
+    plt.title(algo_name, loc="left")
+    plt.legend(prop={"size": 28})
     plt.savefig(output_path, bbox_inches="tight", format="pdf")
     plt.close("all")
 

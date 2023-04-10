@@ -96,7 +96,7 @@ class Histogram:
         if (other.bin_edges).all() != (self.bin_edges).all():
             raise ArithmeticError("The bins of two histograms do not match, cannot divide them.")
         result = np.nan_to_num(self.binned_data / other.binned_data, copy=True, nan=0.0, posinf=None, neginf=None)
-        rel_uncertainties = np.sqrt(np.abs( result * (1 - result) / other.binned_data ))  # use binomial errors
+        rel_uncertainties = np.sqrt(np.abs(result * (1 - result) / other.binned_data))  # use binomial errors
         # rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)  # Poisson
         return Histogram(result, self.bin_edges, "Efficiency", binned=True, uncertainties=rel_uncertainties)
 

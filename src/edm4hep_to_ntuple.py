@@ -120,9 +120,9 @@ def get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition):
                 mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
             )
             first_daughter = daughter_indices[0]
-            tau_decay_vertex_x = mc_particles['vertex.x'][e_idx][first_daughter]
-            tau_decay_vertex_y = mc_particles['vertex.y'][e_idx][first_daughter]
-            tau_decay_vertex_z = mc_particles['vertex.z'][e_idx][first_daughter]
+            tau_decay_vertex_x = mc_particles["vertex.x"][e_idx][first_daughter]
+            tau_decay_vertex_y = mc_particles["vertex.y"][e_idx][first_daughter]
+            tau_decay_vertex_z = mc_particles["vertex.z"][e_idx][first_daughter]
             event_decay_vertices_x.append(tau_decay_vertex_x)
             event_decay_vertices_y.append(tau_decay_vertex_y)
             event_decay_vertices_z.append(tau_decay_vertex_z)
@@ -403,16 +403,6 @@ def get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
         n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
         tau_p4s = []
         for d_idx in range(n_daughters):
-            tau_p4 = vector.awk(
-                ak.zip(
-                    {
-                        "mass": [0.0],
-                        "x": [0.0],
-                        "y": [0.0],
-                        "z": [0.0],
-                    }
-                )
-            )[0]
             tau_p4s.append(mc_p4[tau_mask][mask_addition][e_idx][d_idx])
         if len(tau_p4s) > 0:
             all_events_tau_p4s.append(tau_p4s)
