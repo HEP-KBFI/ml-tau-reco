@@ -207,3 +207,71 @@ def plot_histogram(
     ax.text(1.07, 0.6, textstr, transform=ax.transAxes, fontsize=16, verticalalignment="top", bbox=props)
     plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
+
+
+def plot_decaymode_correlation_matrix(
+    true_cats: np.array,
+    pred_cats: np.array,
+    categories: list,
+    output_path: str,
+    cmap: str = "gray",
+    bin_text_color: str = "k",
+    y_label: str = "Prediction",
+    x_label: str = "Truth",
+    title: str = "",
+    figsize: tuple = (13, 13),
+) -> None:
+    """Plots the confusion matrix for the classification task. Confusion
+    matrix functions has the categories in the other way in order to have the
+    truth on the x axis.
+    Args:
+        true_cats : np.array,
+            The true categories
+        pred_cats : np.array
+            The predicted categories
+        categories : list
+            Category labels in the correct order
+        output_path : str
+            The path where the plot will be outputted
+        cmap : str
+            [default: "gray"] The colormap to be used
+        bin_text_color : str
+            [default: "r"] The color of the text on bins
+        y_label : str
+            [default: "Predicted"] The label for the y-axis
+        x_label : str
+            [default: "Truth"] The label for the x-axis
+        title : str
+            [default: "Confusion matrix"] The title for the plot
+        figsize : tuple
+            The size of the figure drawn
+    Returns:
+        None
+    """
+    histogram = confusion_matrix(true_cats, pred_cats, normalize="true")
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.set_aspect("equal", adjustable="box")
+    hep.style.use(hep.style.ROOT)
+    xbins = ybins = np.arange(len(categories) + 1)
+    tick_values = np.arange(len(categories)) + 0.5
+    hep.hist2dplot(histogram, xbins, ybins, cmap=cmap, alpha=0, cbar=False)
+    plt.xticks(tick_values, categories, fontsize=22, rotation=0)
+    plt.yticks(tick_values, categories, fontsize=22, rotation=90)
+    plt.xlabel(f"{x_label}", fontdict={"size": 28})
+    plt.ylabel(f"{y_label}", fontdict={"size": 28})
+    ax.tick_params(axis="both", which="major", length=10)
+    ax.tick_params(axis="both", which="minor", length=0)
+    for i in range(len(ybins) - 1):
+        for j in range(len(xbins) - 1):
+            bin_value = histogram.T[i, j]
+            ax.text(
+                xbins[j] + 0.5,
+                ybins[i] + 0.4,
+                f"{bin_value:.2f}",
+                color=bin_text_color,
+                ha="center",
+                va="center",
+                fontweight="bold",
+            )
+    plt.savefig(output_path, bbox_inches="tight")
+    plt.close("all")

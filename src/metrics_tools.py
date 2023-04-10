@@ -55,10 +55,10 @@ class Histogram:
         binned: bool = False,
         uncertainties: np.array = True,
     ) -> None:
-        self.data = data
+        self.data = np.array(data)
         self.histogram_data_type = histogram_data_type
         self.bin_edges = bin_edges
-        self.bin_centers = self.calculate_bin_centers(bin_edges)
+        self.bin_centers, self.bin_halfwidths = self.calculate_bin_centers(bin_edges)
         if not binned:
             self.binned_data = np.histogram(data, bins=bin_edges)[0]
         else:
@@ -76,11 +76,11 @@ class Histogram:
             raise AssertionError("Unknown input for uncertainties")
 
     def calculate_bin_centers(self, edges: list) -> np.array:
-        bin_widths = [edges[i + 1] - edges[i] for i in range(len(edges) - 1)]
+        bin_widths = np.array([edges[i + 1] - edges[i] for i in range(len(edges) - 1)])
         bin_centers = []
         for i in range(len(edges) - 1):
             bin_centers.append(edges[i] + (bin_widths[i] / 2))
-        return np.array(bin_centers)
+        return np.array(bin_centers), bin_widths / 2
 
     def __add__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
@@ -96,7 +96,8 @@ class Histogram:
         if (other.bin_edges).all() != (self.bin_edges).all():
             raise ArithmeticError("The bins of two histograms do not match, cannot divide them.")
         result = np.nan_to_num(self.binned_data / other.binned_data, copy=True, nan=0.0, posinf=None, neginf=None)
-        rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)
+        rel_uncertainties = np.sqrt(np.abs( result * (1 - result) / other.binned_data ))  # use binomial errors
+        # rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)  # Poisson
         return Histogram(result, self.bin_edges, "Efficiency", binned=True, uncertainties=rel_uncertainties)
 
     def __mul__(self, other):

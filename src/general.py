@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 import vector
 import numpy as np
 import awkward as ak
@@ -170,3 +171,9 @@ def reinitialize_p4(p4_obj):
             )
         )
     return p4
+
+
+def load_json(path):
+    with open(path, 'rt') as in_file:
+        data = json.load(in_file)
+    return data

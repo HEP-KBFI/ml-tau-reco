@@ -397,8 +397,45 @@ def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
     return all_events_tau_vis_p4s
 
 
+def get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
+    all_events_tau_p4s = []
+    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
+        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
+        tau_p4s = []
+        for d_idx in range(n_daughters):
+            tau_p4 = vector.awk(
+                ak.zip(
+                    {
+                        "mass": [0.0],
+                        "x": [0.0],
+                        "y": [0.0],
+                        "z": [0.0],
+                    }
+                )
+            )[0]
+            tau_p4s.append(mc_p4[tau_mask][mask_addition][e_idx][d_idx])
+        if len(tau_p4s) > 0:
+            all_events_tau_p4s.append(tau_p4s)
+        else:
+            all_events_tau_p4s.append(
+                vector.awk(
+                    ak.zip(
+                        {
+                            "mass": [0.0],
+                            "x": [0.0],
+                            "y": [0.0],
+                            "z": [0.0],
+                        }
+                    )
+                )
+            )
+    all_events_tau_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_p4s))
+    return all_events_tau_p4s
+
+
 def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4):
     vis_tau_p4s = get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
+    full_tau_p4s = get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
     best_combos = get_all_tau_best_combinations(vis_tau_p4s, gen_jets)
     tau_energies = vis_tau_p4s.energy
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition)
@@ -418,6 +455,9 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
         "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_energies),
         "gen_jet_tau_decaymode": get_matched_gen_tau_property(gen_jets, best_combos, tau_decaymodes),
         "tau_gen_jet_charge": get_matched_gen_tau_property(gen_jets, best_combos, tau_charges),
+        "tau_gen_jet_p4s_full": get_matched_gen_tau_property(
+            gen_jets, best_combos, full_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
+        ),
         "tau_gen_jet_p4s": get_matched_gen_tau_property(
             gen_jets, best_combos, vis_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
         ),
@@ -674,16 +714,7 @@ def process_input_file(arrays: ak.Array):
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     # IP variables documented below and more detailed in src/lifeTimeTools.py
     data = {
-        "event_reco_cand_p4s": vector.awk(
-            ak.zip(
-                {
-                    "px": event_reco_cand_p4s.x,
-                    "py": event_reco_cand_p4s.y,
-                    "pz": event_reco_cand_p4s.z,
-                    "mass": event_reco_cand_p4s.tau,
-                }
-            )
-        ),
+        "event_reco_cand_p4s": g.reinitialize_p4(event_reco_cand_p4s),
         "event_reco_cand_pdg": ak.from_iter(
             [[reco_particle_pdg[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
         ),
@@ -747,6 +778,7 @@ def process_input_file(arrays: ak.Array):
         "gen_jet_tau_vis_energy": gen_tau_jet_info["gen_jet_tau_vis_energy"],
         "gen_jet_tau_charge": gen_tau_jet_info["tau_gen_jet_charge"],
         "gen_jet_tau_p4s": gen_tau_jet_info["tau_gen_jet_p4s"],
+        "gen_jet_full_tau_p4s": gen_tau_jet_info["tau_gen_jet_p4s_full"],
         "gen_jet_tau_decay_vertex_x": gen_tau_jet_info["tau_gen_jet_DV_x"],
         "gen_jet_tau_decay_vertex_y": gen_tau_jet_info["tau_gen_jet_DV_y"],
         "gen_jet_tau_decay_vertex_z": gen_tau_jet_info["tau_gen_jet_DV_z"],
@@ -784,7 +816,7 @@ def process_all_input_files(cfg: DictConfig) -> None:
         os.makedirs(output_dir, exist_ok=True)
         input_wcp = os.path.join(input_dir, "*.root")
         if cfg.test_run:
-            n_files = 1
+            n_files = 10
         else:
             n_files = None
         input_paths = glob.glob(input_wcp)[:n_files]
