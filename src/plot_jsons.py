@@ -9,6 +9,7 @@ from general import load_json
 import calculate_metrics as cm
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
+
 hep.style.use(hep.styles.CMS)
 
 
@@ -17,53 +18,47 @@ def plot_json(cfg):
     default_dir = os.path.expandvars(cfg.input_dir)
     os.makedirs(cfg.plotting.output_dir, exist_ok=True)
     input_dir = {
-        algorithm: (default_dir if cfg.plotting_algorithms[algorithm] == '' else cfg.plotting_algorithms[algorithm])
+        algorithm: (default_dir if cfg.plotting_algorithms[algorithm] == "" else cfg.plotting_algorithms[algorithm])
         for algorithm in cfg.plotting_algorithms
     }
     if cfg.plotting_metrics.fakerate:
         fakerates = {}
         for algorithm in cfg.plotting_algorithms:
-            if algorithm not in ['SimpleDNN', 'FastCMSTau', 'HPS_with_quality_cuts']:
+            if algorithm not in ["SimpleDNN", "FastCMSTau", "HPS_with_quality_cuts"]:
                 fakerates[algorithm] = {}
                 for metric_entry in cfg.metrics.efficiency.variables:
                     metric = metric_entry.name
-                    input_path = os.path.join(
-                        input_dir[algorithm],
-                        f"{metric}_fakerates_{algorithm}.json"
-                    )
+                    input_path = os.path.join(input_dir[algorithm], f"{metric}_fakerates_{algorithm}.json")
                     fakerates[algorithm][metric] = load_json(input_path)
         plot_eff_fake(fakerates, "fakerates", cfg, cfg.plotting.output_dir)
     if cfg.plotting_metrics.efficiency:
         efficiencies = {}
         for algorithm in cfg.plotting_algorithms:
-            if algorithm not in ['SimpleDNN', 'FastCMSTau', 'HPS_with_quality_cuts']:
+            if algorithm not in ["SimpleDNN", "FastCMSTau", "HPS_with_quality_cuts"]:
                 efficiencies[algorithm] = {}
                 for metric_entry in cfg.metrics.efficiency.variables:
                     metric = metric_entry.name
-                    input_path = os.path.join(
-                        input_dir[algorithm],
-                        f"{metric}_efficiencies_{algorithm}.json"
-                    )
+                    input_path = os.path.join(input_dir[algorithm], f"{metric}_efficiencies_{algorithm}.json")
                     efficiencies[algorithm][metric] = load_json(input_path)
-        plot_eff_fake(efficiencies, 'efficiency', cfg, cfg.plotting.output_dir)
+        plot_eff_fake(efficiencies, "efficiency", cfg, cfg.plotting.output_dir)
     if cfg.plotting_metrics.ROC:
-        input_path = os.path.join(default_dir, 'roc.json')
+        input_path = os.path.join(default_dir, "roc.json")
         roc_info = load_json(input_path)
         for algo, dir_ in input_dir.items():
             if dir_ != default_dir:
-                algo_input = os.path.join(dir_, 'roc.json')
+                algo_input = os.path.join(dir_, "roc.json")
                 algo_roc_info = load_json(algo_input)
                 roc_info["efficiencies"][algo] = algo_roc_info["efficiencies"][algo]
                 roc_info["fakerates"][algo] = algo_roc_info["fakerates"][algo]
         roc_plotting_info = {}
-        roc_plotting_info['efficiencies'] = {algo: roc_info["efficiencies"][algo] for algo in cfg.plotting_algorithms}
-        roc_plotting_info['fakerates'] = {algo: roc_info["fakerates"][algo] for algo in cfg.plotting_algorithms}
+        roc_plotting_info["efficiencies"] = {algo: roc_info["efficiencies"][algo] for algo in cfg.plotting_algorithms}
+        roc_plotting_info["fakerates"] = {algo: roc_info["fakerates"][algo] for algo in cfg.plotting_algorithms}
         cm.plot_roc(roc_plotting_info["efficiencies"], roc_plotting_info["fakerates"], cfg.plotting.output_dir)
     # if cfg.plotting_metrics.efficiency and cfg.plotting_metrics.fakerate:
     #     for algorithm in cfg.plotting_algorithms:
 
     #         find_corresponding_fakerate(efficiencies, fakerates)
-            # find_corresponding_fakerate(efficiencies['pt'], fakerates['pt'], efficiency_wp)
+    # find_corresponding_fakerate(efficiencies['pt'], fakerates['pt'], efficiency_wp)
     if cfg.plotting_metrics.tauClassifier:
         algo_names = {algorithm: algorithm for algorithm in cfg.plotting_algorithms}
         algo_names["FastCMSTau"] = "JINST 17 (2022) P07023"
@@ -78,11 +73,11 @@ def plot_json(cfg):
             os.makedirs(output_dir, exist_ok=True)
             output_path = os.path.join(output_dir, f"{algorithm}_tauClassifier.pdf")
             cm.plot_algo_tauClassifiers(
-                tauClassifiers['tauClassifiers'],
+                tauClassifiers["tauClassifiers"],
                 output_path,
                 medium_wp,
-                plot_train=algorithm !='HPS' and algorithm != 'HPS_with_quality_cuts',
-                algo_name=algo_names[algorithm]
+                plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
+                algo_name=algo_names[algorithm],
             )
     if cfg.plotting_metrics.decaymode:
         for algorithm in cfg.plotting_algorithms:
@@ -91,11 +86,11 @@ def plot_json(cfg):
             dm_output_dir = os.path.join(cfg.plotting.output_dir, algorithm)
             dm_output_path = os.path.join(dm_output_dir, "decaymode_reconstruction.pdf")
             os.makedirs(dm_output_dir, exist_ok=True)
-            print_category_fractions(decaymodes_info['gen'], decaymodes_info['categories'], algorithm)
+            print_category_fractions(decaymodes_info["gen"], decaymodes_info["categories"], algorithm)
             pl.plot_decaymode_correlation_matrix(
-                true_cats=decaymodes_info['gen'],
-                pred_cats=decaymodes_info['reco'],
-                categories=decaymodes_info['categories'],
+                true_cats=decaymodes_info["gen"],
+                pred_cats=decaymodes_info["reco"],
+                categories=decaymodes_info["categories"],
                 output_path=dm_output_path,
                 y_label=r"Reconstructed $\tau$ decay mode",
                 x_label=r"Generated $\tau$ decay mode",
@@ -106,7 +101,7 @@ def plot_json(cfg):
         output_dir = os.path.join(cfg.plotting.output_dir, "Comparison_HPS_cuts")
         os.makedirs(output_dir, exist_ok=True)
         for algo in cfg.HPS_comparison:
-            input_path = os.path.join(cfg.HPS_comparison[algo], 'roc.json')
+            input_path = os.path.join(cfg.HPS_comparison[algo], "roc.json")
             HPS_comp_roc_info = load_json(input_path)
             print()
             if algo == "HPS":
@@ -131,9 +126,6 @@ def print_category_fractions(gen_decaymodes, categories, algorithm):
         print(f"{category}: {fraction}")
 
 
-
-
-
 def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
     working_points = {"Loose": 0.4, "Medium": 0.6, "Tight": 0.8}
     wp_file_path = os.path.join(algorithm_output_dir, "working_points.json")
@@ -152,8 +144,8 @@ def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
 
 
 def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
-    markers = ['o', '^', 's', 'v', '*', 'P']
-    if key == 'fakerates':
+    markers = ["o", "^", "s", "v", "*", "P"]
+    if key == "fakerates":
         metrics = cfg.metrics.fakerate.variables
     else:
         metrics = cfg.metrics.efficiency.variables
@@ -166,7 +158,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
         algo_names["HPS"] = "HPS cut-based"
         algo_names["HPS_DeepTau"] = "HPS + DeepTau"
         for i, algorithm in enumerate(algorithms):
-            if metric.name == 'theta':
+            if metric.name == "theta":
                 numerator_ = np.rad2deg(np.array(eff_fake_data[algorithm][metric.name]["numerator"]))
                 denominator_ = np.rad2deg(np.array(eff_fake_data[algorithm][metric.name]["denominator"]))
                 numerator = 90 - np.abs(numerator_ - 90)
@@ -175,8 +167,8 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
                 numerator = eff_fake_data[algorithm][metric.name]["numerator"]
                 denominator = eff_fake_data[algorithm][metric.name]["denominator"]
             bin_edges = np.linspace(metric.x_range[0], metric.x_range[1], num=metric.n_bins + 1)
-            numerator_hist = Histogram(numerator, bin_edges, 'numerator')
-            denominator_hist = Histogram(denominator, bin_edges, 'denominator')
+            numerator_hist = Histogram(numerator, bin_edges, "numerator")
+            denominator_hist = Histogram(denominator, bin_edges, "denominator")
             resulting_hist = numerator_hist / denominator_hist
             plt.errorbar(
                 resulting_hist.bin_centers,
@@ -185,22 +177,23 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
                 yerr=resulting_hist.uncertainties,
                 ms=20,
                 marker=markers[i],
-                linestyle='None',
-                label=algo_names[algorithm])
+                linestyle="None",
+                label=algo_names[algorithm],
+            )
         plt.grid()
         plt.legend()
-        matplotlib.rcParams['axes.unicode_minus'] = False
-        if metric.name == 'pt':
+        matplotlib.rcParams["axes.unicode_minus"] = False
+        if metric.name == "pt":
             if key == "fakerates":
                 plt.xlabel(r"$p_T^{gen\mathrm{-}jet}\,\, [GeV]$")
             else:
                 plt.xlabel(r"$p_T^{gen\mathrm{-}\tau_h}\,\, [GeV]$")
-        elif metric.name == 'eta':
+        elif metric.name == "eta":
             if key == "fakerates":
                 plt.xlabel(r"$\eta^{gen\mathrm{-}jet}\,\, [GeV]$")
             else:
                 plt.xlabel(r"$\eta^{gen\mathrm{-}\tau_h}\,\, [GeV]$")
-        elif metric.name == 'theta':
+        elif metric.name == "theta":
             if key == "fakerates":
                 plt.xlabel(r"$\theta^{gen\mathrm{-}jet}\,\, [ ^{o} ]$")
             else:
@@ -220,7 +213,7 @@ def calculate_bin_centers(edges: list) -> np.array:
     bin_centers = []
     for i in range(len(edges) - 1):
         bin_centers.append(edges[i] + (bin_widths[i] / 2))
-    return np.array(bin_centers), bin_widths/2
+    return np.array(bin_centers), bin_widths / 2
 
 
 if __name__ == "__main__":
