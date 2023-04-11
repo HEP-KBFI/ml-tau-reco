@@ -204,7 +204,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
             plt.yscale("log")
         else:
             plt.ylabel(r"$\varepsilon_{\tau}$")
-        plt.savefig(output_path, bbox_inches="tight", format="pdf")
+        plt.savefig(output_path, format="pdf")
         plt.close("all")
 
 

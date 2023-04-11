@@ -17,7 +17,7 @@ def plot_roc_curve(
     plt.xscale("log")
     plt.grid(True, which="both")
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")
 
 
@@ -77,7 +77,7 @@ def plot_regression_confusion_matrix(
     ax.set_ylabel(f"{y_label}")
     ax.set_xlabel(f"{x_label}")
     plt.title(title, fontsize=18, loc="center", fontweight="bold", style="italic", family="monospace")
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")
 
 
@@ -144,7 +144,7 @@ def plot_classification_confusion_matrix(
                 va="center",
                 fontweight="bold",
             )
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")
 
 
@@ -205,7 +205,7 @@ def plot_histogram(
     textstr = "\n".join((r"$\mu=%.2f$" % (np.mean(entries),), r"$\sigma=%.2f$" % (np.std(entries),)))
     props = {"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5}
     ax.text(1.07, 0.6, textstr, transform=ax.transAxes, fontsize=16, verticalalignment="top", bbox=props)
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")
 
 
@@ -273,5 +273,5 @@ def plot_decaymode_correlation_matrix(
                 va="center",
                 fontweight="bold",
             )
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")

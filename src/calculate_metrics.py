@@ -71,7 +71,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir, cut):
         plt.ylabel(key)
         if key == "fakerates":
             plt.yscale("log")
-        plt.savefig(output_path, bbox_inches="tight", format="pdf")
+        plt.savefig(output_path, format="pdf")
         plt.close("all")
 
 
@@ -162,7 +162,7 @@ def plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-5, 1), xlim=(0, 1), t
     plt.ylim(ylim)
     plt.xlim(xlim)
     plt.yscale("log")
-    plt.savefig(output_path, bbox_inches="tight", format="pdf")
+    plt.savefig(output_path, format="pdf")
     plt.close("all")
 
 
@@ -183,7 +183,7 @@ def plot_tauClassifier_correlation(sig_data, output_dir):
         plt.scatter(variable, tc, alpha=0.3, marker="x")
         plt.title(var)
         output_path = os.path.join(output_dir, f"tauClassifier_corr_{var}.pdf")
-        plt.savefig(output_path, bbox_inches="tight", format="pdf")
+        plt.savefig(output_path, format="pdf")
         plt.close("all")
 
 
@@ -449,7 +449,7 @@ def plot_tauClassifiers(tauClassifiers, dtype, output_path):
         plt.xlabel(r"$\mathcal{D}_{\tau}$")
         plt.yscale("log")
         plt.legend()
-    plt.savefig(output_path, bbox_inches="tight", format="pdf")
+    plt.savefig(output_path, format="pdf")
     plt.close("all")
 
 
@@ -475,7 +475,7 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=
     plt.yscale("log")
     plt.title(algo_name, loc="left")
     plt.legend(prop={"size": 28})
-    plt.savefig(output_path, bbox_inches="tight", format="pdf")
+    plt.savefig(output_path, format="pdf")
     plt.close("all")
 
 

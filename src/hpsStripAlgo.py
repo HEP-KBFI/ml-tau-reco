@@ -58,7 +58,6 @@ class StripAlgo:
         return isCandAdded
 
     def markCandsInStrip(self, candBarcodesPreviousStrips, candBarcodesCurrentStrip):
-
         candBarcodesPreviousStrips.update(candBarcodesCurrentStrip)
 
     def buildStrips(self, cands):
@@ -68,9 +67,19 @@ class StripAlgo:
         addCands = []
         for cand in cands:
             if (cand.abs_pdgId == 22 and self.useGammas) or (cand.abs_pdgId == 11 and self.useElectrons):
-                if cand.pt > self.minGammaPtSeed:
+                minPtSeed = None
+                minPtAdd = None
+                if cand.abs_pdgId == 22:
+                    minPtSeed = self.minGammaPtSeed
+                    minPtAdd = self.minGammaPtAdd
+                elif cand.abs_pdgId == 11:
+                    minPtSeed = self.minElectronPtSeed
+                    minPtAdd = self.minElectronPtAdd
+                else:
+                    assert 0
+                if cand.pt > minPtSeed:
                     seedCands.append(cand)
-                elif cand.pt > self.minGammaPtAdd:
+                elif cand.pt > minPtAdd:
                     addCands.append(cand)
         if self.verbosity >= 3:
             print("seedCands:")
@@ -91,10 +100,7 @@ class StripAlgo:
         for seedCand in seedCands:
             if self.verbosity >= 4:
                 print("Processing seedCand #%i" % seedCand.barcode)
-            if (
-                seedCand.barcode not in seedCandBarcodesPreviousStrips
-                and seedCand.barcode not in addCandBarcodesPreviousStrips
-            ):
+            if seedCand.barcode not in seedCandBarcodesPreviousStrips:
                 currentStrip = Strip([seedCand], idxStrip)
 
                 seedCandBarcodesCurrentStrip = set([seedCand.barcode])

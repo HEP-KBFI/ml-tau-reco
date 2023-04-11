@@ -58,7 +58,7 @@ class GridBuilder(BasicTauBuilder):
         for idx, (eta, phi) in enumerate(zip(etas, phis)):
             etaidx, phiidx = self.bin_idx_eta[self.jetidx][idx], self.bin_idx_phi[self.jetidx][idx]
             self.images_count[self.jetidx][etaidx, phiidx] += 1
-            if (self.filledgrid[etaidx, phiidx]) >= 2:
+            if (self.filledgrid[etaidx, phiidx]) >= self.num_particles_in_grid:
                 continue
             filledpartidx = self.filledgrid[etaidx, phiidx]
             offset = filledpartidx * self.max_var - 1
@@ -74,23 +74,39 @@ class GridBuilder(BasicTauBuilder):
             list_part_var[offset + Var.mass.value][etaidx, phiidx] = self.pt_sorted_cand_mass[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]
-            list_part_var[offset + Var.pdgid.value][etaidx, phiidx] = self.pt_sorted_cand_pdgid[
+            list_part_var[offset + Var.dxy.value][etaidx, phiidx] = self.pt_sorted_cand_dxy[self.pt_sorted_cone_mask > 0][
+                self.jetidx
+            ][idx]
+            list_part_var[offset + Var.dxy_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dxy_sig[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
-            """
-            list_part_var[filledpartidx+5][etaidx,phiidx] = \
-            self.pt_sorted_cand_dxy[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+6][etaidx,phiidx] = \
-            self.pt_sorted_cand_dz[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+7][etaidx,phiidx] = \
-            self.pt_sorted_cand_d3[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+8][etaidx,phiidx] = \
-            self.pt_sorted_cand_d0[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+9][etaidx,phiidx] = \
-            self.pt_sorted_cand_z0[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            list_part_var[filledpartidx+10][etaidx,phiidx] = \
-            self.pt_sorted_cand_dz[self.pt_sorted_cone_mask>0][self.jetidx][idx]
-            """
+            list_part_var[offset + Var.dz.value][etaidx, phiidx] = self.pt_sorted_cand_dz[self.pt_sorted_cone_mask > 0][
+                self.jetidx
+            ][idx]
+            list_part_var[offset + Var.dz_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dz_sig[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
+            list_part_var[offset + Var.d0.value][etaidx, phiidx] = self.pt_sorted_cand_d0[self.pt_sorted_cone_mask > 0][
+                self.jetidx
+            ][idx]
+            list_part_var[offset + Var.d0_sig.value][etaidx, phiidx] = self.pt_sorted_cand_d0_sig[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
+            list_part_var[offset + Var.isele.value][etaidx, phiidx] = self.pt_sorted_cand_isele[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
+            list_part_var[offset + Var.ismu.value][etaidx, phiidx] = self.pt_sorted_cand_ismu[self.pt_sorted_cone_mask > 0][
+                self.jetidx
+            ][idx]
+            list_part_var[offset + Var.isch.value][etaidx, phiidx] = self.pt_sorted_cand_isch[self.pt_sorted_cone_mask > 0][
+                self.jetidx
+            ][idx]
+            list_part_var[offset + Var.isnh.value][etaidx, phiidx] = self.pt_sorted_cand_isnh[self.pt_sorted_cone_mask > 0][
+                self.jetidx
+            ][idx]
+            list_part_var[offset + Var.isgamma.value][etaidx, phiidx] = self.pt_sorted_cand_isgamma[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             self.filledgrid[etaidx, phiidx] += 1
         return list_part_var
 
@@ -103,11 +119,22 @@ class GridBuilder(BasicTauBuilder):
         diff = phi1 - phi2
         return np.arctan2(np.sin(diff), np.cos(diff))
 
-    def mask(self):
+    def mask_dphi(self):
         mask_greater = 2 * pi - self.pt_sorted_cand_dphi
         self.pt_sorted_cand_dphi = ak.where(self.pt_sorted_cand_dphi > pi, mask_greater, self.pt_sorted_cand_dphi)
         mask_less = 2 * pi + self.pt_sorted_cand_dphi
         self.pt_sorted_cand_dphi = ak.where(self.pt_sorted_cand_dphi <= -pi, mask_less, self.pt_sorted_cand_dphi)
+
+    def mask_pdgid(self, pdgid):
+        return ak.where(
+            self.pt_sorted_cand_pdgid == pdgid,
+            ak.ones_like(self.pt_sorted_cand_pdgid),
+            ak.zeros_like(self.pt_sorted_cand_pdgid),
+        )
+
+    def calcuclate_sig(self, neu, deno):
+        sig = neu / deno
+        return ak.where(deno == 0, ak.zeros_like(deno), sig)
 
     def pt_sorted_ftrs(self):
         self.part_p4 = self.build_p4("event_reco_cand_p4s")
@@ -117,10 +144,24 @@ class GridBuilder(BasicTauBuilder):
         self.pt_sorted_cand_theta = self.pt_sorted_cand_p4.theta
         self.pt_sorted_cand_phi = self.pt_sorted_cand_p4.phi
         self.pt_sorted_cand_mass = self.pt_sorted_cand_p4.mass
+        self.pt_sorted_cand_dxy = self.data.event_reco_cand_dxy[self.pt_sorted_idx]
+        self.pt_sorted_cand_dxy_err = self.data.event_reco_cand_dxy_err[self.pt_sorted_idx]
+        self.pt_sorted_cand_dxy_sig = self.calcuclate_sig(self.pt_sorted_cand_dxy, self.pt_sorted_cand_dxy_err)
+        self.pt_sorted_cand_dz = self.data.event_reco_cand_dz[self.pt_sorted_idx]
+        self.pt_sorted_cand_dz_err = self.data.event_reco_cand_dz_err[self.pt_sorted_idx]
+        self.pt_sorted_cand_dz_sig = self.calcuclate_sig(self.pt_sorted_cand_dz, self.pt_sorted_cand_dz_err)
+        self.pt_sorted_cand_d0 = self.data.event_reco_cand_d0[self.pt_sorted_idx]
+        self.pt_sorted_cand_d0_err = self.data.event_reco_cand_d0_err[self.pt_sorted_idx]
+        self.pt_sorted_cand_d0_sig = self.calcuclate_sig(self.pt_sorted_cand_d0, self.pt_sorted_cand_d0_err)
         self.pt_sorted_cand_pdgid = self.data.event_reco_cand_pdg[self.pt_sorted_idx]
+        self.pt_sorted_cand_isele = self.pt_sorted_cand_pdgid == 13
+        self.pt_sorted_cand_ismu = self.pt_sorted_cand_pdgid == 11
+        self.pt_sorted_cand_isch = self.pt_sorted_cand_pdgid == 211
+        self.pt_sorted_cand_isnh = self.pt_sorted_cand_pdgid == 130
+        self.pt_sorted_cand_isgamma = self.pt_sorted_cand_pdgid == 22
         self.pt_sorted_cand_dtheta = self.reco_tau_p4.theta - self.pt_sorted_cand_theta
         self.pt_sorted_cand_dphi = self.reco_tau_p4.phi - self.pt_sorted_cand_p4.phi
-        self.mask()
+        self.mask_dphi()
         self.pt_sorted_cand_dangle = self.calculate_dangle()
 
     def get_cone_mask(self, inner_grid):
@@ -188,13 +229,13 @@ class GridBuilder(BasicTauBuilder):
             self.bin_idx_phi = ak.unflatten(
                 np.searchsorted(self.bins_phi, ak.flatten(self.maskdphi)), ak.count(self.maskdphi, axis=-1), axis=-1
             )
+            grid_all_jets = []
             for idx, eta in enumerate(self.bin_idx_eta):  # this loops over all jet?
                 self.jetidx = idx
                 list_part_info_perjet = self.process_onejet(self.maskdeta[idx], self.maskdphi[idx], cone)
-                if idx == 0:
-                    list_part_info_alljet = list_part_info_perjet
-                else:
-                    list_part_info_alljet = np.concatenate((list_part_info_perjet, list_part_info_alljet))
+                grid_all_jets.append(list_part_info_perjet)
+
+            list_part_info_alljet = np.stack(grid_all_jets, axis=0)
             list_ak = ak.from_numpy(list_part_info_alljet)
             write_info.update({f"{cone}": list_ak})
             if self.do_plot:
@@ -205,7 +246,8 @@ class GridBuilder(BasicTauBuilder):
 
 if __name__ == "__main__":
     grid = GridBuilder()
-    inputfile = "/local/laurits/CLIC_taus_20230215_v1/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_360.parquet"
+    inputfile = "/scratch/persistent/veelken/CLIC_tau_ntuples/\
+    2023Mar18_woPtCuts/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200001.parquet"
     data = ak.from_parquet(inputfile)
     print("Time: ", time.strftime("%H:%M"))
     data = grid.processJets(data)

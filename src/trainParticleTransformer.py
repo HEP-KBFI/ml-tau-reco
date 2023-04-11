@@ -28,7 +28,7 @@ def get_split_files(cfg_filename, split):
         paths = data[split]["paths"]
 
         # FIXME: this is hardcoded, /local is too slow for GPU training
-        # datasets should be kept in /home or /scratch-persistent for GPU training
+        # datasets should be kept in /home or /scratch/persistent for GPU training
         # paths = [p.replace("/local/laurits", "./data") for p in paths]
         return paths
 
@@ -111,6 +111,10 @@ def train_loop(
     false_negatives_train /= num_jets_train
     tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/train", false_negatives_train, global_step=idx_epoch)
+    is_sig = np.array(class_true_train) == 1
+    is_bgr = np.array(class_true_train) == 0
+    tensorboard.add_histogram("tauClassifier_sig/train", np.array(class_pred_train)[is_sig], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_bgr/train", np.array(class_pred_train)[is_bgr], global_step=idx_epoch)
 
     return loss_train
 
@@ -177,6 +181,10 @@ def test_loop(
     false_negatives_test /= num_jets_test
     tensorboard.add_scalar("false_positives/test", false_positives_test, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/test", false_negatives_test, global_step=idx_epoch)
+    is_sig = np.array(class_true_test) == 1
+    is_bgr = np.array(class_true_test) == 0
+    tensorboard.add_histogram("tauClassifier_sig/test", np.array(class_pred_test)[is_sig], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_bgr/test", np.array(class_pred_test)[is_bgr], global_step=idx_epoch)
 
     return loss_test
 
@@ -223,6 +231,13 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     max_cands = ParticleTransformer_cfg["max_cands"]
     metric = ParticleTransformer_cfg["metric"]
+    use_pdgId = ParticleTransformer_cfg["use_pdgId"]
+    use_lifetime = ParticleTransformer_cfg["use_lifetime"]
+    input_dim = 7
+    if use_pdgId:
+        input_dim += 6
+    if use_lifetime:
+        input_dim += 4
     standardize_inputs = ParticleTransformer_cfg["standardize_inputs"]
     preselection = {
         "min_jet_theta": ParticleTransformer_cfg["min_jet_theta"],
@@ -233,7 +248,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     print("Building model...")
     model = ParticleTransformer(
-        input_dim=17,
+        input_dim=input_dim,
         num_classes=2,
         use_pre_activation_pair=False,
         for_inference=False,
@@ -250,7 +265,12 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     print("Starting to build training dataset...")
     print(" current time:", datetime.datetime.now())
     dataset_train = ParticleTransformerDataset(
-        filelist_train, max_num_files=train_cfg.max_num_files, max_cands=max_cands, preselection=preselection
+        filelist_train,
+        max_num_files=train_cfg.max_num_files,
+        max_cands=max_cands,
+        use_pdgId=use_pdgId,
+        use_lifetime=use_lifetime,
+        preselection=preselection,
     )
     print("Finished building training dataset.")
     print(" current time:", datetime.datetime.now())
@@ -258,7 +278,13 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     print("Starting to build validation dataset...")
     print(" current time:", datetime.datetime.now())
     dataset_test = ParticleTransformerDataset(
-        filelist_test, max_num_files=train_cfg.max_num_files, metric=metric, max_cands=max_cands, preselection=preselection
+        filelist_test,
+        max_num_files=train_cfg.max_num_files,
+        metric=metric,
+        max_cands=max_cands,
+        use_pdgId=use_pdgId,
+        use_lifetime=use_lifetime,
+        preselection=preselection,
     )
     print("Finished building validation dataset.")
     print(" current time:", datetime.datetime.now())

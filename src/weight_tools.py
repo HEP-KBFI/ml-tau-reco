@@ -46,7 +46,7 @@ def visualize_weights(weight_matrix, x_bin_edges, y_bin_edges, output_path, ylab
     # for i, label in enumerate(heatmap.yaxis.get_ticklabels()):
     #     if i % 5 != 0:
     #         label.set_visible(False)
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")
 
 
@@ -197,7 +197,7 @@ def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_
     plt.xlabel(xlabel, fontdict={"size": 25})
     plt.ylabel("Relative yield / bin", fontdict={"size": 25})
     plt.legend()
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")
 
 
@@ -334,7 +334,7 @@ def plot_weight_distributions(signal_weights, bkg_weights, output_dir):
     plt.legend()
     ax.set_facecolor("white")
     output_path = os.path.join(output_dir, "weight_1D_distribution.pdf")
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
     plt.close("all")
 
 

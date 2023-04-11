@@ -112,28 +112,32 @@ def plot_n_particles_in_gen_jet_tau_jet(sig_mcp, sig_mc_p4, bkg_mcp, bkg_mc_p4, 
         "jet_radius": r"$\langle r \rangle$",
         "jet_mass": r"$M_{jet}$",
     }
+    limits = {
+        "n_particles_in_jet": [0, 35],
+        "jet_radius": [1e-7, max(max(qg_jet_info["jet_radius"]), max(tau_jet_info["jet_radius"]))],
+        "jet_mass": [1e-2, 41],
+    }
     for key in qg_jet_info.keys():
         qg_jet_prop = ak.flatten(qg_jet_info[key], axis=-1)
         tau_jet_prop = ak.flatten(tau_jet_info[key], axis=-1)
-        # bins = np.logspace(
-        #     np.log10(min(min(qg_jet_prop), min(tau_jet_prop))),
-        #     np.log10(max(max(qg_jet_prop), max(tau_jet_prop))),
-        #     10
-        # )
-        bins = np.linspace(min(min(qg_jet_prop), min(tau_jet_prop)), max(max(qg_jet_prop), max(tau_jet_prop)), 20)
-        H_qg, bin_edges1 = np.histogram(qg_jet_prop, bins=bins)
+        if key != "n_particles_in_jet":
+            bins = np.logspace(np.log10(limits[key][0]), np.log10(limits[key][1]), 20)
+        else:
+            bins = np.linspace(limits[key][0], limits[key][1], 20)
+        H_qg, bin_edges1 = np.histogram(np.clip(qg_jet_prop, bins[0], bins[-1]), bins=bins)
         H_qg = H_qg / np.sum(H_qg)
-        H_tau, bin_edges2 = np.histogram(tau_jet_prop, bins=bins)
+        H_tau, bin_edges2 = np.histogram(np.clip(tau_jet_prop, bins[0], bins[-1]), bins=bins)
         H_tau = H_tau / np.sum(H_tau)
         hep.histplot(H_qg, bin_edges1, label="Quark/gluon jets", hatch="//", color="red")
         hep.histplot(H_tau, bin_edges2, label=r"$\tau_h$", hatch="\\\\", color="blue")
-        plt.xscale("log")
+        if key != "n_particles_in_jet":
+            plt.xscale("log")
         plt.xlabel(x_label[key], fontdict={"size": 25})
         plt.ylabel("Relative yield / bin", fontdict={"size": 25})
         # Ticks text size
         plt.legend()
         output_path = os.path.join(output_dir, f"{key}.pdf")
-        plt.savefig(output_path, bbox_inches="tight")
+        plt.savefig(output_path)
         plt.close("all")
 
 
@@ -643,7 +647,7 @@ def plot_full_entry_multiplicity_matrix(flat_cone_pdgs, output_path, particle_in
     ax.set_yticklabels([particle_info[pdg][0] for pdg in particle_info.keys()])
     ax.set(xticklabels=[])
     ax.set_xlabel("Taus")
-    plt.savefig(output_path, bbox_inches="tight")
+    plt.savefig(output_path)
 
 
 def plot_particle_multiplicity(particle_multiplicities, particle_info_entry, output_dir, particles_origin="gen"):

@@ -28,7 +28,7 @@ def get_split_files(cfg_filename, split):
         paths = data[split]["paths"]
 
         # FIXME: this is hardcoded, /local is too slow for GPU training
-        # datasets should be kept in /home or /scratch-persistent for GPU training
+        # datasets should be kept in /home or /scratch/persistent for GPU training
         # paths = [p.replace("/local/laurits", "./data") for p in paths]
         return paths
 
@@ -111,6 +111,10 @@ def train_loop(
     false_negatives_train /= num_jets_train
     tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/train", false_negatives_train, global_step=idx_epoch)
+    is_sig = np.array(class_true_train) == 1
+    is_bgr = np.array(class_true_train) == 0
+    tensorboard.add_histogram("tauClassifier_sig/train", np.array(class_pred_train)[is_sig], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_bgr/train", np.array(class_pred_train)[is_bgr], global_step=idx_epoch)
 
     return loss_train
 
@@ -177,6 +181,10 @@ def test_loop(
     false_negatives_test /= num_jets_test
     tensorboard.add_scalar("false_positives/test", false_positives_test, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/test", false_negatives_test, global_step=idx_epoch)
+    is_sig = np.array(class_true_test) == 1
+    is_bgr = np.array(class_true_test) == 0
+    tensorboard.add_histogram("tauClassifier_sig/test", np.array(class_pred_test)[is_sig], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_bgr/test", np.array(class_pred_test)[is_bgr], global_step=idx_epoch)
 
     return loss_test
 
@@ -221,7 +229,6 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     else:
         raise RuntimeError("Failed to read config file %s !!")
 
-    n_scalar = LorentzNet_cfg["n_scalar"]
     n_hidden = LorentzNet_cfg["n_hidden"]
     n_class = LorentzNet_cfg["n_class"]
     dropout = LorentzNet_cfg["dropout"]
@@ -229,6 +236,8 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     c_weight = LorentzNet_cfg["c_weight"]
     max_cands = LorentzNet_cfg["max_cands"]
     add_beams = LorentzNet_cfg["add_beams"]
+    use_pdgId = LorentzNet_cfg["use_pdgId"]
+    n_scalar = 8 if use_pdgId else 2
     standardize_inputs = LorentzNet_cfg["standardize_inputs"]
     preselection = {
         "min_jet_theta": LorentzNet_cfg["min_jet_theta"],
@@ -260,6 +269,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
         max_num_files=train_cfg.max_num_files,
         max_cands=max_cands,
         add_beams=add_beams,
+        use_pdgId=use_pdgId,
         preselection=preselection,
     )
     print("Finished building training dataset.")
@@ -272,6 +282,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
         max_num_files=train_cfg.max_num_files,
         max_cands=max_cands,
         add_beams=add_beams,
+        use_pdgId=use_pdgId,
         preselection=preselection,
     )
     print("Finished building validation dataset.")
