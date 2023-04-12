@@ -1,5 +1,7 @@
 import os
 import glob
+import json
+import vector
 import numpy as np
 import awkward as ak
 
@@ -143,3 +145,35 @@ def get_reduced_decaymodes(decaymodes: np.array):
         15: 15,
     }
     return np.vectorize(target_mapping.get)(decaymodes)
+
+
+def reinitialize_p4(p4_obj):
+    if "t" in p4_obj.fields:
+        p4 = vector.awk(
+            ak.zip(
+                {
+                    "energy": p4_obj.t,
+                    "x": p4_obj.x,
+                    "y": p4_obj.y,
+                    "z": p4_obj.z,
+                }
+            )
+        )
+    else:
+        p4 = vector.awk(
+            ak.zip(
+                {
+                    "mass": p4_obj.tau,
+                    "x": p4_obj.x,
+                    "y": p4_obj.y,
+                    "z": p4_obj.z,
+                }
+            )
+        )
+    return p4
+
+
+def load_json(path):
+    with open(path, "rt") as in_file:
+        data = json.load(in_file)
+    return data
