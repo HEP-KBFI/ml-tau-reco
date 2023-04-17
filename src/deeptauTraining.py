@@ -177,7 +177,7 @@ class DeepTau(nn.Module):
             layer = self.reduce_2d_inner_grid(layer) if "inner" in grid else self.reduce_2d_outer_grid(layer)
             flatten_features = torch.flatten(layer, start_dim=1)
             tau_ftrs_plus_part_ftrs.append(flatten_features)
-        tau_all_block_features = torch.concatenate(tau_ftrs_plus_part_ftrs, axis=-1)
+        tau_all_block_features = torch.cat(tau_ftrs_plus_part_ftrs, axis=-1)
         pred_istau = self.pred_istau(tau_all_block_features)
         return pred_istau
 
@@ -242,8 +242,8 @@ def main(cfg):
     cfgFile = open(gridFileName, "r")
     grid_cfg = json.load(cfgFile)
 
-    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withmorevar/dataset_train/")
-    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withmorevar/dataset_validation/")
+    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectpartmul/dataset_train/")
+    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectpartmul/dataset_validation/")
 
     ds_train_iter = MyIterableDataset(ds_train)
     ds_val_iter = MyIterableDataset(ds_val)
