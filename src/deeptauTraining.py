@@ -79,8 +79,8 @@ def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
 
 def weighted_bce_with_logits(pred_istau, true_istau, weights):
     loss_cls = 10000.0 * focal_loss(pred_istau, true_istau.long())
-    weighted_loss_cls = loss_cls * weights
-    return weighted_loss_cls.mean()
+    weighted_loss_cls = (loss_cls * weights)/torch.sum(weights)
+    return torch.sum(weighted_loss_cls)
 
 
 def ffn(input_dim, output_dim, width, act, drop_out=0.0):
@@ -157,10 +157,9 @@ class DeepTau(nn.Module):
         )
         self.inner_grid.to(device=self.device)
         self.outer_grid.to(device=self.device)
-        self.pred_istau = ffn(2 * self.output_from_grid + 18, 2, 100, self.act)
-        self.pred_p4 = ffn(2 * self.output_from_grid + 18, 4, 100, self.act)
-        # self.pred_istau = ffn(18, 2, 100, self.act)
-        # self.pred_p4 = ffn(18, 4, 100, self.act)
+        self.pred_istau = ffn(2 * self.output_from_grid + 21, 2, 100, self.act)
+        #self.pred_istau = ffn(21, 2, 100, self.act)
+        #self.pred_p4 = ffn(21, 4, 100, self.act)
         self.reduce_2d_inner_grid = reduce_2d(
             self.grid_config["inner_grid"]["n_cells"], self.output_from_grid, self.device, self.act
         )
@@ -180,8 +179,7 @@ class DeepTau(nn.Module):
             tau_ftrs_plus_part_ftrs.append(flatten_features)
         tau_all_block_features = torch.concatenate(tau_ftrs_plus_part_ftrs, axis=-1)
         pred_istau = self.pred_istau(tau_all_block_features)
-        pred_p4 = batch.tau_features[0 : batch.tau_features.shape[0], 0:4] * self.pred_p4(tau_all_block_features)
-        return pred_istau, pred_p4
+        return pred_istau
 
 
 def count_parameters(model):
@@ -190,7 +188,6 @@ def count_parameters(model):
 
 def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
     loss_cls_tot = 0.0
-    loss_p4_tot = 0.0
     if is_train:
         model.train()
     else:
@@ -201,23 +198,19 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
     class_true = []
     class_pred = []
     tot_acc = []
-    tot_acc_p4 = []
     for ibatch, batch in enumerate(ds_loader):
         optimizer.zero_grad()
         batch = batch.to(device=dev)
-        pred_istau, pred_p4 = model(batch)
+        pred_istau = model(batch)
         true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
-        true_p4 = batch.gen_tau_p4
         acc = (torch.softmax(pred_istau, axis=-1)[:, 1].round() == true_istau).float().mean()
-        acc_p4 = ((true_p4 - pred_p4) ** 2).mean()
         tot_acc.append(acc.detach().cpu())
-        tot_acc_p4.append(acc_p4.detach().cpu())
         weights = batch.weight
 
-        loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
+        #loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
         loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
 
-        loss = loss_cls + loss_p4
+        loss = loss_cls
         if is_train:
             loss.backward()
             optimizer.step()
@@ -226,7 +219,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
             class_true.append(true_istau.detach().cpu().numpy())
             class_pred.append(torch.softmax(pred_istau, axis=-1)[:, 1].detach().cpu().numpy())
         loss_cls_tot += loss_cls.detach().cpu().item()
-        loss_p4_tot += loss_p4.detach().cpu().item()
+        #loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += true_istau.shape[0]
     sys.stdout.flush()
@@ -235,10 +228,8 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
         class_pred = np.concatenate(class_pred)
     return (
         loss_cls_tot / njets,
-        loss_p4_tot / njets,
         (class_true, class_pred),
-        sum(tot_acc) / len(tot_acc),
-        sum(tot_acc_p4) / len(tot_acc_p4),
+        sum(tot_acc) / len(tot_acc)
     )
 
 
@@ -255,8 +246,8 @@ def main(cfg):
     cfgFile = open(gridFileName, "r")
     grid_cfg = json.load(cfgFile)
 
-    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectgrid/dataloader/")
-    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectgrid/dataloader_validation/")
+    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withmorevar/dataset_train/")
+    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withmorevar/dataset_validation/")
 
     ds_train_iter = MyIterableDataset(ds_train)
     ds_val_iter = MyIterableDataset(ds_val)
@@ -289,37 +280,29 @@ def main(cfg):
     best_loss = np.inf
 
     for iepoch in range(cfg.DeepTau_training.epochs):
-        loss_cls_train, loss_p4_train, _, acc_cls_train, acc_p4_train = model_loop(
+        loss_cls_train, _, acc_cls_train = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev
         )
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
-        tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
-        tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
 
-        loss_cls_val, loss_p4_val, retvals, acc_cls_val, acc_p4_val = model_loop(
+        loss_cls_val, retvals, acc_cls_val, = model_loop(
             model, ds_val_loader, optimizer, scheduler, False, dev
         )
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
-        tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
-        tensorboard_writer.add_scalar("epoch/val_loss", loss_cls_val + loss_p4_val, iepoch)
         tensorboard_writer.add_scalar("epoch/lr", optimizer.param_groups[0]["lr"], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
         print(
-            "epoch={} loss_cls={:.4f}/{:.4f} loss_p4={:.4f}/{:.4f} acc={:.3f}/{:.3f} acc_p4={:.3f}/{:.3f}".format(
+            "epoch={} loss_cls={:.4f}/{:.4f} acc={:.3f}/{:.3f}".format(
                 iepoch,
                 loss_cls_train,
                 loss_cls_val,
-                loss_p4_train,
-                loss_p4_val,
                 acc_cls_train,
-                acc_cls_val,
-                acc_p4_train,
-                acc_p4_val,
+                acc_cls_val
             )
         )
         # scheduler.step(loss_cls_val+loss_p4_val)
-        if loss_cls_val + loss_p4_val < best_loss:
-            best_loss = loss_cls_val + loss_p4_val
+        if loss_cls_val < best_loss:
+            best_loss = loss_cls_val
             print("best model is saved in {}/model_best_epoch_{}.pt".format(outpath, iepoch))
             torch.save(model, "{}/model_best_epoch_{}.pt".format(outpath, iepoch))
         if early_stopper.early_stop(loss_cls_val):
