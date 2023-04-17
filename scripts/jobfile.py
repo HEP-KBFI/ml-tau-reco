@@ -58,10 +58,9 @@ def create_batchfile(cmd, idx):
 
 files = glob.glob(f"{inputpath}/*")
 for idx, f in enumerate(range(0, len(files) + 1, nfiles)):
-    n_files = f + nfiles
     cmd = f"/home/{user}/mltaureco/ml-tau-reco/scripts/run-env.sh\
     python3 /home/{user}/mltaureco/ml-tau-reco/src/runBuilder.py builder={algo}\
-    samples_to_process=['{sample}'] n_files={n_files}\
+    samples_to_process=['{sample}'] n_files={nfiles}\
     start={f} output_dir=dir_$SLURM_JOBID verbosity=1\
     samples.{sample}.output_dir={inputpath} use_multiprocessing=False"
     cmd += f" && mv dir_$SLURM_JOBID/{algo}/{sample}/* {outputdir}"
