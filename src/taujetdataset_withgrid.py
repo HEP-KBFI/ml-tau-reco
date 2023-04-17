@@ -1,4 +1,5 @@
 import sys
+import vector
 import awkward as ak
 import torch
 from torch_geometric.data import Data
@@ -18,7 +19,7 @@ from auxiliary import get_split_files, chunks, process_func
 class TauJetDatasetWithGrid:
     def __init__(self, processed_dir="", filelist=[], outputdir="", cfgFileName="./config/grid_builder.json"):
         self._processed_dir = processed_dir
-        self.tau_p4_features = ["x", "y", "z", "tau"]
+        self.tau_p4_features = ["x", "y", "z", "tau", "pt", "theta", "e"]
         self.filelist = filelist
         self.od = outputdir
         random.shuffle(self.filelist)
@@ -72,6 +73,19 @@ class TauJetDatasetWithGrid:
         taus = {}
         for k in data["tau_p4s"].fields:
             taus[k] = data["tau_p4s"][k]
+        taup4s = vector.awk(
+            ak.zip(
+                {
+                    "px": data["tau_p4s"].x,
+                    "py": data["tau_p4s"].y,
+                    "pz": data["tau_p4s"].z,
+                    "mass": data["tau_p4s"].tau,
+                }
+            )
+        )
+        taus['pt'] = taup4s.pt
+        taus['theta'] = taup4s.theta
+        taus['e'] = taup4s.e
         # collect tau features in a specific order to an (Njet x Nfeatjet) torch tensor
         tau_feature_tensors = []
         for feat in self.tau_p4_features:
@@ -152,8 +166,8 @@ if __name__ == "__main__":
 
     infile = sys.argv[1]
     ds = osp.basename(infile).split(".")[0]
-    sig_ntuples_dir = "/local/snandan/grid_withcorrectgrid/Grid/ZH_Htautau"
-    bkg_ntuples_dir = "/local/snandan/grid_withcorrectgrid/Grid/QCD"
+    sig_ntuples_dir = "/local/snandan/grid_withmorevar/Grid/ZH_Htautau"
+    bkg_ntuples_dir = "/local/snandan/grid_withmorevar/Grid/QCD"
 
     filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
     outp = "data/dataset_{}".format(ds)
