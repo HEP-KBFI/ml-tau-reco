@@ -6,6 +6,7 @@ class Var(Enum):
     dtheta = auto()
     dphi = auto()
     mass = auto()
+    charge = auto()
     dxy = auto()
     dxy_sig = auto()
     dz = auto()
