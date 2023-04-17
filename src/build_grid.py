@@ -144,6 +144,7 @@ class GridBuilder(BasicTauBuilder):
         self.pt_sorted_cand_theta = self.pt_sorted_cand_p4.theta
         self.pt_sorted_cand_phi = self.pt_sorted_cand_p4.phi
         self.pt_sorted_cand_mass = self.pt_sorted_cand_p4.mass
+        self.pt_sorted_cand_charge = self.data.event_reco_cand_charge[self.pt_sorted_idx]
         self.pt_sorted_cand_dxy = self.data.event_reco_cand_dxy[self.pt_sorted_idx]
         self.pt_sorted_cand_dxy_err = self.data.event_reco_cand_dxy_err[self.pt_sorted_idx]
         self.pt_sorted_cand_dxy_sig = self.calcuclate_sig(self.pt_sorted_cand_dxy, self.pt_sorted_cand_dxy_err)
@@ -154,8 +155,8 @@ class GridBuilder(BasicTauBuilder):
         self.pt_sorted_cand_d0_err = self.data.event_reco_cand_d0_err[self.pt_sorted_idx]
         self.pt_sorted_cand_d0_sig = self.calcuclate_sig(self.pt_sorted_cand_d0, self.pt_sorted_cand_d0_err)
         self.pt_sorted_cand_pdgid = self.data.event_reco_cand_pdg[self.pt_sorted_idx]
-        self.pt_sorted_cand_isele = self.pt_sorted_cand_pdgid == 13
-        self.pt_sorted_cand_ismu = self.pt_sorted_cand_pdgid == 11
+        self.pt_sorted_cand_isele = np.abs(self.pt_sorted_cand_pdgid) == 13
+        self.pt_sorted_cand_ismu = np.abs(self.pt_sorted_cand_pdgid) == 11
         self.pt_sorted_cand_isch = self.pt_sorted_cand_pdgid == 211
         self.pt_sorted_cand_isnh = self.pt_sorted_cand_pdgid == 130
         self.pt_sorted_cand_isgamma = self.pt_sorted_cand_pdgid == 22
@@ -246,8 +247,7 @@ class GridBuilder(BasicTauBuilder):
 
 if __name__ == "__main__":
     grid = GridBuilder()
-    inputfile = "/scratch/persistent/veelken/CLIC_tau_ntuples/\
-    2023Mar18_woPtCuts/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200001.parquet"
+    inputfile = "/scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18_woPtCuts/HPS/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200001.parquet"
     data = ak.from_parquet(inputfile)
     print("Time: ", time.strftime("%H:%M"))
     data = grid.processJets(data)
