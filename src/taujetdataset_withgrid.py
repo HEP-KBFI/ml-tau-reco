@@ -14,7 +14,9 @@ from build_grid import GridBuilder
 
 from part_var import Var
 from auxiliary import get_split_files, chunks, process_func
-#np.set_printoptions(threshold=sys.maxsize)
+
+# np.set_printoptions(threshold=sys.maxsize)
+
 
 class TauJetDatasetWithGrid:
     def __init__(self, processed_dir="", filelist=[], outputdir="", cfgFileName="./config/grid_builder.json"):
@@ -83,9 +85,9 @@ class TauJetDatasetWithGrid:
                 }
             )
         )
-        taus['pt'] = taup4s.pt
-        taus['theta'] = taup4s.theta
-        taus['e'] = taup4s.e
+        taus["pt"] = taup4s.pt
+        taus["theta"] = taup4s.theta
+        taus["e"] = taup4s.e
         # collect tau features in a specific order to an (Njet x Nfeatjet) torch tensor
         tau_feature_tensors = []
         for feat in self.tau_p4_features:
@@ -129,7 +131,7 @@ class TauJetDatasetWithGrid:
         torch.save(datas, p)
         print("saved {} samples to {}".format(len(datas), p))
         os.makedirs(self.od, exist_ok=True)
-        os.system(f'mv {p} {self.od}')
+        os.system(f"mv {p} {self.od}")
 
     def process(self, num_files_to_batch):
         idx_file = 0

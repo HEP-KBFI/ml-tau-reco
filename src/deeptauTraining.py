@@ -79,7 +79,7 @@ def weighted_huber_loss(pred_tau_p4, true_tau_p4, weights):
 
 def weighted_bce_with_logits(pred_istau, true_istau, weights):
     loss_cls = 10000.0 * focal_loss(pred_istau, true_istau.long())
-    weighted_loss_cls = (loss_cls * weights)/torch.sum(weights)
+    weighted_loss_cls = (loss_cls * weights) / torch.sum(weights)
     return torch.sum(weighted_loss_cls)
 
 
@@ -158,8 +158,8 @@ class DeepTau(nn.Module):
         self.inner_grid.to(device=self.device)
         self.outer_grid.to(device=self.device)
         self.pred_istau = ffn(2 * self.output_from_grid + 21, 2, 100, self.act)
-        #self.pred_istau = ffn(21, 2, 100, self.act)
-        #self.pred_p4 = ffn(21, 4, 100, self.act)
+        # self.pred_istau = ffn(21, 2, 100, self.act)
+        # self.pred_p4 = ffn(21, 4, 100, self.act)
         self.reduce_2d_inner_grid = reduce_2d(
             self.grid_config["inner_grid"]["n_cells"], self.output_from_grid, self.device, self.act
         )
@@ -207,7 +207,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
         tot_acc.append(acc.detach().cpu())
         weights = batch.weight
 
-        #loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
+        # loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
         loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
 
         loss = loss_cls
@@ -219,18 +219,14 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev):
             class_true.append(true_istau.detach().cpu().numpy())
             class_pred.append(torch.softmax(pred_istau, axis=-1)[:, 1].detach().cpu().numpy())
         loss_cls_tot += loss_cls.detach().cpu().item()
-        #loss_p4_tot += loss_p4.detach().cpu().item()
+        # loss_p4_tot += loss_p4.detach().cpu().item()
         nsteps += 1
         njets += true_istau.shape[0]
     sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
         class_pred = np.concatenate(class_pred)
-    return (
-        loss_cls_tot / njets,
-        (class_true, class_pred),
-        sum(tot_acc) / len(tot_acc)
-    )
+    return (loss_cls_tot / njets, (class_true, class_pred), sum(tot_acc) / len(tot_acc))
 
 
 def get_split_files(config_path, split):
@@ -280,24 +276,20 @@ def main(cfg):
     best_loss = np.inf
 
     for iepoch in range(cfg.DeepTau_training.epochs):
-        loss_cls_train, _, acc_cls_train = model_loop(
-            model, ds_train_loader, optimizer, scheduler, True, dev
-        )
+        loss_cls_train, _, acc_cls_train = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
 
-        loss_cls_val, retvals, acc_cls_val, = model_loop(
-            model, ds_val_loader, optimizer, scheduler, False, dev
-        )
+        (
+            loss_cls_val,
+            retvals,
+            acc_cls_val,
+        ) = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev)
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/lr", optimizer.param_groups[0]["lr"], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
         print(
             "epoch={} loss_cls={:.4f}/{:.4f} acc={:.3f}/{:.3f}".format(
-                iepoch,
-                loss_cls_train,
-                loss_cls_val,
-                acc_cls_train,
-                acc_cls_val
+                iepoch, loss_cls_train, loss_cls_val, acc_cls_train, acc_cls_val
             )
         )
         # scheduler.step(loss_cls_val+loss_p4_val)
