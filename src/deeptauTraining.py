@@ -278,12 +278,7 @@ def main(cfg):
     for iepoch in range(cfg.DeepTau_training.epochs):
         loss_cls_train, _, acc_cls_train = model_loop(model, ds_train_loader, optimizer, scheduler, True, dev)
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
-
-        (
-            loss_cls_val,
-            retvals,
-            acc_cls_val,
-        ) = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev)
+        loss_cls_val, retvals, acc_cls_val = model_loop(model, ds_val_loader, optimizer, scheduler, False, dev)
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/lr", optimizer.param_groups[0]["lr"], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
