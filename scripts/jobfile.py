@@ -21,10 +21,11 @@ sample = inputpath.split("/")[-2]
 outputdir = os.path.join(outputdir, algo, sample)
 os.makedirs(outputdir, exist_ok=True)
 user = getpass.getuser()
+pwd = os.getcwd()
 
 
 def create_batchfile(cmd, idx):
-    output_dir = os.path.join("/home/", user, algo)
+    output_dir = os.path.join(f"/home/{user}", algo)
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(os.path.join(output_dir, "error"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "out"), exist_ok=True)
@@ -58,8 +59,8 @@ def create_batchfile(cmd, idx):
 
 files = glob.glob(f"{inputpath}/*")
 for idx, f in enumerate(range(0, len(files) + 1, nfiles)):
-    cmd = f"/home/{user}/ml-tau-reco/scripts/run-env.sh\
-    python3 /home/{user}/ml-tau-reco/src/runBuilder.py builder={algo}\
+    cmd = f"{pwd}/scripts/run-env.sh\
+    python3 {pwd}/src/runBuilder.py builder={algo}\
     samples_to_process=['{sample}'] n_files={nfiles}\
     start={f} output_dir=dir_$SLURM_JOBID verbosity=1\
     samples.{sample}.output_dir={inputpath} use_multiprocessing=False"
