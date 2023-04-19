@@ -74,9 +74,9 @@ class GridBuilder(BasicTauBuilder):
             list_part_var[offset + Var.mass.value][etaidx, phiidx] = self.pt_sorted_cand_mass[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]
-            list_part_var[offset + Var.charge.value][etaidx, phiidx] = self.pt_sorted_cand_charge[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
+            list_part_var[offset + Var.charge.value][etaidx, phiidx] = self.pt_sorted_cand_charge[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             list_part_var[offset + Var.dxy.value][etaidx, phiidx] = self.pt_sorted_cand_dxy[self.pt_sorted_cone_mask > 0][
                 self.jetidx
             ][idx]

@@ -23,6 +23,7 @@ os.makedirs(outputdir, exist_ok=True)
 user = getpass.getuser()
 pwd = os.getcwd()
 
+
 def create_batchfile(cmd, idx):
     output_dir = os.path.join(f"/home/{user}", algo)
     os.makedirs(output_dir, exist_ok=True)

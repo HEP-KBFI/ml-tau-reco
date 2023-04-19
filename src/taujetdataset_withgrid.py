@@ -93,33 +93,40 @@ class TauJetDatasetWithGrid:
             tau_feature_tensors.append(torch.tensor(taus[feat], dtype=torch.float32))
         for feat in self.tauftrs:
             if "multiplicity" in feat:
-                tau_feature_tensors.append(calculate_multiplicuty(data, feat))
+                tau_feature_tensors.append(self.calculate_multiplicuty(data, feat))
                 continue
             tau_feature_tensors.append(torch.tensor(data[feat], dtype=torch.float32))
         tau_features = torch.stack(tau_feature_tensors, axis=-1)
         return tau_features.to(dtype=torch.float32)
 
-    def calculate_multiplicuty(self, data:ak.Record, part:str) -> torch.tensor:
+    def calculate_multiplicuty(self, data: ak.Record, part: str) -> torch.tensor:
         grid = "inner" if "inner" in part else "outer"
         if "ele" in part:
-            idx1 = Var.isele-1
-            idx2 = (Var.max_value+Var.isele) - 1
+            idx1 = Var.isele - 1
+            idx2 = (Var.max_value + Var.isele) - 1
         elif "mu" in part:
-            idx1 = Var.ismu-1
-            idx2 = (Var.max_value+Var.ismu) - 1
+            idx1 = Var.ismu - 1
+            idx2 = (Var.max_value + Var.ismu) - 1
         elif "ch" in part:
-            idx1 = Var.isch-1
-            idx2 = (Var.max_value+Var.isch) - 1
+            idx1 = Var.isch - 1
+            idx2 = (Var.max_value + Var.isch) - 1
         elif "nh" in part:
-            idx1 = Var.isnh-1
-            idx2 = (Var.max_value+Var.isnh) - 1
+            idx1 = Var.isnh - 1
+            idx2 = (Var.max_value + Var.isnh) - 1
         elif "gamma" in part:
-            idx1 = Var.isgamma-1
-            idx2 = (Var.max_value+Var.isgamma) - 1
+            idx1 = Var.isgamma - 1
+            idx2 = (Var.max_value + Var.isgamma) - 1
         else:
-            print('provide correct particle type')
-            assert(0)
-        return torch.tensor(np.sum(np.sum(data[grid].to_numpy()[:,idx1,:,:], axis=(2,3)) + np.sum(data[grid].to_numpy()[:,idx2,:,:], axis=(2,3))), axis=1), dtype=torch.int)
+            print("provide correct particle type")
+            assert 0
+        return torch.tensor(
+            np.sum(
+                np.sum(data[grid].to_numpy()[:, idx1, :, :], axis=(2, 3))
+                + np.sum(data[grid].to_numpy()[:, idx2, :, :], axis=(2, 3)),
+                axis=1,
+            ),
+            dtype=torch.int,
+        )
 
     def get_part_block_features(self, data: ak.Record) -> dict:
         part_block_frs = {}
