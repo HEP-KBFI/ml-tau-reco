@@ -1,6 +1,4 @@
-import awkward as ak
 import math
-import vector
 
 
 class hpsParticleBase:
