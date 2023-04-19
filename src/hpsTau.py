@@ -27,7 +27,7 @@ class Tau(hpsParticleBase):
             else:
                 assert 0
             if chargedCand.pt > self.leadChargedCand_pt:
-                self.leadChargedCand_pt = chargedCand.pt 
+                self.leadChargedCand_pt = chargedCand.pt
         self.signal_chargedCands = chargedCands
         self.signal_strips = strips
         self.updateSignalCands()
@@ -57,9 +57,9 @@ class Tau(hpsParticleBase):
         # print("signal_chargedCands:")
         # for cand in self.signal_chargedCands:
         #    cand.print()
-        #print("#signal_gammaCands = %i" % len(self.signal_gammaCands))
-        #print("#signal_chargedCands = %i" % len(self.signal_chargedCands))
-        #print("leadChargedCand: pT = %1.1f" % self.leadChargedCand_pt)
+        # print("#signal_gammaCands = %i" % len(self.signal_gammaCands))
+        # print("#signal_chargedCands = %i" % len(self.signal_chargedCands))
+        # print("leadChargedCand: pT = %1.1f" % self.leadChargedCand_pt)
         # print("signal_strips:")
         # for strip in self.signal_strips:
         #    strip.print()

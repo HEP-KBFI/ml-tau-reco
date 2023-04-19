@@ -22,7 +22,12 @@ class Cand(hpsParticleBase):
             % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, self.pdgId, self.q)
         )
         if abs(self.q) > 0.5:
-            output += ", d0 = %1.3f +/- %1.3f, dz = %1.3f +/- %1.3f" % (self.d0*1.e+4, self.d0err*1.e+4, self.dz*1.e+4, self.dzerr*1.e+4)
+            output += ", d0 = %1.3f +/- %1.3f, dz = %1.3f +/- %1.3f" % (
+                self.d0 * 1.0e4,
+                self.d0err * 1.0e4,
+                self.dz * 1.0e4,
+                self.dzerr * 1.0e4,
+            )
         print(output)
 
 
