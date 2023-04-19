@@ -157,6 +157,7 @@ class DeepTau(nn.Module):
         )
         self.inner_grid.to(device=self.device)
         self.outer_grid.to(device=self.device)
+        self.tau_ftrs = ffn(21, 57, 100, self.act)
         self.pred_istau = ffn(2 * self.output_from_grid + 21, 2, 100, self.act)
         # self.pred_istau = ffn(21, 2, 100, self.act)
         # self.pred_p4 = ffn(21, 4, 100, self.act)
@@ -170,7 +171,8 @@ class DeepTau(nn.Module):
     # x represents our data
     def forward(self, batch):
         # Pass data through conv1
-        tau_ftrs_plus_part_ftrs = [batch.tau_features]
+        tau_ftrs_plus_part_ftrs = []
+        tau_ftrs_plus_part_ftrs.append(self.tau_ftrs(batch.tau_features))
         # tau_ftrs_plus_part_ftrs = []
         for grid in ["inner_grid", "outer_grid"]:
             layer = self.inner_grid(batch[f"{grid}"]) if "inner" in grid else self.outer_grid(batch[f"{grid}"])
