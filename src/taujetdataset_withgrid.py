@@ -21,7 +21,7 @@ from auxiliary import get_split_files, chunks, process_func
 class TauJetDatasetWithGrid:
     def __init__(self, processed_dir="", filelist=[], outputdir="", cfgFileName="./config/grid_builder.json"):
         self._processed_dir = processed_dir
-        self.tau_p4_features = ["x", "y", "z", "tau", "pt", "theta", "e"]
+        self.tau_p4_features = ["pt", "theta", "phi", "mass"]
         self.filelist = filelist
         self.od = outputdir
         random.shuffle(self.filelist)
@@ -73,8 +73,6 @@ class TauJetDatasetWithGrid:
 
     def get_tau_features(self, data: ak.Record) -> torch.Tensor:
         taus = {}
-        for k in data["tau_p4s"].fields:
-            taus[k] = data["tau_p4s"][k]
         taup4s = vector.awk(
             ak.zip(
                 {
@@ -87,17 +85,48 @@ class TauJetDatasetWithGrid:
         )
         taus["pt"] = taup4s.pt
         taus["theta"] = taup4s.theta
-        taus["e"] = taup4s.e
+        taus["mass"] = taup4s.mass
+        taus["phi"] = taup4s.phi
         # collect tau features in a specific order to an (Njet x Nfeatjet) torch tensor
         tau_feature_tensors = []
         for feat in self.tau_p4_features:
             tau_feature_tensors.append(torch.tensor(taus[feat], dtype=torch.float32))
         for feat in self.tauftrs:
+            if "multiplicity" in feat:
+                tau_feature_tensors.append(self.calculate_multiplicuty(data, feat))
+                continue
             tau_feature_tensors.append(torch.tensor(data[feat], dtype=torch.float32))
         tau_features = torch.stack(tau_feature_tensors, axis=-1)
-        self.data_len = len(tau_features)
-
         return tau_features.to(dtype=torch.float32)
+
+    def calculate_multiplicuty(self, data: ak.Record, part: str) -> torch.tensor:
+        grid = "inner" if "inner" in part else "outer"
+        if "ele" in part:
+            idx1 = Var.isele - 1
+            idx2 = (Var.max_value + Var.isele) - 1
+        elif "mu" in part:
+            idx1 = Var.ismu - 1
+            idx2 = (Var.max_value + Var.ismu) - 1
+        elif "ch" in part:
+            idx1 = Var.isch - 1
+            idx2 = (Var.max_value + Var.isch) - 1
+        elif "nh" in part:
+            idx1 = Var.isnh - 1
+            idx2 = (Var.max_value + Var.isnh) - 1
+        elif "gamma" in part:
+            idx1 = Var.isgamma - 1
+            idx2 = (Var.max_value + Var.isgamma) - 1
+        else:
+            print("provide correct particle type")
+            assert 0
+        return torch.tensor(
+            np.sum(
+                np.sum(data[grid].to_numpy()[:, idx1, :, :], axis=(2, 3))
+                + np.sum(data[grid].to_numpy()[:, idx2, :, :], axis=(2, 3)),
+                axis=1,
+            ),
+            dtype=torch.int,
+        )
 
     def get_part_block_features(self, data: ak.Record) -> dict:
         part_block_frs = {}
@@ -168,8 +197,8 @@ if __name__ == "__main__":
 
     infile = sys.argv[1]
     ds = osp.basename(infile).split(".")[0]
-    sig_ntuples_dir = "/local/snandan/grid_withcorrectmul/Grid/ZH_Htautau"
-    bkg_ntuples_dir = "/local/snandan/grid_withcorrectmul/Grid/QCD"
+    sig_ntuples_dir = "/local/snandan/grid/Grid/ZH_Htautau"
+    bkg_ntuples_dir = "/local/snandan/grid/Grid/QCD/"
 
     filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
     outp = "data/dataset_{}".format(ds)
