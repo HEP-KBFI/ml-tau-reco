@@ -3,20 +3,22 @@ import numpy as np
 import vector
 
 from hpsAlgoTools import comp_deltaPhi, comp_pt_sum, selectCandsByDeltaR, selectCandsByPdgId
+from hpsParticleBase import hpsParticleBase
 
 
-class Tau:
+class Tau(hpsParticleBase):
     def __init__(self, chargedCands=[], strips=[], barcode=-1):
         chargedCand_and_strip_p4s = [chargedCand.p4 for chargedCand in chargedCands] + [strip.p4 for strip in strips]
         chargedCand_and_strip_p4s = np.array([[p4.px, p4.py, p4.pz, p4.E] for p4 in chargedCand_and_strip_p4s])
+        sum_p4 = None
         if len(chargedCand_and_strip_p4s) == 0:
-            self.p4 = vector.obj(px=0, py=0, pz=0, E=0)
+            sum_p4 = vector.obj(px=0, py=0, pz=0, E=0)
         else:
             sum_p4 = np.sum(chargedCand_and_strip_p4s, axis=0)
-            self.p4 = vector.obj(px=sum_p4[0], py=sum_p4[1], pz=sum_p4[2], E=sum_p4[3])
-
-        self.updatePtEtaPhiMass()
+            sum_p4 = vector.obj(px=sum_p4[0], py=sum_p4[1], pz=sum_p4[2], E=sum_p4[3])
+        super().__init__(p4=sum_p4, barcode=barcode)
         self.q = 0.0
+        self.leadChargedCand_pt = 0.0
         for chargedCand in chargedCands:
             if chargedCand.q > 0.0:
                 self.q += 1.0
@@ -24,6 +26,8 @@ class Tau:
                 self.q -= 1.0
             else:
                 assert 0
+            if chargedCand.pt > self.leadChargedCand_pt:
+                self.leadChargedCand_pt = chargedCand.pt
         self.signal_chargedCands = chargedCands
         self.signal_strips = strips
         self.updateSignalCands()
@@ -34,7 +38,6 @@ class Tau:
         self.gammaIso_dR0p5 = -1.0
         self.neutralHadronIso_dR0p5 = -1.0
         self.combinedIso_dR0p5 = -1.0
-        self.barcode = barcode
 
     def updateSignalCands(self):
         self.num_signal_chargedCands = len(self.signal_chargedCands)
@@ -46,14 +49,6 @@ class Tau:
                 self.signal_cands.add(cand)
         self.signal_gammaCands = selectCandsByPdgId(self.signal_cands, [22])
 
-    def updatePtEtaPhiMass(self):
-        self.energy = self.p4.energy
-        self.pt = self.p4.pt
-        self.eta = self.p4.eta
-        self.theta = self.p4.theta
-        self.phi = self.p4.phi
-        self.mass = self.p4.mass
-
     def print(self):
         print(
             "tau #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, idDiscr = %1.3f, decayMode = %s"
@@ -62,6 +57,9 @@ class Tau:
         # print("signal_chargedCands:")
         # for cand in self.signal_chargedCands:
         #    cand.print()
+        # print("#signal_gammaCands = %i" % len(self.signal_gammaCands))
+        # print("#signal_chargedCands = %i" % len(self.signal_chargedCands))
+        # print("leadChargedCand: pT = %1.1f" % self.leadChargedCand_pt)
         # print("signal_strips:")
         # for strip in self.signal_strips:
         #    strip.print()
@@ -211,6 +209,8 @@ def writeTaus(taus):
         "tau_charge": ak.Array([tau.q for tau in taus]),
         "tau_decaymode": ak.Array([get_decayMode(tau) for tau in taus]),
         "tau_nGammas": ak.Array([len(tau.signal_gammaCands) for tau in taus]),
+        "tau_nCharged": ak.Array([len(tau.signal_chargedCands) for tau in taus]),
+        "tau_leadChargedCand_pt": ak.Array([tau.leadChargedCand_pt for tau in taus]),
         "tau_emEnergyFrac": ak.Array(
             [(comp_pt_sum(tau.signal_gammaCands) / tau.pt) if tau.pt > 0.0 else 0.0 for tau in taus]
         ),

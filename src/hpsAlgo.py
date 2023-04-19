@@ -2,10 +2,12 @@ from functools import cmp_to_key
 import math
 
 from hpsAlgoTools import (
-    comp_angle,
+    comp_angle3d,
     comp_deltaEta,
     comp_deltaTheta,
-    comp_deltaR,
+    comp_deltaR_etaphi,
+    comp_deltaR_thetaphi,
+    comp_p_sum,
     comp_pt_sum,
     selectCandsByDeltaR,
     selectCandsByPdgId,
@@ -69,21 +71,24 @@ class HPSAlgo:
 
         self.matchingConeSize = getParameter(cfg, "matchingConeSize", 1.0e-1)
         self.isolationConeSize = getParameter(cfg, "isolationConeSize", 5.0e-1)
-        metric = getParameter(cfg, "metric", "theta-phi")
+        self.metric = getParameter(cfg, "metric", "theta-phi")
         self.metric_dR_or_angle = None
         self.metric_dEta_or_dTheta = None
-        if metric == "eta-phi":
-            self.metric_dR_or_angle = comp_deltaR
+        if self.metric == "eta-phi":
+            self.metric_dR_or_angle = comp_deltaR_etaphi
             self.metric_dEta_or_dTheta = comp_deltaEta
-        elif metric == "theta-phi":
-            self.metric_dR_or_angle = comp_angle
+        elif self.metric == "theta-phi":
+            self.metric_dR_or_angle = comp_deltaR_thetaphi
+            self.metric_dEta_or_dTheta = comp_deltaTheta
+        elif self.metric == "angle3d":
+            self.metric_dR_or_angle = comp_angle3d
             self.metric_dEta_or_dTheta = comp_deltaTheta
         else:
-            raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
+            raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % self.metric)
         if verbosity >= 1:
             print("matchingConeSize = %1.2f" % self.matchingConeSize)
             print("isolationConeSize = %1.2f" % self.isolationConeSize)
-            print("metric = '%s'" % metric)
+            print("metric = '%s'" % self.metric)
 
         self.stripAlgo = StripAlgo(cfg["StripAlgo"], self.metric_dEta_or_dTheta, verbosity)
 
@@ -294,9 +299,16 @@ class HPSAlgo:
                         tau_candidate.iso_chargedCands = selectCandsByPdgId(tau_iso_cands, [11, 13, 211])
                         tau_candidate.iso_gammaCands = selectCandsByPdgId(tau_iso_cands, [22])
                         tau_candidate.iso_neutralHadronCands = selectCandsByPdgId(tau_iso_cands, [130])
-                        tau_candidate.chargedIso_dR0p5 = comp_pt_sum(tau_candidate.iso_chargedCands)
-                        tau_candidate.gammaIso_dR0p5 = comp_pt_sum(tau_candidate.iso_gammaCands)
-                        tau_candidate.neutralHadronIso_dR0p5 = comp_pt_sum(tau_candidate.iso_neutralHadronCands)
+                        if self.metric == "eta-phi" or self.metric == "theta-phi":
+                            tau_candidate.chargedIso_dR0p5 = comp_pt_sum(tau_candidate.iso_chargedCands)
+                            tau_candidate.gammaIso_dR0p5 = comp_pt_sum(tau_candidate.iso_gammaCands)
+                            tau_candidate.neutralHadronIso_dR0p5 = comp_pt_sum(tau_candidate.iso_neutralHadronCands)
+                        elif self.metric == "angle3d":
+                            tau_candidate.chargedIso_dR0p5 = comp_p_sum(tau_candidate.iso_chargedCands)
+                            tau_candidate.gammaIso_dR0p5 = comp_p_sum(tau_candidate.iso_gammaCands)
+                            tau_candidate.neutralHadronIso_dR0p5 = comp_p_sum(tau_candidate.iso_neutralHadronCands)
+                        else:
+                            raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % self.metric)
                         # CV: don't use neutral hadrons when computing the isolation of the tau
                         tau_candidate.combinedIso_dR0p5 = tau_candidate.chargedIso_dR0p5 + tau_candidate.gammaIso_dR0p5
 

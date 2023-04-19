@@ -97,10 +97,19 @@ def p3_norm(p, eps=1e-8):
 
 
 def pairwise_lv_fts(xi, xj, to_ptXXXphim, num_outputs=4, eps=1e-8, for_onnx=False):
-    pti, rap_or_thetai, phii = to_ptXXXphim(xi, False, eps=None, for_onnx=for_onnx).split((1, 1, 1), dim=1)
-    ptj, rap_or_thetaj, phij = to_ptXXXphim(xj, False, eps=None, for_onnx=for_onnx).split((1, 1, 1), dim=1)
-
-    delta = delta_r2(rap_or_thetai, phii, rap_or_thetaj, phij).sqrt()
+    delta = None
+    if to_ptXXXphim is not None:
+        pti, rap_or_thetai, phii = to_ptXXXphim(xi, False, eps=None, for_onnx=for_onnx).split((1, 1, 1), dim=1)
+        ptj, rap_or_thetaj, phij = to_ptXXXphim(xj, False, eps=None, for_onnx=for_onnx).split((1, 1, 1), dim=1)
+        delta = delta_r2(rap_or_thetai, phii, rap_or_thetaj, phij).sqrt()
+    else:
+        pxi, pyi, pzi, energyi = xi.split((1, 1, 1, 1), dim=1)
+        pxj, pyj, pzj, energyj = xj.split((1, 1, 1, 1), dim=1)
+        pi = torch.sqrt(pxi**2 + pyi**2 + pzi**2).clamp(min=1e-8)
+        pj = torch.sqrt(pxj**2 + pyj**2 + pzj**2).clamp(min=1e-8)
+        cos_angle = (pxi * pxj + pyi * pyj + pzi * pzj) / (pi * pj)
+        cos_angle = torch.clamp(cos_angle, min=-1.0, max=+1.0)
+        delta = torch.acos(cos_angle)
     lndelta = torch.log(delta.clamp(min=eps))
     if num_outputs == 1:
         return lndelta
@@ -582,6 +591,8 @@ class ParticleTransformer(nn.Module):
             self.to_ptXXXphim = to_ptrapphim
         elif metric == "theta-phi":
             self.to_ptXXXphim = to_ptthetaphim
+        elif metric == "angle3d":
+            self.to_ptXXXphim = None
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
         self.pair_extra_dim = pair_extra_dim
