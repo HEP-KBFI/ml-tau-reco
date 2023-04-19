@@ -2,16 +2,12 @@ import awkward as ak
 import math
 import vector
 
+from hpsParticleBase import hpsParticleBase
 
-class Cand:
-    def __init__(self, p4, pdgId, q, d0, d0err, dz, dzerr, barcode):
-        self.p4 = p4
-        self.energy = p4.energy
-        self.pt = p4.pt
-        self.eta = p4.eta
-        self.theta = p4.theta
-        self.phi = p4.phi
-        self.mass = p4.mass
+
+class Cand(hpsParticleBase):
+    def __init__(self, p4, pdgId, q, d0, d0err, dz, dzerr, barcode=-1):
+        super().__init__(p4=p4, barcode=barcode)
         self.pdgId = pdgId
         self.abs_pdgId = abs(pdgId)
         self.q = q
@@ -19,7 +15,6 @@ class Cand:
         self.d0err = d0err
         self.dz = math.fabs(dz)
         self.dzerr = dzerr
-        self.barcode = barcode
 
     def print(self):
         output = (
@@ -27,7 +22,7 @@ class Cand:
             % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, self.pdgId, self.q)
         )
         if abs(self.q) > 0.5:
-            output += "d0 = %1.3f +/- %1.3f, dz = %1.3f +/- %1.3f" % (self.d0, self.d0err, self.dz, self.dzerr)
+            output += ", d0 = %1.3f +/- %1.3f, dz = %1.3f +/- %1.3f" % (self.d0*1.e+4, self.d0err*1.e+4, self.dz*1.e+4, self.dzerr*1.e+4)
         print(output)
 
 
