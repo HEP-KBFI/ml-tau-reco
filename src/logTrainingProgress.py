@@ -14,7 +14,7 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
 
     print("%s: Avg loss = %1.6f, accuracy = %1.2f%%" % (mode.capitalize(), loss, 100 * accuracy))
     print(
-        " rates: TP = %1.2f%%, FP = %1.2f%%, TN = %1.2f%%, FN = %1.2f%%" \
+        " rates: TP = %1.2f%%, FP = %1.2f%%, TN = %1.2f%%, FN = %1.2f%%"
         " (precision = %1.2f%%, recall = %1.2f%%, F1 score = %1.6f)"
         % (
             100 * true_positive_rate,
