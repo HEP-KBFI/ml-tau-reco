@@ -18,7 +18,7 @@ from LorentzNetTauBuilder import LorentzNetTauBuilder
 from ParticleTransformerTauBuilder import ParticleTransformerTauBuilder
 from DeepTauBuilder import DeepTauBuilder
 from deeptauTraining import DeepTau
-
+from tauTwoStepSimple import TwoStepDNNTauBuilder, TauTwoStepSimple, ParticleDynamicEdgeConv
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
     print("Load jets from", input_path)
@@ -49,6 +49,9 @@ def build_taus(cfg: DictConfig) -> None:
         assert pytorch_model.__class__ == TauEndToEndSimple
         assert pytorch_model.nn_pf_mha[0].__class__ == SelfAttentionLayer
         builder = SimpleDNNTauBuilder(pytorch_model)
+    elif cfg.builder == "TwoStepDNN":
+        pytorch_model = torch.load("data_twostep/model2.pt", map_location=torch.device("cpu"))
+        builder = TwoStepDNNTauBuilder(pytorch_model)
     elif cfg.builder == "LorentzNet":
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "ParticleTransformer":
