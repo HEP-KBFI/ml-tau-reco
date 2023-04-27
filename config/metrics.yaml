@@ -6,15 +6,19 @@ algorithms:
   LorentzNet:
     sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar24_wPdgId/LorentzNet/ZH_Htautau
     bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar24_wPdgId/LorentzNet/QCD
-    compare: True
+    compare: False
   HPS_DeepTau:
     sig_ntuples_dir: /local/snandan/DeepTauBuilder_correctconv/DeepTau/ZH_Htautau
     bkg_ntuples_dir: /local/snandan/DeepTauBuilder_correctconv/DeepTau/QCD/
-    compare: True
+    compare: False
+  # HPS_DeepTau:
+  #     sig_ntuples_dir: /local/snandan/DeepTauBuilder_woreg/DeepTau/ZH_Htautau/
+  #     bkg_ntuples_dir: /local/snandan/DeepTauBuilder_woreg/DeepTau/QCD/
+  #     compare: True
   ParticleTransformer:
     sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18/ParticleTransformer/ZH_Htautau
     bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18/ParticleTransformer/QCD
-    compare: True
+    compare: False
   MLReco_DeepTau:
     sig_ntuples_dir: /foo/bar
     bkg_ntuples_dir: /foo/bar
@@ -28,8 +32,8 @@ algorithms:
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230320/HPS/QCD
     compare: False
   HPS:
-    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18_woPtCuts/HPS/ZH_Htautau
-    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18_woPtCuts/HPS/QCD
+    sig_ntuples_dir: /scratch/persistent/laurits/HPS_230419/HPS/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/laurits/HPS_230419/HPS/QCD
     compare: True
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
@@ -38,11 +42,11 @@ algorithms:
   FastCMSTau:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230320/FastCMSTau/ZH_Htautau
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230320/FastCMSTau/QCD
-    compare: True
+    compare: False
   SimpleDNN:
     sig_ntuples_dir: /scratch/persistent/joosep/ml-tau-reco/CLIC_data/2023_03_23/SimpleDNN/ZH_Htautau/
     bkg_ntuples_dir: /scratch/persistent/joosep/ml-tau-reco/CLIC_data/2023_03_23/SimpleDNN/QCD/
-    compare: True
+    compare: False
 metrics:
   denominator: "pt >= 20 && |eta| < 2.3"
   numerator: "pt >= 20 && |eta| < 2.3"

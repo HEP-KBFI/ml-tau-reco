@@ -4,6 +4,7 @@ import hydra
 import vector
 import matplotlib
 import numpy as np
+import general as g
 import mplhep as hep
 import awkward as ak
 import seaborn as sns
@@ -19,9 +20,13 @@ hep.style.use(hep.styles.CMS)
 matplotlib.use("Agg")
 
 
-def load_samples(sig_dir: str, bkg_dir: str, n_files: int = -1):
-    sig_data = load_all_data(sig_dir, n_files=n_files)
-    bkg_data = load_all_data(bkg_dir, n_files=n_files)
+
+def load_samples(sig_dir: str, bkg_dir: str, n_files: int = -1, branches: list = None):
+    ZH_data = load_all_data(sig_dir, n_files=n_files, branches=branches)
+    QCD_data = load_all_data(bkg_dir, n_files=n_files, branches=branches)
+    sig_data = ZH_data[ZH_data.gen_jet_tau_decaymode != -1]
+    ZH_bkg = ZH_data[ZH_data.gen_jet_tau_decaymode == -1]
+    bkg_data = ak.concatenate([ZH_bkg, QCD_data], axis=0)
     return sig_data, bkg_data
 
 
@@ -40,27 +45,12 @@ def visualize_weights(weight_matrix, x_bin_edges, y_bin_edges, output_path, ylab
     plt.xlabel(xlabel)
     heatmap.yaxis.set_major_locator(AutoLocator())
     heatmap.xaxis.set_major_locator(AutoLocator())
-    # for i, label in enumerate(heatmap.xaxis.get_ticklabels()):
-    #     if i % 5 != 0:
-    #         label.set_visible(False)
-    # for i, label in enumerate(heatmap.yaxis.get_ticklabels()):
-    #     if i % 5 != 0:
-    #         label.set_visible(False)
     plt.savefig(output_path)
     plt.close("all")
 
 
 def create_matrix(data, y_bin_edges, x_bin_edges, y_property, x_property):
-    p4s = vector.awk(
-        ak.zip(
-            {
-                "mass": data.gen_jet_p4s.tau,
-                "x": data.gen_jet_p4s.x,
-                "y": data.gen_jet_p4s.y,
-                "z": data.gen_jet_p4s.z,
-            }
-        )
-    )
+    p4s = g.reinitialize_p4(data.gen_jet_p4s)
     x_property_ = getattr(p4s, x_property).to_numpy()
     y_property_ = getattr(p4s, y_property).to_numpy()
     if y_property == "theta":
@@ -100,16 +90,7 @@ def process_files(weight_matrix, theta_bin_edges, pt_bin_edges, data_dir, cfg, u
 
 
 def get_weights(data, weight_matrix, theta_bin_edges, pt_bin_edges):
-    p4s = vector.awk(
-        ak.zip(
-            {
-                "mass": data.gen_jet_p4s.tau,
-                "x": data.gen_jet_p4s.x,
-                "y": data.gen_jet_p4s.y,
-                "z": data.gen_jet_p4s.z,
-            }
-        )
-    )
+    p4s = g.reinitialize_p4(data.gen_jet_p4s)
     theta_values = np.rad2deg(p4s.theta.to_numpy())
     pt_values = p4s.p.to_numpy()
     theta_bin = np.digitize(theta_values, bins=(theta_bin_edges[1:] + theta_bin_edges[:-1]) / 2) - 1
@@ -130,27 +111,12 @@ def process_single_file(input_path, weight_matrix, theta_bin_edges, pt_bin_edges
     return weights
 
 
-def plot_weighting_results(sig_data, bkg_data, sig_weights, bkg_weights, output_dir):
-    bkg_p4s = vector.awk(
-        ak.zip(
-            {
-                "mass": bkg_data.gen_jet_p4s.tau,
-                "x": bkg_data.gen_jet_p4s.x,
-                "y": bkg_data.gen_jet_p4s.y,
-                "z": bkg_data.gen_jet_p4s.z,
-            }
-        )
-    )
-    sig_p4s = vector.awk(
-        ak.zip(
-            {
-                "mass": sig_data.gen_jet_p4s.tau,
-                "x": sig_data.gen_jet_p4s.x,
-                "y": sig_data.gen_jet_p4s.y,
-                "z": sig_data.gen_jet_p4s.z,
-            }
-        )
-    )
+def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, output_dir):
+    sig_data = all_ZH_data[all_ZH_data.gen_jet_tau_decaymode != -1]
+    ZH_bkg = all_ZH_data[all_ZH_data.gen_jet_tau_decaymode == -1]
+    bkg_data = ak.concatenate([QCD_data, ZH_bkg], axis=0)
+    bkg_p4s = g.reinitialize_p4(bkg_data.gen_jet_p4s)
+    sig_p4s = g.reinitialize_p4(sig_data.gen_jet_p4s)
     plot_distributions(
         sig_values=sig_p4s.pt,
         bkg_values=bkg_p4s.pt,
@@ -185,18 +151,18 @@ def plot_weighting_results(sig_data, bkg_data, sig_weights, bkg_weights, output_
     )
 
 
-def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_path, xlabel=r"$p_T$"):
+def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_path, xlabel=r"$p_T [GeV]$"):
     mpl.rcParams.update(mpl.rcParamsDefault)
     hep.style.use(hep.styles.CMS)
     bkg_hist, bin_edges = np.histogram(bkg_values, weights=bkg_weights, bins=50)
     sig_hist = np.histogram(sig_values, weights=sig_weights, bins=bin_edges)[0]
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    hep.histplot(bkg_hist, bins=bin_edges, histtype="step", label="Quark/gluon jets", hatch="//", color="red")
-    hep.histplot(sig_hist, bins=bin_edges, histtype="step", label=r"$\tau_h$", hatch="\\\\", color="blue")
+    hep.histplot(bkg_hist, bins=bin_edges, histtype="step", label="Background", hatch="//", color="blue")
+    hep.histplot(sig_hist, bins=bin_edges, histtype="step", label="Signal", hatch="\\\\", color="red")
     ax.set_facecolor("white")
     plt.xlabel(xlabel, fontdict={"size": 25})
     plt.ylabel("Relative yield / bin", fontdict={"size": 25})
-    plt.legend()
+    plt.legend(loc='upper right')
     plt.savefig(output_path)
     plt.close("all")
 
@@ -204,7 +170,10 @@ def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_
 @hydra.main(config_path="../config", config_name="weighting", version_base=None)
 def main(cfg: DictConfig):
     sig_data, bkg_data = load_samples(
-        sig_dir=cfg.samples.ZH_Htautau.output_dir, bkg_dir=cfg.samples.QCD.output_dir, n_files=10
+        sig_dir=cfg.samples.ZH_Htautau.output_dir,
+        bkg_dir=cfg.samples.QCD.output_dir,
+        n_files=cfg.n_files_per_sample,
+        branches=['gen_jet_p4s', 'gen_jet_tau_decaymode']
     )
     output_dir = os.path.abspath(os.path.join(cfg.samples.QCD.output_dir, os.pardir))
     eta_bin_edges = np.linspace(
@@ -243,6 +212,7 @@ def main(cfg: DictConfig):
     sig_matrix_p_theta = create_matrix(sig_data, theta_bin_edges, pt_bin_edges, y_property="theta", x_property="p")
     bkg_matrix_p_theta = create_matrix(bkg_data, theta_bin_edges, pt_bin_edges, y_property="theta", x_property="p")
     if cfg.produce_plots:
+        print("Visualizing distributions")
         sig_output_path_p_theta = os.path.join(output_dir, "signal_matrix_p_theta.pdf")
         visualize_weights(
             sig_matrix_p_theta, pt_bin_edges, theta_bin_edges, sig_output_path_p_theta, ylabel=r"$\theta$", xlabel="p"
@@ -289,6 +259,7 @@ def main(cfg: DictConfig):
     )
     plot_weight_distributions(signal_weights, bkg_weights, output_dir)
     if cfg.produce_plots:
+        print("Visualizing weights and plotting the weighting results")
         sig_output_path_p_theta = os.path.join(output_dir, "signal_weights_p_theta.pdf")
         visualize_weights(
             weight_matrix=sig_weights_p_theta,
@@ -310,8 +281,8 @@ def main(cfg: DictConfig):
         sig_weights = get_weights(sig_data, sig_weights_p_theta, theta_bin_edges, pt_bin_edges)
         bkg_weights = get_weights(bkg_data, bkg_weights_p_theta, theta_bin_edges, pt_bin_edges)
         plot_weighting_results(
-            sig_data=sig_data,
-            bkg_data=bkg_data,
+            sig_data,
+            bkg_data,
             sig_weights=sig_weights,
             bkg_weights=bkg_weights,
             output_dir=output_dir,
@@ -321,14 +292,14 @@ def main(cfg: DictConfig):
 def plot_weight_distributions(signal_weights, bkg_weights, output_dir):
     mpl.rcParams.update(mpl.rcParamsDefault)
     hep.style.use(hep.styles.CMS)
-    bkg_hist_, bin_edges = np.histogram(bkg_weights, bins=50)
+    bin_edges = np.linspace(start=0, stop=1, num=51)
+    bkg_hist_ = np.histogram(bkg_weights, bins=bin_edges)[0]
     bkg_hist = bkg_hist_ / np.sum(bkg_hist_)
     sig_hist_ = np.histogram(signal_weights, bins=bin_edges)[0]
     sig_hist = sig_hist_ / np.sum(sig_hist_)
     fig, ax = plt.subplots(nrows=1, ncols=1)
     hep.histplot(bkg_hist, bin_edges, label="Quark/gluon jets", hatch="//", color="red")
     hep.histplot(sig_hist, bin_edges, label=r"$\tau_h$", hatch="\\\\", color="blue")
-    plt.xscale("log")
     plt.xlabel("Weight", fontdict={"size": 25})
     plt.ylabel("Relative yield / bin", fontdict={"size": 25})
     plt.legend()

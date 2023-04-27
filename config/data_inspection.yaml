@@ -1,5 +1,7 @@
 n_files_per_sample: -1
 output_dir: $HOME/data_inspection_20230220
+plot_dataset_info: True
+plot_paper_plots: True
 defaults:
   - ntupelizer
   - _self_

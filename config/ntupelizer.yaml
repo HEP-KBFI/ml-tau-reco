@@ -7,15 +7,26 @@ branches:
   - PrimaryVertices
 test_run: False
 samples_to_process:
-  - ZH_Htautau
-  - QCD
+  # - ZH_Htautau
+  # - QCD
+  - ZH_Htautau_removeConst
+  # - ZH_Htautau_nosmear
 samples:
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /scratch/persistent/laurits/CLIC_data_20230316/ZH_Htautau
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230417/ZH_Htautau
+  ZH_Htautau_removeConst:
+    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /home/laurits/tauLifeTime_removeConst
+  ZH_Htautau_nosmear:
+    input_dir: /local/joosep/clic_edm4hep_2023_04_21_noVtxSmear/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /home/laurits/tauLifeTime_nosmear2
+  ZH_Htautau_SiTracks_1:
+    input_dir: /local/joosep/clic_edm4hep_2023_04_21_noVtxSmear/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /home/laurits/tauLifeTime_SiTracks_1
   QCD:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
-    output_dir: /scratch/persistent/laurits/CLIC_data_20230316/QCD
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230417/QCD
   TT:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_tt_ecm365
     output_dir: /scratch/persistent/laurits/CLIC_data_20230316/TT

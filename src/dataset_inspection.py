@@ -2,11 +2,13 @@ import os
 import glob
 import hydra
 import vector
+import numba
 import numpy as np
 import mplhep as hep
 import awkward as ak
 import plotting as pl
 import seaborn as sns
+import general as g
 import edm4hep_to_ntuple as nt
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
@@ -25,6 +27,7 @@ def main(cfg: DictConfig) -> None:
             n_files = cfg.n_files_per_sample
         arrays = []
         for input_path in input_paths[:n_files]:
+            print(f"Loading from {input_path}")
             arrays.append(nt.load_single_file_contents(input_path, cfg.tree_path, cfg.branches))
         arrays = ak.concatenate(arrays)
         sample_arrays[sample] = arrays
@@ -32,17 +35,16 @@ def main(cfg: DictConfig) -> None:
     os.makedirs(output_dir, exist_ok=True)
     sig_data = sample_arrays["ZH_Htautau"]
     bkg_data = sample_arrays["QCD"]
-    # plot_gen(sig_data, output_dir)
-    # plot_reco(sig_data, output_dir)
-
-    plot_paper(sig_data, bkg_data, output_dir)
+    if cfg.plot_paper_plots:
+        plot_paper(sig_data, bkg_data, output_dir)
+    if cfg.plot_dataset_info:
+        plot_gen(sig_data, output_dir)
+        plot_reco(sig_data, output_dir)
 
 
 def plot_paper(sig_data, bkg_data, output_dir):
     sig_mcp, sig_mc_p4 = nt.calculate_p4("MCParticles", sig_data)
-    stable_sig_mc_p4, stable_sig_mcp = nt.get_stable_mc_particles(sig_mcp, sig_mc_p4)
     bkg_mcp, bkg_mc_p4 = nt.calculate_p4("MCParticles", bkg_data)
-    stable_bkg_mc_p4, stable_bkg_mcp = nt.get_stable_mc_particles(bkg_mcp, bkg_mc_p4)
     plot_n_particles_in_gen_jet_tau_jet(sig_mcp, sig_mc_p4, bkg_mcp, bkg_mc_p4, output_dir)
 
 
@@ -54,19 +56,26 @@ def calculate_all_jet_radii(gen_jet_constituent_indices, gen_jets, stable_mc_p4)
             jet_constituents = gen_jet_constituent_indices[ev_idx][tgj_idx]
             constituent_p4s = stable_mc_p4[ev_idx][jet_constituents]
             tau_gen_jet = gen_jets[ev_idx][tgj_idx]
-            event_jet_radii.append(calculate_jet_radius(tau_gen_jet, constituent_p4s))
+            c_eta = constituent_p4s.eta
+            c_phi = constituent_p4s.phi
+            c_pt = constituent_p4s.pt
+            j_phi = tau_gen_jet.phi
+            j_eta = tau_gen_jet.eta
+            j_pt = tau_gen_jet.pt
+            event_jet_radii.append(calculate_jet_radius(c_pt, j_eta, j_phi, c_eta, c_phi))
         all_jet_radii.append(event_jet_radii)
     return ak.flatten(all_jet_radii, axis=-1)
 
 
-def calculate_jet_radius(jet_p4, constituent_p4s):
+@numba.njit
+def calculate_jet_radius(c_pt, j_eta, j_phi, c_eta, c_phi):
     denominator = 0
     numerator = 0
-    for c_p4 in constituent_p4s:
-        deta = np.abs(c_p4.eta - jet_p4.eta)
-        dphi = nt.deltaphi(c_p4.phi, jet_p4.phi)
-        numerator += (deta**2 + dphi**2) * jet_p4.pt
-        denominator += jet_p4.pt
+    for idx in range(len(c_phi)):
+        deta = np.abs(c_eta[idx] - j_eta)
+        dphi = nt.deltaphi(c_phi[idx], j_phi)
+        numerator += np.sqrt((deta**2 + dphi**2)) * c_pt[idx]
+        denominator += c_pt[idx]
     return numerator / denominator
 
 
@@ -82,13 +91,26 @@ def get_tau_jet_info(sig_mcp, sig_mc_p4):
     for i, combo in enumerate(best_combos):
         tau_gen_jets.append(gen_jets[i][combo[:, 1]])
         tau_gen_jet_constituent_indices.append(gen_jet_constituent_indices[i][combo[:, 1]])
-    jet_mass = ak.flatten([tgj.mass for tgj in tau_gen_jets], axis=-1)
+    tau_gen_jet_masses = g.reinitialize_p4(ak.from_iter(tau_gen_jets)).mass
+    jet_mass = ak.flatten(tau_gen_jet_masses, axis=-1)
+    n_ch_particles_in_jet, n_neutral_particles_in_jet = calculate_n_particles(tau_gen_jet_constituent_indices, stable_sig_mcp)
     tau_jet_info = {
-        "n_particles_in_jet": ak.num(tau_gen_jet_constituent_indices, axis=2),
+        "n_ch_particles_in_jet": n_ch_particles_in_jet,
+        "n_neutral_particles_in_jet": n_neutral_particles_in_jet,
+        "n_particles_in_jet": ak.num(tau_gen_jet_constituent_indices, axis=-1),
         "jet_radius": calculate_all_jet_radii(tau_gen_jet_constituent_indices, tau_gen_jets, stable_sig_mc_p4),
         "jet_mass": jet_mass[jet_mass > 0],
     }
     return tau_jet_info
+
+
+def calculate_n_particles(gen_jet_constituent_indices, stable_mcp):
+    num_ptcls_per_jet = ak.num(gen_jet_constituent_indices, axis=-1)
+    constituent_charges = nt.get_jet_constituent_property(
+        stable_mcp.charge, gen_jet_constituent_indices, num_ptcls_per_jet)
+    n_neutral = ak.flatten(ak.sum(np.abs(constituent_charges) == 0, axis=-1), axis=-1)
+    n_charged = ak.flatten(ak.sum(np.abs(constituent_charges) > 0, axis=-1), axis=-1)
+    return n_charged, n_neutral
 
 
 def get_qg_jet_info(bkg_mcp, bkg_mc_p4):
@@ -96,7 +118,11 @@ def get_qg_jet_info(bkg_mcp, bkg_mc_p4):
     bkg_gen_jets, bkg_gen_jet_constituent_indices = nt.cluster_jets(bkg_stable_mc_p4)
     bkg_gen_jets = nt.filter_gen_jets(bkg_gen_jets, bkg_gen_jet_constituent_indices, bkg_stable_mc_particles)
     jet_mass = ak.flatten(bkg_gen_jets.mass, axis=-1)
+    n_ch_particles_in_jet, n_neutral_particles_in_jet = calculate_n_particles(
+        bkg_gen_jet_constituent_indices, bkg_stable_mc_particles)
     qg_jet_info = {
+        "n_ch_particles_in_jet": n_ch_particles_in_jet,
+        "n_neutral_particles_in_jet": n_neutral_particles_in_jet,
         "n_particles_in_jet": ak.num(bkg_gen_jet_constituent_indices, axis=-1),
         "jet_radius": calculate_all_jet_radii(bkg_gen_jet_constituent_indices, bkg_gen_jets, bkg_stable_mc_p4),
         "jet_mass": jet_mass[jet_mass > 0],
@@ -108,33 +134,31 @@ def plot_n_particles_in_gen_jet_tau_jet(sig_mcp, sig_mc_p4, bkg_mcp, bkg_mc_p4, 
     qg_jet_info = get_qg_jet_info(bkg_mcp, bkg_mc_p4)
     tau_jet_info = get_tau_jet_info(sig_mcp, sig_mc_p4)
     x_label = {
-        "n_particles_in_jet": "Number of jet constituent particles",
+        "n_particles_in_jet": "Number of jet constituents",
+        "n_ch_particles_in_jet": "Number of charged jet constituent",
+        "n_neutral_particles_in_jet": "Number of neutral jet constituent",
         "jet_radius": r"$\langle r \rangle$",
-        "jet_mass": r"$M_{jet}$",
+        "jet_mass": r"$M_{jet} [GeV]$",
     }
     limits = {
-        "n_particles_in_jet": [0, 35],
-        "jet_radius": [1e-7, max(max(qg_jet_info["jet_radius"]), max(tau_jet_info["jet_radius"]))],
-        "jet_mass": [1e-2, 41],
+        "n_particles_in_jet": [-0.5, 39.5, 40],
+        "n_ch_particles_in_jet": [-0.5, 39.5, 40],
+        "n_neutral_particles_in_jet": [-0.5, 39.5, 40],
+        "jet_radius": [0, 2, 52],
+        "jet_mass": [0, 23, 50],
     }
     for key in qg_jet_info.keys():
         qg_jet_prop = ak.flatten(qg_jet_info[key], axis=-1)
         tau_jet_prop = ak.flatten(tau_jet_info[key], axis=-1)
-        if key != "n_particles_in_jet":
-            bins = np.logspace(np.log10(limits[key][0]), np.log10(limits[key][1]), 20)
-        else:
-            bins = np.linspace(limits[key][0], limits[key][1], 20)
+        bins = np.linspace(limits[key][0], limits[key][1], limits[key][2])
         H_qg, bin_edges1 = np.histogram(np.clip(qg_jet_prop, bins[0], bins[-1]), bins=bins)
         H_qg = H_qg / np.sum(H_qg)
         H_tau, bin_edges2 = np.histogram(np.clip(tau_jet_prop, bins[0], bins[-1]), bins=bins)
         H_tau = H_tau / np.sum(H_tau)
-        hep.histplot(H_qg, bin_edges1, label="Quark/gluon jets", hatch="//", color="red")
-        hep.histplot(H_tau, bin_edges2, label=r"$\tau_h$", hatch="\\\\", color="blue")
-        if key != "n_particles_in_jet":
-            plt.xscale("log")
+        hep.histplot(H_qg, bin_edges1, label="Background", hatch="//", color="blue")
+        hep.histplot(H_tau, bin_edges2, label="Signal", hatch="\\\\", color="red")
         plt.xlabel(x_label[key], fontdict={"size": 25})
         plt.ylabel("Relative yield / bin", fontdict={"size": 25})
-        # Ticks text size
         plt.legend()
         output_path = os.path.join(output_dir, f"{key}.pdf")
         plt.savefig(output_path)
@@ -146,7 +170,7 @@ def plot_genvistau_gentau_correlation(tau_gen_jet_p4s, gen_jets, mask, output_di
     gen_jet_pt = gen_jets.pt.to_numpy()
     vis_tau_pt_ = vis_tau_pt[mask]
     gen_jet_pt_ = gen_jet_pt[mask]
-    output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.png")
+    output_path = os.path.join(output_dir, "validate_ntuple_genVisTauPt_vs_genJetPt.pdf")
     pl.plot_regression_confusion_matrix(
         y_true=gen_jet_pt_,
         y_pred=vis_tau_pt_,
@@ -244,7 +268,7 @@ def plot_quark_gluon_jet_multiplicity(mc_particles, mc_p4, output_dir):
         events.append(jets)
         is_qg_jets.append(is_qg_jet_)
     gen_qg_jet_multiplicity = ak.sum(is_qg_jets, axis=1)
-    qg_jet_multiplicity_path = os.path.join(output_dir, "n_gen_qg_jets.png")
+    qg_jet_multiplicity_path = os.path.join(output_dir, "n_gen_qg_jets.pdf")
     pl.plot_histogram(
         entries=gen_qg_jet_multiplicity,
         output_path=qg_jet_multiplicity_path,
@@ -266,9 +290,9 @@ def plot_lepton_multiplicities(mc_particles, mc_p4, output_dir):
     n_electrons = ak.num(mc_particles.PDG[stable_mask * electron_mask], axis=1)
     n_muons = ak.num(mc_particles.PDG[stable_mask * muon_mask], axis=1)
     n_taus = ak.num(mc_particles.PDG[decaying_mask * tau_mask], axis=1)
-    electron_multiplicity_path = os.path.join(output_dir, "n_gen_stable_electrons.png")
-    muon_multiplicity_path = os.path.join(output_dir, "n_gen_stable_muons.png")
-    tau_multiplicity_path = os.path.join(output_dir, "n_gen_taus.png")
+    electron_multiplicity_path = os.path.join(output_dir, "n_gen_stable_electrons.pdf")
+    muon_multiplicity_path = os.path.join(output_dir, "n_gen_stable_muons.pdf")
+    tau_multiplicity_path = os.path.join(output_dir, "n_gen_taus.pdf")
     pl.plot_histogram(
         entries=n_electrons,
         output_path=electron_multiplicity_path,
@@ -299,7 +323,7 @@ def plot_H_pt(mc_particles, mc_p4, output_dir):
     initial_H_pt = ak.from_iter(
         [mc_p4[i][min(ak.where(mc_particles.PDG[i] == 25)[0])].pt for i in range(len(mc_particles.PDG))]
     )
-    initial_H_pt_output_path = os.path.join(output_dir, "initial_H_pt.png")
+    initial_H_pt_output_path = os.path.join(output_dir, "initial_H_pt.pdf")
     pl.plot_histogram(
         entries=initial_H_pt,
         output_path=initial_H_pt_output_path,
@@ -338,14 +362,16 @@ def plot_tau_vis_pt(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
         all_events_tau_vis_pts.append(tau_vis_pts)
     all_events_tau_vis_pts = ak.from_iter(all_events_tau_vis_pts)
     tau_vis_pts_flat = ak.flatten(all_events_tau_vis_pts, axis=-1)
-    vis_tau_pt_output_path = os.path.join(output_dir, "vis_tau_pt.png")
+    vis_tau_pt_output_path = os.path.join(output_dir, "vis_tau_pt.pdf")
     pl.plot_histogram(
         entries=tau_vis_pts_flat,
         output_path=vis_tau_pt_output_path,
         left_bin_edge=min(tau_vis_pts_flat),
         right_bin_edge=max(tau_vis_pts_flat),
         x_label=r"$p_T^{vis-\tau}$",
-        title="vis tau pT",
+        # title="vis tau pT",
+        hatch="\\\\",
+        color='red',
     )
 
 
@@ -353,7 +379,7 @@ def plot_genjet_vars(gen_jets, output_dir):
     gen_jets_flat = ak.flatten(gen_jets, axis=-1)
 
     gen_jet_pt = ak.from_iter([gjf.pt for gjf in gen_jets_flat])
-    pt_output_path = os.path.join(output_dir, "gen_jet_pt.png")
+    pt_output_path = os.path.join(output_dir, "gen_jet_pt.pdf")
     pl.plot_histogram(
         entries=gen_jet_pt,
         output_path=pt_output_path,
@@ -364,7 +390,7 @@ def plot_genjet_vars(gen_jets, output_dir):
     )
 
     gen_jet_eta = ak.from_iter([gjf.eta for gjf in gen_jets_flat])
-    eta_output_path = os.path.join(output_dir, "gen_jet_eta.png")
+    eta_output_path = os.path.join(output_dir, "gen_jet_eta.pdf")
     pl.plot_histogram(
         entries=gen_jet_eta,
         output_path=eta_output_path,
@@ -375,7 +401,7 @@ def plot_genjet_vars(gen_jets, output_dir):
     )
 
     gen_jet_theta = np.rad2deg([gjf.theta for gjf in gen_jets_flat])
-    theta_output_path = os.path.join(output_dir, "gen_jet_theta.png")
+    theta_output_path = os.path.join(output_dir, "gen_jet_theta.pdf")
     pl.plot_histogram(
         entries=gen_jet_theta,
         output_path=theta_output_path,
@@ -391,7 +417,7 @@ def plot_Z_H_vars(mc_particles, mc_p4, output_dir):
     initial_H = ak.from_iter([min(ak.where(mc_particles.PDG[i] == 25)[0]) for i in range(len(mc_particles.PDG))])
     Z_H_pair_mass = [(mc_p4[i][initial_Z[i]] + mc_p4[i][initial_H[i]]).mass for i in range(len(mc_particles.PDG))]
     Z_H_pair_pt = [(mc_p4[i][initial_Z[i]] + mc_p4[i][initial_H[i]]).pt for i in range(len(mc_particles.PDG))]
-    mass_output_path = os.path.join(output_dir, "ZH_inv_mass.png")
+    mass_output_path = os.path.join(output_dir, "ZH_inv_mass.pdf")
     pl.plot_histogram(
         entries=Z_H_pair_mass,
         output_path=mass_output_path,
@@ -400,7 +426,7 @@ def plot_Z_H_vars(mc_particles, mc_p4, output_dir):
         x_label=r"$m_{inv}^{ZH}$",
         title="ZH pair mass",
     )
-    pt_output_path = os.path.join(output_dir, "ZH_pt.png")
+    pt_output_path = os.path.join(output_dir, "ZH_pt.pdf")
     pl.plot_histogram(
         entries=Z_H_pair_pt,
         output_path=pt_output_path,
@@ -415,7 +441,7 @@ def plot_tau_vars(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
     tau_p4 = mc_p4[tau_mask][mask_addition]
     tau_energy = tau_p4.energy
     tau_energy = ak.flatten(tau_energy, axis=-1)
-    energy_output_path = os.path.join(output_dir, "tau_energy.png")
+    energy_output_path = os.path.join(output_dir, "tau_energy.pdf")
     pl.plot_histogram(
         entries=tau_energy,
         output_path=energy_output_path,
@@ -427,7 +453,7 @@ def plot_tau_vars(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
 
     tau_pt = tau_p4.pt
     tau_pt = ak.flatten(tau_pt, axis=-1)
-    pt_output_path = os.path.join(output_dir, "tau_pt.png")
+    pt_output_path = os.path.join(output_dir, "tau_pt.pdf")
     pl.plot_histogram(
         entries=tau_pt,
         output_path=pt_output_path,
@@ -439,7 +465,7 @@ def plot_tau_vars(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
 
     tau_eta = tau_p4.eta
     tau_eta = ak.flatten(tau_eta, axis=-1)
-    eta_output_path = os.path.join(output_dir, "tau_eta.png")
+    eta_output_path = os.path.join(output_dir, "tau_eta.pdf")
     pl.plot_histogram(
         entries=tau_eta,
         output_path=eta_output_path,
@@ -451,7 +477,7 @@ def plot_tau_vars(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
 
     tau_theta = tau_p4.eta
     tau_theta = ak.flatten(tau_energy, axis=-1)
-    theta_output_path = os.path.join(output_dir, "tau_theta.png")
+    theta_output_path = os.path.join(output_dir, "tau_theta.pdf")
     pl.plot_histogram(
         entries=tau_theta,
         output_path=theta_output_path,
@@ -492,9 +518,9 @@ def plot_jet_response(reco_jets, gen_jets, output_dir):
     flat_reco_jets = ak.flatten(reco_jets.pt, axis=1).to_numpy()
     flat_gen_jets = ak.flatten(gen_jets.pt, axis=1).to_numpy()
     jet_response = flat_reco_jets / flat_gen_jets
-    jet_response_output_path = os.path.join(output_dir, "jet_response.png")
+    jet_response_output_path = os.path.join(output_dir, "jet_response.pdf")
     jet_response2 = flat_reco_jets / flat_gen_jets
-    jet_response_output_path2 = os.path.join(output_dir, "jet_response2.png")
+    jet_response_output_path2 = os.path.join(output_dir, "jet_response2.pdf")
     pl.plot_histogram(
         entries=jet_response,
         output_path=jet_response_output_path,
@@ -538,8 +564,8 @@ def plot_met_response(stable_mc_p4, reco_p4, output_dir):
     gen_met = event_gen_p4.et
     met_response = reco_met / gen_met
     met_response2 = reco_met - gen_met
-    met_response_output_path = os.path.join(output_dir, "met_response.png")
-    met_response_output_path2 = os.path.join(output_dir, "met_response2.png")
+    met_response_output_path = os.path.join(output_dir, "met_response.pdf")
+    met_response_output_path2 = os.path.join(output_dir, "met_response2.pdf")
     pl.plot_histogram(
         entries=met_response,
         output_path=met_response_output_path,
@@ -629,9 +655,9 @@ def plot_particle_multiplicity_around_gen_vis_tau(
         particle_multiplicities = ak.num(flat_cone_gen_particle_pdgs[abs(flat_cone_gen_particle_pdgs) == gen_pdg], axis=1)
         particle_info_entry = particle_info[gen_pdg]
         plot_particle_multiplicity(particle_multiplicities, particle_info_entry, output_dir, particles_origin="gen")
-    reco_multi_path = os.path.join(output_dir, "reco_full_cone_multiplicity.png")
+    reco_multi_path = os.path.join(output_dir, "reco_full_cone_multiplicity.pdf")
     plot_full_entry_multiplicity_matrix(flat_cone_reco_particle_pdgs, reco_multi_path, particle_info)
-    gen_multi_path = os.path.join(output_dir, "gen_full_cone_multiplicity.png")
+    gen_multi_path = os.path.join(output_dir, "gen_full_cone_multiplicity.pdf")
     plot_full_entry_multiplicity_matrix(flat_cone_gen_particle_pdgs, gen_multi_path, particle_info)
 
 
@@ -651,7 +677,7 @@ def plot_full_entry_multiplicity_matrix(flat_cone_pdgs, output_path, particle_in
 
 
 def plot_particle_multiplicity(particle_multiplicities, particle_info_entry, output_dir, particles_origin="gen"):
-    output_path = os.path.join(output_dir, f"{particles_origin}_{particle_info_entry[1]}_multiplicity.png")
+    output_path = os.path.join(output_dir, f"{particles_origin}_{particle_info_entry[1]}_multiplicity.pdf")
     pl.plot_histogram(
         entries=particle_multiplicities,
         output_path=output_path,

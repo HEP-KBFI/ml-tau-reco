@@ -1,10 +1,13 @@
 builder: HPS # Other options would be ['SimpleDNN', 'Oracle']
 output_dir: /local/$USER/CLIC_taus_20230306
 n_files: -1
-start: 0
 verbosity: 0
 use_multiprocessing: True
 test_only: False
+datasets_to_process:
+  - test
+  - train
+  - validation
 defaults:
   - datasets: datasets
   - ntupelizer

@@ -6,7 +6,7 @@ import numpy as np
 import awkward as ak
 
 
-def load_all_data(input_dir: str, n_files: int = None) -> ak.Array:
+def load_all_data(input_dir: str, n_files: int = None, branches: list = None) -> ak.Array:
     """Loads all .parquet files from a given directory
 
     Args:
@@ -27,7 +27,7 @@ def load_all_data(input_dir: str, n_files: int = None) -> ak.Array:
     input_data = []
     for file_path in input_files:
         print(f"Loading from {file_path}")
-        input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
+        input_data.append(ak.Array((ak.from_parquet(file_path, columns=branches).tolist())))
     input_data = ak.concatenate(input_data)
     print("Input data loaded")
     return input_data
@@ -58,7 +58,7 @@ def load_data_from_paths(input_paths: list, n_files: int = None) -> ak.Array:
     return input_data
 
 
-def get_decaymode(pdg_ids):
+def get_decaymode(pdg_ids, daughter_pdgs):
     """Tau decaymodes are the following:
     decay_mode_mapping = {
         0: 'OneProng0PiZero',
@@ -143,6 +143,7 @@ def get_reduced_decaymodes(decaymodes: np.array):
         13: 15,
         14: 15,
         15: 15,
+        16: 16,
     }
     return np.vectorize(target_mapping.get)(decaymodes)
 

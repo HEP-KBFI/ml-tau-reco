@@ -128,7 +128,7 @@ def plot_classification_confusion_matrix(
     tick_values = np.arange(len(categories)) + 0.5
     hep.hist2dplot(histogram, xbins, ybins, cmap=cmap, cbar=True)
     plt.xticks(tick_values, categories, fontsize=14, rotation=0)
-    plt.yticks(tick_values + 0.2, categories, fontsize=14, rotation=90)
+    plt.yticks(tick_values + 0.2, categories, fontsize=14, rotation=90, va="center")
     plt.xlabel(f"{x_label}", fontdict={"size": 14})
     plt.ylabel(f"{y_label}", fontdict={"size": 14})
     ax.tick_params(axis="both", which="both", length=0)
@@ -159,6 +159,8 @@ def plot_histogram(
     x_label: str = "",
     title: str = "",
     integer_bins: bool = False,
+    hatch="//",
+    color="blue",
 ) -> None:
     """Plots the confusion matrix for the regression task. Although confusion
     matrix is in principle meant for classification task, the problem can be
@@ -196,15 +198,16 @@ def plot_histogram(
         hist, bin_edges = np.histogram(entries, bins=np.arange(left_of_first_bin, right_of_last_bin + bin_diff, bin_diff))
     else:
         hist, bin_edges = np.histogram(entries, bins=np.linspace(left_bin_edge, right_bin_edge, num=n_bins + 1))
-    hep.histplot(hist, bin_edges, yerr=True, label=title)
+    # hep.histplot(hist, bin_edges, yerr=True, label=title, hatch=hatch, color=color)
+    hep.histplot(hist, bin_edges, label=title, hatch=hatch, color=color)
     plt.xlabel(x_label, fontdict={"size": 20})
     plt.ylabel(y_label, fontdict={"size": 20})
     # plt.grid(True, which="both")
     plt.yscale("log")
-    ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
-    textstr = "\n".join((r"$\mu=%.2f$" % (np.mean(entries),), r"$\sigma=%.2f$" % (np.std(entries),)))
-    props = {"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5}
-    ax.text(1.07, 0.6, textstr, transform=ax.transAxes, fontsize=16, verticalalignment="top", bbox=props)
+    # ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
+    # textstr = "\n".join((r"$\mu=%.2f$" % (np.mean(entries),), r"$\sigma=%.2f$" % (np.std(entries),)))
+    # props = {"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5}
+    # ax.text(1.07, 0.6, textstr, transform=ax.transAxes, fontsize=16, verticalalignment="top", bbox=props)
     plt.savefig(output_path)
     plt.close("all")
 
@@ -256,7 +259,7 @@ def plot_decaymode_correlation_matrix(
     tick_values = np.arange(len(categories)) + 0.5
     hep.hist2dplot(histogram, xbins, ybins, cmap=cmap, alpha=0, cbar=False)
     plt.xticks(tick_values, categories, fontsize=22, rotation=0)
-    plt.yticks(tick_values, categories, fontsize=22, rotation=90)
+    plt.yticks(tick_values, categories, fontsize=22, rotation=90, va="center")
     plt.xlabel(f"{x_label}", fontdict={"size": 28})
     plt.ylabel(f"{y_label}", fontdict={"size": 28})
     ax.tick_params(axis="both", which="major", length=10)
@@ -266,7 +269,78 @@ def plot_decaymode_correlation_matrix(
             bin_value = histogram.T[i, j]
             ax.text(
                 xbins[j] + 0.5,
-                ybins[i] + 0.4,
+                ybins[i] + 0.5,
+                f"{bin_value:.2f}",
+                color=bin_text_color,
+                ha="center",
+                va="center",
+                fontweight="bold",
+            )
+    plt.savefig(output_path)
+    plt.close("all")
+
+
+def plot_decaymode_correlation_matrix_removed_row(
+    true_cats: np.array,
+    pred_cats: np.array,
+    categories: list,
+    output_path: str,
+    cmap: str = "gray",
+    bin_text_color: str = "k",
+    y_label: str = "Prediction",
+    x_label: str = "Truth",
+    title: str = "",
+    figsize: tuple = (13, 13),
+) -> None:
+    """Plots the confusion matrix for the classification task. Confusion
+    matrix functions has the categories in the other way in order to have the
+    truth on the x axis.
+    Args:
+        true_cats : np.array,
+            The true categories
+        pred_cats : np.array
+            The predicted categories
+        categories : list
+            Category labels in the correct order for x-axis
+        output_path : str
+            The path where the plot will be outputted
+        cmap : str
+            [default: "gray"] The colormap to be used
+        bin_text_color : str
+            [default: "r"] The color of the text on bins
+        y_label : str
+            [default: "Predicted"] The label for the y-axis
+        x_label : str
+            [default: "Truth"] The label for the x-axis
+        title : str
+            [default: "Confusion matrix"] The title for the plot
+        figsize : tuple
+            The size of the figure drawn
+    Returns:
+        None
+    """
+    histogram = confusion_matrix(true_cats, pred_cats, normalize="true")
+    histogram = histogram[:,:-1]
+    fig, ax = plt.subplots(figsize=figsize)
+    # ax.set_aspect("equal", adjustable="box")
+    hep.style.use(hep.style.ROOT)
+    xbins = np.arange(len(categories) + 1)
+    ybins = np.arange(len(categories))
+    tick_values_x = np.arange(len(categories)) + 0.5
+    tick_values_y = np.arange(len(categories) - 1) + 0.5
+    hep.hist2dplot(histogram, xbins, ybins, cmap=cmap, alpha=0, cbar=False)
+    plt.xticks(tick_values_x, categories, fontsize=22, rotation=0)
+    plt.yticks(tick_values_y, categories[:-1], fontsize=22, rotation=90, va="center")
+    plt.xlabel(f"{x_label}", fontdict={"size": 28})
+    plt.ylabel(f"{y_label}", fontdict={"size": 28})
+    ax.tick_params(axis="both", which="major", length=10)
+    ax.tick_params(axis="both", which="minor", length=0)
+    for i in range(len(ybins) - 1):
+        for j in range(len(xbins) - 1):
+            bin_value = histogram.T[i, j]
+            ax.text(
+                xbins[j] + 0.5,
+                ybins[i] + 0.5,
                 f"{bin_value:.2f}",
                 color=bin_text_color,
                 ha="center",
