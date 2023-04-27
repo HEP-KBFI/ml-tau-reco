@@ -41,7 +41,7 @@ def load_single_file_contents(
         arrays["idx_reco"] = idx_recoparticle
         # index in the MCParticles collection
         arrays["idx_mc"] = idx_mc_particlesarticle
-        #index the track collection
+        # index the track collection
         idx3 = "MergedRecoParticles#1/MergedRecoParticles#1.index"
         idx_recoparticle_track = tree.arrays(idx3)[idx3]
         arrays["idx_track"] = idx_recoparticle_track
