@@ -64,6 +64,7 @@ class HPSTauBuilder(BasicTauBuilder):
                 # CV: build "dummy" tau to maintain 1-to-1 correspondence between taus and jets
                 tau = Tau()
                 tau.p4 = vector.obj(px=0.0, py=0.0, pz=0.0, E=0.0)
+                tau.updatePtEtaPhiMass()
                 tau.signal_cands = set()
                 tau.signal_gammaCands = set()
                 tau.iso_cands = set()
@@ -78,7 +79,7 @@ class HPSTauBuilder(BasicTauBuilder):
                 tau.barcode = -1
             if self.verbosity >= 2:
                 tau.print()
-            if self.verbosity >= 4 and idxJet > 10:
+            if self.verbosity >= 4 and idxJet > 100:
                 raise ValueError("STOP.")
             taus.append(tau)
 

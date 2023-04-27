@@ -2,9 +2,10 @@ import awkward as ak
 import vector
 
 from hpsCand import buildCands
+from hpsParticleBase import hpsParticleBase
 
 
-class Jet:
+class Jet(hpsParticleBase):
     def __init__(
         self,
         jet_p4,
@@ -17,13 +18,7 @@ class Jet:
         jet_constituent_dzerr,
         barcode=-1,
     ):
-        self.p4 = jet_p4
-        self.energy = jet_p4.energy
-        self.pt = jet_p4.pt
-        self.eta = jet_p4.eta
-        self.theta = jet_p4.theta
-        self.phi = jet_p4.phi
-        self.mass = jet_p4.mass
+        super().__init__(p4=jet_p4, barcode=barcode)
         self.constituents = buildCands(
             jet_constituents_p4,
             jet_constituents_pdgId,
@@ -39,7 +34,6 @@ class Jet:
         self.q = 0.0
         for cand in self.constituents:
             self.q += cand.q
-        self.barcode = barcode
 
     def print(self):
         print(

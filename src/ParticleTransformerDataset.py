@@ -6,7 +6,14 @@ import torch
 from torch.utils.data import Dataset
 
 
-from hpsAlgoTools import comp_angle, comp_deltaEta, comp_deltaPhi, comp_deltaTheta, comp_deltaR
+from hpsAlgoTools import (
+    comp_angle3d,
+    comp_deltaEta,
+    comp_deltaPhi,
+    comp_deltaTheta,
+    comp_deltaR_etaphi,
+    comp_deltaR_thetaphi,
+)
 
 
 def buildParticleTransformerTensors(
@@ -149,10 +156,13 @@ class ParticleTransformerDataset(Dataset):
         self.metric_dR_or_angle = None
         self.metric_dEta_or_dTheta = None
         if metric == "eta-phi":
-            self.metric_dR_or_angle = comp_deltaR
+            self.metric_dR_or_angle = comp_deltaR_etaphi
             self.metric_dEta_or_dTheta = comp_deltaEta
         elif metric == "theta-phi":
-            self.metric_dR_or_angle = comp_angle
+            self.metric_dR_or_angle = comp_deltaR_thetaphi
+            self.metric_dEta_or_dTheta = comp_deltaTheta
+        elif metric == "angle3d":
+            self.metric_dR_or_angle = comp_angle3d
             self.metric_dEta_or_dTheta = comp_deltaTheta
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
