@@ -332,7 +332,7 @@ def plot_all_metrics(cfg):
         fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
-        regional_classifiers = get_regional_tauClassifiers(
+        get_regional_tauClassifiers(
             raw_numerator_data_e,
             raw_numerator_data_f,
             classifier_cuts,
@@ -442,7 +442,7 @@ def get_regional_tauClassifiers(
         os.path.join(algorithm_output_dir, "region_tauClassifiers.json"),
     )
     # What is the tauClassifier value at 60% eff?
-    return regional_classifiers
+    # return regional_classifiers
 
 
 def create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir):

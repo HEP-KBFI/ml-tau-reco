@@ -32,8 +32,8 @@ def plot(values, title, output_path, xlim):
 def process_data(data, output_dir):
     tau_mask = data["gen_jet_tau_decaymode"] > 0
     data = data[tau_mask]
-    gen_jet_tau_p4s = g.reinitialize_p4(data["gen_jet_tau_p4s"])
-    gen_jet_tau_gamma = np.sqrt(1 + (gen_jet_tau_p4s.p / tau_mass) ** 2)
+    # gen_jet_tau_p4s = g.reinitialize_p4(data["gen_jet_tau_p4s"])
+    # gen_jet_tau_gamma = np.sqrt(1 + (gen_jet_tau_p4s.p / tau_mass) ** 2)
     # expected_traveldistance = gen_jet_tau_gamma * c * tau_lifetime
     track_mask = abs(data["reco_cand_charge"]) > 0
     tau_descendant_mask = data["reco_cand_matched_gen_energy"] / g.reinitialize_p4(data["reco_cand_p4s"]).energy > 0.1
