@@ -1,7 +1,6 @@
 import os
 import glob
 import hydra
-import vector
 import matplotlib
 import numpy as np
 import general as g
@@ -18,7 +17,6 @@ from matplotlib.ticker import AutoLocator
 
 hep.style.use(hep.styles.CMS)
 matplotlib.use("Agg")
-
 
 
 def load_samples(sig_dir: str, bkg_dir: str, n_files: int = -1, branches: list = None):
@@ -162,7 +160,7 @@ def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_
     ax.set_facecolor("white")
     plt.xlabel(xlabel, fontdict={"size": 25})
     plt.ylabel("Relative yield / bin", fontdict={"size": 25})
-    plt.legend(loc='upper right')
+    plt.legend(loc="upper right")
     plt.savefig(output_path)
     plt.close("all")
 
@@ -173,7 +171,7 @@ def main(cfg: DictConfig):
         sig_dir=cfg.samples.ZH_Htautau.output_dir,
         bkg_dir=cfg.samples.QCD.output_dir,
         n_files=cfg.n_files_per_sample,
-        branches=['gen_jet_p4s', 'gen_jet_tau_decaymode']
+        branches=["gen_jet_p4s", "gen_jet_tau_decaymode"],
     )
     output_dir = os.path.abspath(os.path.join(cfg.samples.QCD.output_dir, os.pardir))
     eta_bin_edges = np.linspace(

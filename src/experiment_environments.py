@@ -4,7 +4,6 @@ import numba
 import uproot
 import hydra
 import vector
-import fastjet
 import numpy as np
 import general as g
 import awkward as ak
@@ -18,7 +17,9 @@ hep.style.use(hep.styles.CMS)
 
 def remove_leptonic_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
     gen_num_ptcls_per_jet = ak.num(gen_jet_constituent_indices, axis=-1)
-    gen_jet_pdgs = nt.get_jet_constituent_property(stable_mc_particles.PDG, gen_jet_constituent_indices, gen_num_ptcls_per_jet)
+    gen_jet_pdgs = nt.get_jet_constituent_property(
+        stable_mc_particles.PDG, gen_jet_constituent_indices, gen_num_ptcls_per_jet
+    )
     mask = []
     for gj_pdg in gen_jet_pdgs:
         sub_mask = []
@@ -87,7 +88,8 @@ def compute_tau_isolation_and_n_constituents(mc_particles, mc_p4):
     vis_tau_p4s = nt.get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
     # Duplicate all event isolation_particle_p4 for each tau in that given event
     event_isolation_particle_p4 = ak.from_iter(
-        [[isolation_particles_p4[j] for i in range(len(vis_tau_p4s[j]))] for j in range(len(vis_tau_p4s))])
+        [[isolation_particles_p4[j] for i in range(len(vis_tau_p4s[j]))] for j in range(len(vis_tau_p4s))]
+    )
     flattened_per_tau_particle_isolation_p4 = g.reinitialize_p4(ak.flatten(event_isolation_particle_p4, axis=1))
     flattened_taus_p4s = g.reinitialize_p4(ak.flatten(vis_tau_p4s, axis=1))
     iso_particle_mask = get_isolation_particle_mask(flattened_per_tau_particle_isolation_p4, flattened_taus_p4s)
@@ -99,33 +101,33 @@ def compute_tau_isolation_and_n_constituents(mc_particles, mc_p4):
 def plot_isolations(isolations, output_dir):
     output_path = os.path.join(output_dir, "isolations.pdf")
     bin_edges = np.linspace(-0.5, 50.5, 50)
-    hatches = {h: s for h, s in zip(isolations.keys(), ['//', '\\\\'])}
-    colors = {c: s for c, s in zip(isolations.keys(), ['red', 'blue'])}
+    hatches = {h: s for h, s in zip(isolations.keys(), ["//", "\\\\"])}
+    colors = {c: s for c, s in zip(isolations.keys(), ["red", "blue"])}
     for sample_name, iso in isolations.items():
         sample_H = np.histogram(iso, bins=bin_edges)[0]
-        sample_H = sample_H/sum(sample_H)
+        sample_H = sample_H / sum(sample_H)
         hep.histplot(sample_H, bin_edges, label=sample_name, hatch=hatches[sample_name], color=colors[sample_name])
     plt.legend()
     plt.ylabel("Relative yield / bin", fontdict={"size": 25})
     plt.xlabel(r"$\mathcal{I}_{\tau}$", fontdict={"size": 25})
     plt.savefig(output_path)
-    plt.close('all')
+    plt.close("all")
 
 
 def plot_n_constituents(n_constituents, output_dir):
     output_path = os.path.join(output_dir, "n_constituents.pdf")
     bin_edges = np.linspace(0, 30, 30)
-    hatches = {h: s for h, s in zip(n_constituents.keys(), ['//', '\\\\'])}
-    colors = {c: s for c, s in zip(n_constituents.keys(), ['red', 'blue'])}
+    hatches = {h: s for h, s in zip(n_constituents.keys(), ["//", "\\\\"])}
+    colors = {c: s for c, s in zip(n_constituents.keys(), ["red", "blue"])}
     for sample_name, nc in n_constituents.items():
         sample_H = np.histogram(np.clip(nc, bin_edges[0], bin_edges[-1]), bins=bin_edges)[0]
-        sample_H = sample_H/sum(sample_H)
+        sample_H = sample_H / sum(sample_H)
         hep.histplot(sample_H, bin_edges, label=sample_name, hatch=hatches[sample_name], color=colors[sample_name])
     plt.legend()
     plt.ylabel("Relative yield / bin", fontdict={"size": 25})
     plt.xlabel("Number of particles in isolation cone", fontdict={"size": 25})
     plt.savefig(output_path)
-    plt.close('all')
+    plt.close("all")
 
 
 @hydra.main(config_path="../config", config_name="environments", version_base=None)
@@ -133,16 +135,16 @@ def compare_different_environments(cfg: DictConfig) -> None:
     isolations = {}
     n_constituents = {}
     for sample_name, path in cfg.samples.items():
-        if sample_name == 'ee':
+        if sample_name == "ee":
             n_files = int(np.ceil(cfg.max_events / 100))
-            paths = glob.glob(os.path.join(cfg.samples.ee, '*.root'))[:n_files]
+            paths = glob.glob(os.path.join(cfg.samples.ee, "*.root"))[:n_files]
             arrays = []
             for path in paths:
                 arrays.append(nt.load_single_file_contents(path))
-            arrays = ak.concatenate(arrays)[:cfg.max_events]
+            arrays = ak.concatenate(arrays)[: cfg.max_events]
             mc_particles, mc_p4 = nt.calculate_p4(p_type="MCParticles", arrs=arrays)
         else:
-            mc_particles, mc_p4 = load_pp_file_contents(path, cfg.max_events, branch='GenNoPU')
+            mc_particles, mc_p4 = load_pp_file_contents(path, cfg.max_events, branch="GenNoPU")
         sample_isolations, sample_n_constituents = compute_tau_isolation_and_n_constituents(mc_particles, mc_p4)
         isolations[sample_name] = sample_isolations
         n_constituents[sample_name] = sample_n_constituents
@@ -152,30 +154,35 @@ def compare_different_environments(cfg: DictConfig) -> None:
     plot_n_constituents(n_constituents, cfg.output_dir)
 
 
-def load_pp_file_contents(pp_path, max_events, branch='GenNoPU'):
-    branches_of_interest = ['Px', 'Py', 'Pz', 'Mass', 'PID', 'Charge', 'M1', 'M2', 'D1', 'D2', 'Status']
+def load_pp_file_contents(pp_path, max_events, branch="GenNoPU"):
+    branches_of_interest = ["Px", "Py", "Pz", "Mass", "PID", "Charge", "M1", "M2", "D1", "D2", "Status"]
     branch_names = [f"{branch}.{var}" for var in branches_of_interest]
     with uproot.open(pp_path) as in_file:
         tree = in_file[f"Delphes/{branch}"]
         arrays = tree.arrays(branch_names)
     particles = ak.Record({k.replace(f"{branch}.", "").lower(): arrays[k] for k in arrays.fields})
-    mc_particles = ak.Record({
-            'daughters_begin': particles.d1[:max_events],
-            'daughters_end': particles.d2[:max_events],
-            'parents_begin': particles.m1[:max_events],
-            'parents_end': particles.m2[:max_events],
-            'PDG': particles.pid[:max_events],
-            'charge': particles.charge[:max_events],
-            'generatorStatus': particles.status[:max_events]
-    })
-    mc_p4 = vector.awk(ak.zip({
-        "mass": particles.mass,
-        "x": particles.px,
-        "y": particles.py,
-        "z": particles.pz,
-    }))[:max_events]
+    mc_particles = ak.Record(
+        {
+            "daughters_begin": particles.d1[:max_events],
+            "daughters_end": particles.d2[:max_events],
+            "parents_begin": particles.m1[:max_events],
+            "parents_end": particles.m2[:max_events],
+            "PDG": particles.pid[:max_events],
+            "charge": particles.charge[:max_events],
+            "generatorStatus": particles.status[:max_events],
+        }
+    )
+    mc_p4 = vector.awk(
+        ak.zip(
+            {
+                "mass": particles.mass,
+                "x": particles.px,
+                "y": particles.py,
+                "z": particles.pz,
+            }
+        )
+    )[:max_events]
     return mc_particles, mc_p4
-
 
 
 if __name__ == "__main__":

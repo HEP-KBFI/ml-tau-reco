@@ -809,16 +809,16 @@ def process_single_file(input_path: str, tree_path: str, branches: list, output_
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
     if not os.path.exists(output_ntuple_path):
-         # try:
-            start_time = time.time()
-            arrays = load_single_file_contents(input_path, tree_path, branches)
-            data = process_input_file(arrays)
-            data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
-            save_record_to_file(data, output_ntuple_path)
-            end_time = time.time()
-            print(f"Finished processing in {end_time-start_time} s.")
-        # except Exception:
-        #     print(f"Broken input file at {input_path}")
+        # try:
+        start_time = time.time()
+        arrays = load_single_file_contents(input_path, tree_path, branches)
+        data = process_input_file(arrays)
+        data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
+        save_record_to_file(data, output_ntuple_path)
+        end_time = time.time()
+        print(f"Finished processing in {end_time-start_time} s.")
+    # except Exception:
+    #     print(f"Broken input file at {input_path}")
     else:
         print("File already processed, skipping.")
 

@@ -340,7 +340,7 @@ def plot_all_metrics(cfg):
             algorithm_output_dir,
             algorithm,
             raw_numerator_data_e,
-            raw_numerator_data_f
+            raw_numerator_data_f,
         )
         print(f"Plotting for {algorithm}")
         medium_wp[algorithm] = save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
@@ -380,7 +380,7 @@ def get_regional_tauClassifiers(
     algorithm_output_dir,
     algorithm,
     raw_numerator_data_e_train,
-    raw_numerator_data_f_train
+    raw_numerator_data_f_train,
 ):
     raw_numerator_data_p4_e = g.reinitialize_p4(raw_numerator_data_e.tau_p4s)
     barrel_mask_e = 90 - np.abs(np.rad2deg(raw_numerator_data_p4_e.theta) - 90) >= 45
@@ -401,38 +401,38 @@ def get_regional_tauClassifiers(
         cut = -1
     regional_classifiers = {
         "barrel": {
-            "train":{
+            "train": {
                 "sig": list((raw_numerator_data_e_train[barrel_mask_e_train]).tauClassifier),
                 "bkg": list((raw_numerator_data_f_train[barrel_mask_f_train]).tauClassifier),
-                "MediumWP": cut
+                "MediumWP": cut,
             },
-            "test":{
+            "test": {
                 "sig": list((raw_numerator_data_e[barrel_mask_e]).tauClassifier),
                 "bkg": list((raw_numerator_data_f[barrel_mask_f]).tauClassifier),
-                "MediumWP": cut
-            }
+                "MediumWP": cut,
+            },
         },
         "endcap": {
-            "train":{
+            "train": {
                 "sig": list((raw_numerator_data_e_train[~barrel_mask_e_train]).tauClassifier),
                 "bkg": list((raw_numerator_data_f_train[~barrel_mask_f_train]).tauClassifier),
-                "MediumWP": cut
+                "MediumWP": cut,
             },
-            "test":{
+            "test": {
                 "sig": list((raw_numerator_data_e[~barrel_mask_e]).tauClassifier),
                 "bkg": list((raw_numerator_data_f[~barrel_mask_f]).tauClassifier),
-                "MediumWP": cut
-            }
-        }
+                "MediumWP": cut,
+            },
+        },
     }
     plot_algo_tauClassifiers(
-        regional_classifiers['barrel'],
+        regional_classifiers["barrel"],
         os.path.join(algorithm_output_dir, "tauClassifier_barrel.pdf"),
         cut,
         plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
     )
     plot_algo_tauClassifiers(
-        regional_classifiers['endcap'],
+        regional_classifiers["endcap"],
         os.path.join(algorithm_output_dir, "tauClassifier_endcap.pdf"),
         cut,
         plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
@@ -443,7 +443,6 @@ def get_regional_tauClassifiers(
     )
     # What is the tauClassifier value at 60% eff?
     return regional_classifiers
-
 
 
 def create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir):

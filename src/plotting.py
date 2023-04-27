@@ -320,7 +320,7 @@ def plot_decaymode_correlation_matrix_removed_row(
         None
     """
     histogram = confusion_matrix(true_cats, pred_cats, normalize="true")
-    histogram = histogram[:,:-1]
+    histogram = histogram[:, :-1]
     fig, ax = plt.subplots(figsize=figsize)
     # ax.set_aspect("equal", adjustable="box")
     hep.style.use(hep.style.ROOT)

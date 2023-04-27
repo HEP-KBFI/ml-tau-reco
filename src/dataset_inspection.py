@@ -93,7 +93,9 @@ def get_tau_jet_info(sig_mcp, sig_mc_p4):
         tau_gen_jet_constituent_indices.append(gen_jet_constituent_indices[i][combo[:, 1]])
     tau_gen_jet_masses = g.reinitialize_p4(ak.from_iter(tau_gen_jets)).mass
     jet_mass = ak.flatten(tau_gen_jet_masses, axis=-1)
-    n_ch_particles_in_jet, n_neutral_particles_in_jet = calculate_n_particles(tau_gen_jet_constituent_indices, stable_sig_mcp)
+    n_ch_particles_in_jet, n_neutral_particles_in_jet = calculate_n_particles(
+        tau_gen_jet_constituent_indices, stable_sig_mcp
+    )
     tau_jet_info = {
         "n_ch_particles_in_jet": n_ch_particles_in_jet,
         "n_neutral_particles_in_jet": n_neutral_particles_in_jet,
@@ -106,8 +108,7 @@ def get_tau_jet_info(sig_mcp, sig_mc_p4):
 
 def calculate_n_particles(gen_jet_constituent_indices, stable_mcp):
     num_ptcls_per_jet = ak.num(gen_jet_constituent_indices, axis=-1)
-    constituent_charges = nt.get_jet_constituent_property(
-        stable_mcp.charge, gen_jet_constituent_indices, num_ptcls_per_jet)
+    constituent_charges = nt.get_jet_constituent_property(stable_mcp.charge, gen_jet_constituent_indices, num_ptcls_per_jet)
     n_neutral = ak.flatten(ak.sum(np.abs(constituent_charges) == 0, axis=-1), axis=-1)
     n_charged = ak.flatten(ak.sum(np.abs(constituent_charges) > 0, axis=-1), axis=-1)
     return n_charged, n_neutral
@@ -119,7 +120,8 @@ def get_qg_jet_info(bkg_mcp, bkg_mc_p4):
     bkg_gen_jets = nt.filter_gen_jets(bkg_gen_jets, bkg_gen_jet_constituent_indices, bkg_stable_mc_particles)
     jet_mass = ak.flatten(bkg_gen_jets.mass, axis=-1)
     n_ch_particles_in_jet, n_neutral_particles_in_jet = calculate_n_particles(
-        bkg_gen_jet_constituent_indices, bkg_stable_mc_particles)
+        bkg_gen_jet_constituent_indices, bkg_stable_mc_particles
+    )
     qg_jet_info = {
         "n_ch_particles_in_jet": n_ch_particles_in_jet,
         "n_neutral_particles_in_jet": n_neutral_particles_in_jet,
@@ -371,7 +373,7 @@ def plot_tau_vis_pt(mc_particles, mc_p4, tau_mask, mask_addition, output_dir):
         x_label=r"$p_T^{vis-\tau}$",
         # title="vis tau pT",
         hatch="\\\\",
-        color='red',
+        color="red",
     )
 
 

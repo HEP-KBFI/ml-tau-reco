@@ -300,7 +300,18 @@ def findTrackPCAs(
         omegas_theo = [ptToOmega(p, 4) for p in P4.pt]
         charge = particles["charge"][ev]
         if ev < 10:
+            print("########################################")
+            print("OMEGA debug event", ev)
             for ili, part_trkidx in enumerate(partTickleTrackLink):
+                print(part_trkidx)
+                print("particle:", ili)
+                if charge[ili] == 0:
+                    continue
+                print("charge:", charge[ili])
+                print("pt:", P4.pt[ili])
+                print("predicted omega:", omegas_theo[ili] * charge[ili])
+                print("omega:", frame[trackCollection][ev][trackCollection + ".omega"][part_trkidx * 4])
+            print("########################################")
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
         # i.e track 0 is present at idx 0-3 for different track states, 1 at 4-7, and so on -> multiply by 4

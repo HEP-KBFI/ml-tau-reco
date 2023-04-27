@@ -50,8 +50,8 @@ def plot_json(cfg):
                 algo_roc_info = load_json(algo_input)
                 roc_info["efficiencies"][algo] = algo_roc_info["efficiencies"][algo]
                 roc_info["fakerates"][algo] = algo_roc_info["fakerates"][algo]
-            x = np.array(roc_info['efficiencies'][algo])
-            y = np.array(roc_info['fakerates'][algo])
+            x = np.array(roc_info["efficiencies"][algo])
+            y = np.array(roc_info["fakerates"][algo])
             print(f"Algorithm {algo} \t eff: {min(x[x > 0])} \t fake: {min(y[x > 0])}")
             print(f"Algorithm {algo} \t eff: {max(x[x > 0])} \t fake: {max(y[x > 0])}")
             print("______________________________________")
@@ -99,7 +99,7 @@ def plot_json(cfg):
                 output_path=dm_output_path,
                 y_label=r"Reconstructed $\tau$ decay mode",
                 x_label=r"Generated $\tau$ decay mode",
-                figsize=None
+                figsize=None,
             )
     if cfg.plotting_metrics.HPS_comparison:
         efficiencies = {}
