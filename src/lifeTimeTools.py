@@ -283,10 +283,8 @@ def findTrackPCAs(
             partTickleTrackLink.append(-1)  # no track / neutral
         else:
             partTickleTrackLink.append(trkIndexMap[part_trkidx])
-    impacts_pcas_pvs = [-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000] * np.ones(
-        (len(partTickleTrackLink), 11)
-    )
-    impacts_pcas_errors = [-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000] * np.ones((len(partTickleTrackLink), 8))
+    impacts_pcas_pvs = -1000 * np.ones((len(partTickleTrackLink), 14))
+    impacts_pcas_errors = -1000 * np.ones((len(partTickleTrackLink), 8))
     # debug for track particle assocsiation
     if debug > 2:
         P4 = vector.awk(
@@ -337,6 +335,7 @@ def findTrackPCAs(
             phi0_error = cov[2]
             tanL_error = cov[14]
             omega_error = cov[5]
+            extras = [phi0, tanL, omega]
             trackP = {
                 "omega": omega,
                 "omega_error": omega_error,
@@ -372,7 +371,7 @@ def findTrackPCAs(
                 + 4 * (vertex[2] - pca[2]) * (vertex[2] - pca[2]) * pca_error[2] * pca_error[2]
             )
             # xy impact parameter, z impact parameter , 3d impact parameter, d0/z0 track parameters, PCA and PV:
-            impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0] + pca + vertex
+            impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0] + pca + vertex + extras
             # corresponding uncertainties:
             impacts_pcas_errors[ili] = [dxy_error, dz_error, d3_error, d0_error, z0_error] + pca_error
     return [impacts_pcas_pvs, impacts_pcas_errors]
