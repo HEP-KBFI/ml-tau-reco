@@ -23,6 +23,7 @@ from FocalLoss import FocalLoss
 from logTrainingProgress import logTrainingProgress
 from initWeights import initWeights
 
+
 def get_split_files(cfg_filename, split):
     with open(cfg_filename, "r") as cfg_file:
         data = yaml.safe_load(cfg_file)
