@@ -21,6 +21,7 @@ from LorentzNet import LorentzNet
 from FeatureStandardization import FeatureStandardization
 from FocalLoss import FocalLoss
 from logTrainingProgress import logTrainingProgress
+from initWeights import initWeights
 
 
 def get_split_files(cfg_filename, split):
@@ -226,6 +227,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
         c_weight=c_weight,
         verbosity=train_cfg.verbosity,
     ).to(device=dev)
+    initWeights(model)
     print("Finished building model:")
     print(model)
     model_params = filter(lambda p: p.requires_grad, model.parameters())
