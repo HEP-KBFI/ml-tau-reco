@@ -69,8 +69,8 @@ Helper to calculate the position of the PCA to the PV according to [3]
 """
 
 
-def calcPCA(trackP, vertex):
-    s = calcSPCA(trackP, vertex)
+def calcPCA(trackP, vertex, f2D=False):
+    s = calcSPCA(trackP, vertex, f2D)
     x0 = trackP["xr"] + math.cos(math.pi / 2.0 - trackP["phi0"]) * trackP["d0"]
     y0 = trackP["yr"] - math.sin(math.pi / 2.0 - trackP["phi0"]) * trackP["d0"]
     z0_dash = trackP["z0"] + trackP["zr"]
@@ -86,9 +86,9 @@ according to [3]
 """
 
 
-def calcPCA_error(trackP, vertex):
-    s = calcSPCA(trackP, vertex)
-    s_error = calcSPCA_Error(trackP, vertex)
+def calcPCA_error(trackP, vertex, f2D=False):
+    s = calcSPCA(trackP, vertex, f2D)
+    s_error = calcSPCA_Error(trackP, vertex, f2D)
     # x0 = trackP["xr"] + math.cos(math.pi / 2.0 - trackP["phi0"]) * trackP["d0"]
     # y0 = trackP["yr"] - math.sin(math.pi / 2.0 - trackP["phi0"]) * trackP["d0"]
     # z0_dash = trackP["z0"] + trackP["zr"]
@@ -153,7 +153,7 @@ for approx eq see: distApprox
 """
 
 
-def calcSPCA(trackP, vertex):
+def calcSPCA(trackP, vertex, f2D=False):
     x0 = trackP["xr"] + math.cos(math.pi / 2.0 - trackP["phi0"]) * trackP["d0"]
     y0 = trackP["yr"] - math.sin(math.pi / 2.0 - trackP["phi0"]) * trackP["d0"]
     z0_dash = trackP["z0"] + trackP["zr"]
@@ -163,6 +163,9 @@ def calcSPCA(trackP, vertex):
     bz = trackP["tanL"] + z0_dash
     num = -((ax - vertex[0]) * (bx - ax) + (ay - vertex[1]) * (by - ay) + (az - vertex[2]) * (bz - az))
     den = abs((bx - ax) * (bx - ax) + (by - ay) * (by - ay) + (bz - az) * (bz - az))
+    if f2D:
+        num = -((ax - vertex[0]) * (bx - ax) + (ay - vertex[1]) * (by - ay))
+        den = abs((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
     return num / den
 
 
@@ -179,7 +182,7 @@ for approx eq see: distApprox
 """
 
 
-def calcSPCA_Error(trackP, vertex):
+def calcSPCA_Error(trackP, vertex, f2D=False):
     x0 = trackP["xr"] + math.cos(math.pi / 2.0 - trackP["phi0"]) * trackP["d0"]
     x0_error = math.sqrt(
         math.cos(math.pi / 2.0 - trackP["phi0"])
@@ -235,7 +238,26 @@ def calcSPCA_Error(trackP, vertex):
     den_error = math.sqrt(
         bx_error * bx_error * (2 * bx - 2 * ax) * (2 * bx - 2 * ax)
         + ax_error * ax_error * (2 * ax - 2 * bx) * (2 * ax - 2 * bx)
+        + by_error * by_error * (2 * by - 2 * ay) * (2 * by - 2 * ay)
+        + ay_error * ay_error * (2 * ay - 2 * by) * (2 * ay - 2 * by)
+        + bz_error * bz_error * (2 * bz - 2 * az) * (2 * bz - 2 * az)
+        + az_error * az_error * (2 * az - 2 * bz) * (2 * az - 2 * bz)
     )
+    if f2D:
+        num = -((ax - vertex[0]) * (bx - ax) + (ay - vertex[1]) * (by - ay) + (az - vertex[2]) * (bz - az))
+        num_error = math.sqrt(
+            ax_error * ax_error * (2 * ax - bx - vertex[0]) * (2 * ax - bx - vertex[0])
+            + bx_error * bx_error * (vertex[0] - bx) * (vertex[0] - bx)
+            + ay_error * ay_error * (2 * ay - by - vertex[0]) * (2 * ay - by - vertex[0])
+            + by_error * by_error * (vertex[0] - by) * (vertex[0] - by)
+        )
+        den = (bx - ax) * (bx - ax) + (by - ay) * (by - ay) + (bz - az) * (bz - az)
+        den_error = math.sqrt(
+            bx_error * bx_error * (2 * bx - 2 * ax) * (2 * bx - 2 * ax)
+            + ax_error * ax_error * (2 * ax - 2 * bx) * (2 * ax - 2 * bx)
+            + by_error * by_error * (2 * by - 2 * ay) * (2 * by - 2 * ay)
+            + ay_error * ay_error * (2 * ay - 2 * by) * (2 * ay - 2 * by)
+        )
     return math.sqrt(
         (1 / den) * (1 / den) * num_error * num_error + (num / (den * den)) * (num / (den * den)) * den_error * den_error
     )
@@ -283,8 +305,9 @@ def findTrackPCAs(
             partTickleTrackLink.append(-1)  # no track / neutral
         else:
             partTickleTrackLink.append(trkIndexMap[part_trkidx])
-    impacts_pcas_pvs = -1000 * np.ones((len(partTickleTrackLink), 14))
-    impacts_pcas_errors = -1000 * np.ones((len(partTickleTrackLink), 8))
+    impacts_pcas_pvs = -1000 * np.ones((len(partTickleTrackLink), 17))
+    impacts_pcas_errors = -1000 * np.ones((len(partTickleTrackLink), 11))
+
     # debug for track particle assocsiation
     if debug > 2:
         P4 = vector.awk(
@@ -364,27 +387,51 @@ def findTrackPCAs(
             }
             pca = calcPCA(trackP, vertex)
             pca_error = calcPCA_error(trackP, vertex)
-            dz = pca[2] - vertex[2]
+            dz = abs(pca[2] - vertex[2])
             dz_error = math.sqrt(pca_error[2] * pca_error[2])
-            dxy = math.sqrt((vertex[0] - pca[0]) * (vertex[0] - pca[0]) + (vertex[1] - pca[1]) * (vertex[1] - pca[1]))
+            dxy = math.sqrt(sum([(vertex[i] - pca[i]) * (vertex[i] - pca[i]) for i in range(2)]))
             dxy_error = math.sqrt(
-                4 * (vertex[0] - pca[0]) * (vertex[0] - pca[0]) * pca_error[0] * pca_error[0]
-                + 4 * (vertex[1] - pca[1]) * (vertex[1] - pca[1]) * pca_error[1] * pca_error[1]
+                sum([4 * ((vertex[i] - pca[i]) * (vertex[i] - pca[i]) * pca_error[i] * pca_error[i]) for i in range(2)])
             )
-            d3 = math.sqrt(
-                (vertex[0] - pca[0]) * (vertex[0] - pca[0])
-                + (vertex[1] - pca[1]) * (vertex[1] - pca[1])
-                + (vertex[2] - pca[2]) * (vertex[2] - pca[2])
-            )
+            d3 = math.sqrt(sum([(vertex[i] - pca[i]) * (vertex[i] - pca[i]) for i in range(3)]))
             d3_error = math.sqrt(
-                4 * (vertex[0] - pca[0]) * (vertex[0] - pca[0]) * pca_error[0] * pca_error[0]
-                + 4 * (vertex[1] - pca[1]) * (vertex[1] - pca[1]) * pca_error[1] * pca_error[1]
-                + 4 * (vertex[2] - pca[2]) * (vertex[2] - pca[2]) * pca_error[2] * pca_error[2]
+                sum([4 * ((vertex[i] - pca[i]) * (vertex[i] - pca[i]) * pca_error[i] * pca_error[i]) for i in range(3)])
+            )
+            pca_f2D = calcPCA(trackP, vertex, f2D=True)
+            pca_f2D_error = calcPCA_error(trackP, vertex, f2D=True)
+            dz_f2D = pca_f2D[2] - vertex[2]
+            dz_f2D_error = math.sqrt(pca_f2D_error[2] * pca_f2D_error[2])
+            dxy_f2D = math.sqrt(sum([(vertex[i] - pca_f2D[i]) * (vertex[i] - pca_f2D[i]) for i in range(2)]))
+            dxy_f2D_error = math.sqrt(
+                sum(
+                    [
+                        4 * ((vertex[i] - pca_f2D[i]) * (vertex[i] - pca_f2D[i]) * pca_f2D_error[i] * pca_f2D_error[i])
+                        for i in range(2)
+                    ]
+                )
+            )
+            d3_f2D = math.sqrt(sum([(vertex[i] - pca_f2D[i]) * (vertex[i] - pca_f2D[i]) for i in range(3)]))
+            d3_f2D_error = math.sqrt(
+                sum(
+                    [
+                        4 * ((vertex[i] - pca_f2D[i]) * (vertex[i] - pca_f2D[i]) * pca_f2D_error[i] * pca_f2D_error[i])
+                        for i in range(3)
+                    ]
+                )
             )
             # xy impact parameter, z impact parameter , 3d impact parameter, d0/z0 track parameters, PCA and PV:
-            impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0] + pca + vertex + extras
+            impacts_pcas_pvs[ili] = [dxy, dz, d3, d0, z0, dxy_f2D, dz_f2D, d3_f2D] + pca + vertex + extras
             # corresponding uncertainties:
-            impacts_pcas_errors[ili] = [dxy_error, dz_error, d3_error, d0_error, z0_error] + pca_error
+            impacts_pcas_errors[ili] = [
+                dxy_error,
+                dz_error,
+                d3_error,
+                d0_error,
+                z0_error,
+                dxy_f2D_error,
+                dz_f2D_error,
+                d3_f2D_error,
+            ] + pca_error
     return [impacts_pcas_pvs, impacts_pcas_errors]
 
 
@@ -397,25 +444,19 @@ Helper to project the impact parameters of the track on the direction jet axis.
 
 def calculateImpactParameterSigns(ips, pca, pv, jetp4):
     jet_direction = [jetp4["x"], jetp4["y"], jetp4["z"]]
-    jet_norm = math.sqrt(
-        jet_direction[0] * jet_direction[0] + jet_direction[1] * jet_direction[1] + jet_direction[2] * jet_direction[2]
-    )
+    jet_norm = math.sqrt(sum([jet_direction[i] * jet_direction[i] for i in range(3)]))
     jet_direction = [(1.0 / jet_norm) * jet_direction[i] for i in range(len(jet_direction))]
     newips = []
     for iip, ip in enumerate(ips):
         if ip == -1000.0:
             newips.append(-1000.0)
             continue
-        pca_direction = [pca[0][iip] - pv[0][iip], pca[1][iip] - pv[1][iip], pca[2][iip] - pv[2][iip]]
-        pca_norm = math.sqrt(
-            pca_direction[0] * pca_direction[0] + pca_direction[1] * pca_direction[1] + pca_direction[2] * pca_direction[2]
-        )
+        pca_direction = np.array([pca[i][iip] - pv[i][iip] for i in range(3)])
+        pca_norm = math.sqrt(sum([pca_direction[i] * pca_direction[i] for i in range(3)]))
         if pca_norm > 0:
-            pca_direction = [(1.0 / pca_norm) * pca_direction[i] for i in range(len(pca_direction))]
+            pca_direction = 1 / pca_norm * pca_direction
         else:
             pca_direction = jet_direction
-        sign = np.sign(
-            pca_direction[0] * jet_direction[0] + pca_direction[1] * jet_direction[1] + pca_direction[2] * jet_direction[2]
-        )
+        sign = np.sign(sum([pca_direction[i] * jet_direction[i] for i in range(3)]))
         newips.append(sign * abs(ip))
     return newips

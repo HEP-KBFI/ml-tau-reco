@@ -21,6 +21,7 @@ from ParticleTransformer import ParticleTransformer
 from FeatureStandardization import FeatureStandardization
 from FocalLoss import FocalLoss
 from logTrainingProgress import logTrainingProgress
+from initWeights import initWeights
 
 
 def get_split_files(cfg_filename, split):
@@ -226,6 +227,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         metric=metric,
         verbosity=train_cfg.verbosity,
     ).to(device=dev)
+    initWeights(model)
     print("Finished building model:")
     print(model)
     model_params = filter(lambda p: p.requires_grad, model.parameters())

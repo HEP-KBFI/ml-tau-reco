@@ -8,5 +8,5 @@ IMG=/home/software/singularity/pytorch.simg
 cd ~/ml-tau-reco
 
 # PyTorch training
-singularity exec -B /scratch-persistent --nv $IMG \
+singularity exec -B /scratch/persistent --nv $IMG \
   python3 src/trainParticleTransformer.py
