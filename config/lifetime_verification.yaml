@@ -1,4 +1,8 @@
-input_dir: /home/laurits/tauLifeTime_removeConst/  # Remove all weird constants when calculation lifetimes
-# input_dir: /home/laurits/tauLifeTime_nosmear2/  # No vertex smearing (by Joosep)
-# input_dir: /home/laurits/tauLifeTime_SiTracks_1  # Use SiTracks_1 instead of SiTracks_Refitted_1
-# output_dir: /home/laurits/tauLifeTime_removeConst/plots
+samples:
+  noSmear:
+    input_dir: /home/laurits/tauLifeTime_FIX_normal  # Remove all weird constants when calculation lifetimes
+  normal:
+    input_dir: /home/laurits/tauLifeTime_FIX_noSmear/  # No vertex smearing (by Joosep)
+  # bkg:
+  #   input_dir: /home/laurits/tauLifetime_FIX_normal_QCD
+n_files: 50

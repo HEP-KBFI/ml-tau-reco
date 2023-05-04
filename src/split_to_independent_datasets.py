@@ -29,8 +29,9 @@ def split_to_datasets(cfg: DictConfig) -> None:
         with open(test_output_path, "wt") as out_file:
             yaml.dump(output_info, out_file)
     else:
-        total = sum([cfg[dataset] for dataset in datasets])
-        fractions = {dataset: cfg[dataset] / total for dataset in datasets}
+        total = sum([cfg[dataset] for dataset in datasets_l])
+        fractions = {dataset: cfg[dataset] / total for dataset in datasets_l}
+        datasets = {d: [] for d in datasets_l}
         for sample in cfg.samples_to_process:
             sample_paths = glob.glob(os.path.join(cfg.samples[sample].output_dir, "*.parquet"))
             n_files_in_sample = len(sample_paths)

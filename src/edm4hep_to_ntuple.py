@@ -542,6 +542,44 @@ def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
     return gen_jets[mask]
 
 
+def get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles):
+    v_mc_p4 = to_vector(mc_p4)
+    v_reco_p4 = to_vector(reco_p4)
+    reco_part_indices, gen_part_indices = match_jets(v_reco_p4, v_mc_p4, 0.01)
+    matched_gen_PDG = []
+    for ev, (ri, gi) in enumerate(zip(reco_part_indices, gen_part_indices)):
+        matched_gen_PDG_ = np.ones(len(reco_particles.charge[ev]), dtype=int) * (-1)
+        matched_gen_PDG_[ri] = mc_particles.PDG[ev][gi]
+        matched_gen_PDG.append(matched_gen_PDG_)
+    return ak.from_iter(matched_gen_PDG)
+
+
+def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
+    all_daughter_PDGs = []
+    all_daughter_p4s = []
+    for ev in range(len(mc_particles.PDG)):
+        mask = mc_particles.PDG[ev] == 23
+        daughter_idx = range(mc_particles.daughters_begin[ev][mask][-1], mc_particles.daughters_end[ev][mask][-1])
+        daughter_PDGs = mc_particles.PDG[ev][daughter_idx]
+    #     print(daughter_PDGs, daughter_idx)
+        daughter_p4s = mc_p4[ev][daughter_idx]
+        all_daughter_PDGs.append(daughter_PDGs)
+        all_daughter_p4s.append(daughter_p4s)
+    all_daughter_PDGs = ak.from_iter(all_daughter_PDGs)
+    all_daughter_p4s = ak.from_iter(all_daughter_p4s)
+    all_daughter_p4s = g.reinitialize_p4(all_daughter_p4s)
+    v_all_daughter_p4s = to_vector(all_daughter_p4s)
+    reco_jets = to_vector(reco_jets)
+    jet_indices, Z_daughter_indices = match_jets(reco_jets, v_all_daughter_p4s, 0.1)
+    jet_parton_PDGs = []
+    for ev in range(len(jet_indices)):
+        ev_jet_parton_PDGs = np.zeros(len(reco_jets[ev]))
+        if len(jet_indices[ev]) > 0:
+            ev_jet_parton_PDGs[jet_indices[ev]] = all_daughter_PDGs[ev][Z_daughter_indices[ev]]
+        jet_parton_PDGs.append(ev_jet_parton_PDGs)
+    jet_parton_PDGs = ak.from_iter(jet_parton_PDGs)
+    return jet_parton_PDGs
+
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
@@ -559,6 +597,10 @@ def process_input_file(arrays: ak.Array):
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask, mask_addition = get_hadronically_decaying_hard_tau_masks(mc_particles)
     gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
+
+    reco_particle_genPDG = get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles)
+    jet_parton_PDGs = match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets)
+
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_lifetime_infos = ak.from_iter([findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
@@ -739,6 +781,8 @@ def process_input_file(arrays: ak.Array):
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
+        "reco_jet_Z_Dparton_pdg": jet_parton_PDGs,
+        "reco_cand_genPDG": get_jet_constituent_property(reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet),
         "event_reco_cand_dxy": event_reco_cand_dxy,  # impact parameter in xy  for all pf in event
         "event_reco_cand_dz": event_reco_cand_dz,  # impact parameter in z for all pf in event
         "event_reco_cand_d3": event_reco_cand_d3,  # impact parameter in 3d for all pf in event
@@ -805,7 +849,12 @@ def process_input_file(arrays: ak.Array):
     return data
 
 
-def process_single_file(input_path: str, tree_path: str, branches: list, output_dir: str):
+def process_single_file(
+    input_path: str,
+    output_dir: str,
+    tree_path: str = "events",
+    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"]
+):
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
     if not os.path.exists(output_ntuple_path):
@@ -837,13 +886,13 @@ def process_all_input_files(cfg: DictConfig) -> None:
             n_files = None
         input_paths = glob.glob(input_wcp)[:n_files]
         if cfg.use_multiprocessing:
-            pool = multiprocessing.Pool(processes=8)
+            pool = multiprocessing.Pool(processes=10)
             pool.starmap(
-                process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(output_dir))
+                process_single_file, zip(input_paths, repeat(output_dir))
             )
         else:
             for path in input_paths:
-                process_single_file(path, cfg.tree_path, cfg.branches, output_dir)
+                process_single_file(path, output_dir)
 
 
 if __name__ == "__main__":
