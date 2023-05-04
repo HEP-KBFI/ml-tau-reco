@@ -30,7 +30,7 @@ def plot(values, title, output_path, xmin, xmax, print_rms=True, nbins=30):
         ax.text(0.6, 0.8, textstr, transform=ax.transAxes, fontsize=16, verticalalignment="top", bbox=props)
     plt.xlim((xmin, xmax))
     plt.savefig(output_path)
-    plt.close('all')
+    plt.close("all")
 
 
 def process_data(data, output_dir):
@@ -42,11 +42,14 @@ def process_data(data, output_dir):
     track_mask = abs(data["reco_cand_charge"]) > 0
     tau_descendant_mask = data["reco_cand_matched_gen_energy"] / g.reinitialize_p4(data["reco_cand_p4s"]).energy > 0.1
     suitable_cands_mask = track_mask * tau_descendant_mask
-    gen_DV_dist = np.sqrt(
-        data["gen_jet_tau_decay_vertex_x"] ** 2
-        + data["gen_jet_tau_decay_vertex_y"] ** 2
-        + data["gen_jet_tau_decay_vertex_z"] ** 2
-    ) / expected_traveldistance
+    gen_DV_dist = (
+        np.sqrt(
+            data["gen_jet_tau_decay_vertex_x"] ** 2
+            + data["gen_jet_tau_decay_vertex_y"] ** 2
+            + data["gen_jet_tau_decay_vertex_z"] ** 2
+        )
+        / expected_traveldistance
+    )
     reco_pca_dist_from_reco_PV = np.sqrt(
         (data["reco_cand_PV_x"][suitable_cands_mask] - data["reco_cand_PCA_x"][suitable_cands_mask]) ** 2
         + (data["reco_cand_PV_y"][suitable_cands_mask] - data["reco_cand_PCA_y"][suitable_cands_mask]) ** 2
@@ -61,9 +64,9 @@ def process_data(data, output_dir):
     reshaped_gen_DV_y = ak.ones_like((data["reco_cand_PCA_y"][suitable_cands_mask])) * data["gen_jet_tau_decay_vertex_y"]
     reshaped_gen_DV_z = ak.ones_like((data["reco_cand_PCA_z"][suitable_cands_mask])) * data["gen_jet_tau_decay_vertex_z"]
     reco_PCA_from_gen_DV = np.sqrt(
-        (data["reco_cand_PCA_x"][suitable_cands_mask] - reshaped_gen_DV_x)** 2
-        + (data["reco_cand_PCA_y"][suitable_cands_mask] - reshaped_gen_DV_y)** 2
-        + (data["reco_cand_PCA_z"][suitable_cands_mask] - reshaped_gen_DV_z)** 2
+        (data["reco_cand_PCA_x"][suitable_cands_mask] - reshaped_gen_DV_x) ** 2
+        + (data["reco_cand_PCA_y"][suitable_cands_mask] - reshaped_gen_DV_y) ** 2
+        + (data["reco_cand_PCA_z"][suitable_cands_mask] - reshaped_gen_DV_z) ** 2
     )
     reco_cand_pt = g.reinitialize_p4(data["reco_cand_p4s"][suitable_cands_mask]).pt
     high_pt_mask = reco_cand_pt > 20
@@ -72,28 +75,28 @@ def process_data(data, output_dir):
         title="Reco Cand z0",
         output_path=os.path.join(output_dir, "reco_cand_z0.png"),
         xmin=-2e-1,
-        xmax=2e-1
+        xmax=2e-1,
     )
     plot(
         values=ak.flatten(data["reco_cand_d0"][suitable_cands_mask], axis=-1),
         title="Reco Cand d0",
         output_path=os.path.join(output_dir, "reco_cand_d0.png"),
         xmin=-2e-1,
-        xmax=2e-1
+        xmax=2e-1,
     )
     plot(
         values=ak.flatten(data["reco_cand_PV_x"][suitable_cands_mask], axis=-1),
         title="Reco Cand PV_x",
         output_path=os.path.join(output_dir, "PV_x.png"),
         xmin=-5e-5,
-        xmax=5e-5
+        xmax=5e-5,
     )
     plot(
         values=ak.flatten(data["reco_cand_PV_y"][suitable_cands_mask], axis=-1),
         title="Reco Cand PV_y",
         output_path=os.path.join(output_dir, "PV_y.png"),
         xmin=-5e-7,
-        xmax=5e-7
+        xmax=5e-7,
     )
     plot(
         values=ak.flatten(data["reco_cand_PV_z"][suitable_cands_mask], axis=-1),
@@ -108,7 +111,7 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "gen_DV_dist.png"),
         xmin=-0,
         xmax=1,
-        print_rms=True
+        print_rms=True,
     )
     plot(
         values=ak.flatten(reco_PV_from_gen_PV, axis=-1),
@@ -116,7 +119,7 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "reco_PV_from_gen_PV.png"),
         xmin=-1e-1,
         xmax=1e-1,
-        print_rms=True
+        print_rms=True,
     )
 
     plot(
@@ -125,7 +128,7 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "reco_PCA_from_gen_DV.png"),
         xmin=0,
         xmax=1e1,
-        print_rms=True
+        print_rms=True,
     )
 
     plot(
@@ -134,7 +137,7 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "reco_PCA_from_gen_DV_high_pT.png"),
         xmin=0,
         xmax=1e1,
-        print_rms=True
+        print_rms=True,
     )
     plot(
         values=ak.flatten(reco_PCA_from_gen_DV[~high_pt_mask], axis=-1),
@@ -142,15 +145,15 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "reco_PCA_from_gen_DV_low_pT.png"),
         xmin=0,
         xmax=1e1,
-        print_rms=True
+        print_rms=True,
     )
 
     plot(
-        values=ak.flatten(reco_pca_dist_from_reco_PV/expected_traveldistance, axis=-1),
+        values=ak.flatten(reco_pca_dist_from_reco_PV / expected_traveldistance, axis=-1),
         title="Reco PCA from reco PV wrt. expectation",
         output_path=os.path.join(output_dir, "reco_PCA_from_PV.png"),
         xmin=0,
-        xmax=0.3
+        xmax=0.3,
     )
     plot(
         values=ak.flatten(data["gen_jet_tau_decay_vertex_x"], axis=-1),
@@ -158,7 +161,7 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "Gen_DV_x.png"),
         xmin=-1,
         xmax=1,
-        print_rms=False
+        print_rms=False,
     )
     plot(
         values=ak.flatten(data["gen_jet_tau_decay_vertex_y"], axis=-1),
@@ -166,7 +169,7 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "Gen_DV_y.png"),
         xmin=-1,
         xmax=1,
-        print_rms=False
+        print_rms=False,
     )
     plot(
         values=ak.flatten(data["gen_jet_tau_decay_vertex_z"], axis=-1),
@@ -174,7 +177,7 @@ def process_data(data, output_dir):
         output_path=os.path.join(output_dir, "Gen_DV_z.png"),
         xmin=-1,
         xmax=1,
-        print_rms=False
+        print_rms=False,
     )
     distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, output_dir)
 
@@ -183,24 +186,30 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
     reshaped_tau_vec_x = ak.ones_like((data["reco_cand_PCA_x"][suitable_cands_mask])) * gen_jet_tau_p4s.px
     reshaped_tau_vec_y = ak.ones_like((data["reco_cand_PCA_y"][suitable_cands_mask])) * gen_jet_tau_p4s.py
     reshaped_tau_vec_z = ak.ones_like((data["reco_cand_PCA_z"][suitable_cands_mask])) * gen_jet_tau_p4s.pz
-    tau_vec = np.array((
-        ak.flatten(reshaped_tau_vec_x, axis=-1),
-        ak.flatten(reshaped_tau_vec_y, axis=-1),
-        ak.flatten(reshaped_tau_vec_z, axis=-1)
-    )).T
+    tau_vec = np.array(
+        (
+            ak.flatten(reshaped_tau_vec_x, axis=-1),
+            ak.flatten(reshaped_tau_vec_y, axis=-1),
+            ak.flatten(reshaped_tau_vec_z, axis=-1),
+        )
+    ).T
     reshaped_gen_DV_x = ak.ones_like((data["reco_cand_PCA_x"][suitable_cands_mask])) * data["gen_jet_tau_decay_vertex_x"]
     reshaped_gen_DV_y = ak.ones_like((data["reco_cand_PCA_y"][suitable_cands_mask])) * data["gen_jet_tau_decay_vertex_y"]
     reshaped_gen_DV_z = ak.ones_like((data["reco_cand_PCA_z"][suitable_cands_mask])) * data["gen_jet_tau_decay_vertex_z"]
-    pca_diff_vec = np.array((
-        ak.flatten((data["reco_cand_PCA_x"][suitable_cands_mask] - reshaped_gen_DV_x), axis=-1),
-        ak.flatten((data["reco_cand_PCA_y"][suitable_cands_mask] - reshaped_gen_DV_y), axis=-1),
-        ak.flatten((data["reco_cand_PCA_z"][suitable_cands_mask] - reshaped_gen_DV_z), axis=-1)
-    )).T
-    pv_diff_vec = np.array((
-        ak.flatten(data["reco_cand_PCA_x"][suitable_cands_mask], axis=-1),
-        ak.flatten(data["reco_cand_PCA_y"][suitable_cands_mask], axis=-1),
-        ak.flatten(data["reco_cand_PCA_z"][suitable_cands_mask], axis=-1)
-    )).T
+    pca_diff_vec = np.array(
+        (
+            ak.flatten((data["reco_cand_PCA_x"][suitable_cands_mask] - reshaped_gen_DV_x), axis=-1),
+            ak.flatten((data["reco_cand_PCA_y"][suitable_cands_mask] - reshaped_gen_DV_y), axis=-1),
+            ak.flatten((data["reco_cand_PCA_z"][suitable_cands_mask] - reshaped_gen_DV_z), axis=-1),
+        )
+    ).T
+    pv_diff_vec = np.array(
+        (
+            ak.flatten(data["reco_cand_PCA_x"][suitable_cands_mask], axis=-1),
+            ak.flatten(data["reco_cand_PCA_y"][suitable_cands_mask], axis=-1),
+            ak.flatten(data["reco_cand_PCA_z"][suitable_cands_mask], axis=-1),
+        )
+    ).T
 
     # In tau direction
     PCA_diff_tau_direction = []
@@ -216,7 +225,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
         output_path=os.path.join(output_dir, "PCA_diff_tau_direction.png"),
         xmin=-1e1,
         xmax=1e1,
-        print_rms=False
+        print_rms=False,
     )
     plot(
         values=np.array(PV_diff_tau_direction),
@@ -224,7 +233,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
         output_path=os.path.join(output_dir, "PV_diff_tau_direction.png"),
         xmin=-1e-1,
         xmax=1e-1,
-        print_rms=False
+        print_rms=False,
     )
 
     PV_diff_perp_tau_x = []
@@ -234,7 +243,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
     for tv, pvdv, pcadv in zip(tau_vec, pv_diff_vec, pca_diff_vec):
         perp_x = np.random.randn(3)
         # Perpendicular to tau direction
-        perp_x -= perp_x.dot(tv) * tv / np.linalg.norm(tv)**2  # First
+        perp_x -= perp_x.dot(tv) * tv / np.linalg.norm(tv) ** 2  # First
         perp_y = np.cross(tv, perp_x)  # Second
         PV_diff_perp_tau_x.append(np.dot(pvdv, perp_x) / np.linalg.norm(perp_x))
         PV_diff_perp_tau_y.append(np.dot(pvdv, perp_y) / np.linalg.norm(perp_y))
@@ -247,7 +256,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
         output_path=os.path.join(output_dir, "PV_diff_perp_tau_x.png"),
         xmin=-1e-1,
         xmax=1e-1,
-        print_rms=True
+        print_rms=True,
     )
     # print("PV_x <= 0.02", np.sum(abs(np.array(PV_diff_perp_tau_x)) <= 0.02))
     plot(
@@ -256,7 +265,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
         output_path=os.path.join(output_dir, "PV_diff_perp_tau_y.png"),
         xmin=-1e-1,
         xmax=1e-1,
-        print_rms=True
+        print_rms=True,
     )
     # print("PV_y <= 0.02", np.sum(abs(np.array(PV_diff_perp_tau_y)) <= 0.02))
     plot(
@@ -265,7 +274,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
         output_path=os.path.join(output_dir, "PCA_diff_perp_tau_x.png"),
         xmin=-5e-1,
         xmax=5e-1,
-        print_rms=True
+        print_rms=True,
     )
     print("PCA_x <= 0.02", np.sum(abs(np.array(PCA_diff_perp_tau_x)) <= 0.02) / len(PCA_diff_perp_tau_x))
     plot(
@@ -274,7 +283,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
         output_path=os.path.join(output_dir, "PCA_diff_perp_tau_y.png"),
         xmin=-5e-1,
         xmax=5e-1,
-        print_rms=True
+        print_rms=True,
     )
     print("PCA_y <= 0.02", np.sum(abs(np.array(PCA_diff_perp_tau_y)) <= 0.02) / len(PCA_diff_perp_tau_y))
 
@@ -301,7 +310,6 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
             break
 
 
-
 @hydra.main(config_path="../config", config_name="lifetime_verification", version_base=None)
 def study_lifetime_resolution(cfg: DictConfig) -> None:
     for sample in cfg.samples.keys():
@@ -324,7 +332,6 @@ def study_lifetime_resolution(cfg: DictConfig) -> None:
 #     hist.Fill(d)
 # data_ = ROOT.RooDataHist("d2", "d2", x, hist)
 # conv.fitTo(data_)
-
 
 
 if __name__ == "__main__":

@@ -561,7 +561,7 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
         mask = mc_particles.PDG[ev] == 23
         daughter_idx = range(mc_particles.daughters_begin[ev][mask][-1], mc_particles.daughters_end[ev][mask][-1])
         daughter_PDGs = mc_particles.PDG[ev][daughter_idx]
-    #     print(daughter_PDGs, daughter_idx)
+        #     print(daughter_PDGs, daughter_idx)
         daughter_p4s = mc_p4[ev][daughter_idx]
         all_daughter_PDGs.append(daughter_PDGs)
         all_daughter_p4s.append(daughter_p4s)
@@ -579,6 +579,7 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
         jet_parton_PDGs.append(ev_jet_parton_PDGs)
     jet_parton_PDGs = ak.from_iter(jet_parton_PDGs)
     return jet_parton_PDGs
+
 
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
@@ -963,7 +964,9 @@ def process_input_file(arrays: ak.Array):
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
         "reco_jet_Z_Dparton_pdg": jet_parton_PDGs,
-        "reco_cand_genPDG": get_jet_constituent_property(reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet),
+        "reco_cand_genPDG": get_jet_constituent_property(
+            reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet
+        ),
         "event_reco_cand_dxy": event_reco_cand_dxy,  # impact parameter in xy  for all pf in event
         "event_reco_cand_dz": event_reco_cand_dz,  # impact parameter in z for all pf in event
         "event_reco_cand_d3": event_reco_cand_d3,  # impact parameter in 3d for all pf in event
@@ -1056,7 +1059,7 @@ def process_single_file(
     input_path: str,
     output_dir: str,
     tree_path: str = "events",
-    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"]
+    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"],
 ):
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
@@ -1090,9 +1093,7 @@ def process_all_input_files(cfg: DictConfig) -> None:
         input_paths = glob.glob(input_wcp)[:n_files]
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=10)
-            pool.starmap(
-                process_single_file, zip(input_paths, repeat(output_dir))
-            )
+            pool.starmap(process_single_file, zip(input_paths, repeat(output_dir)))
         else:
             for path in input_paths:
                 process_single_file(path, output_dir)

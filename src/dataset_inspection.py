@@ -61,7 +61,7 @@ def calculate_all_jet_radii(gen_jet_constituent_indices, gen_jets, stable_mc_p4)
             c_pt = constituent_p4s.pt
             j_phi = tau_gen_jet.phi
             j_eta = tau_gen_jet.eta
-            j_pt = tau_gen_jet.pt
+            # j_pt = tau_gen_jet.pt
             event_jet_radii.append(calculate_jet_radius(c_pt, j_eta, j_phi, c_eta, c_phi))
         all_jet_radii.append(event_jet_radii)
     return ak.flatten(all_jet_radii, axis=-1)

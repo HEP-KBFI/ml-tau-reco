@@ -24,7 +24,7 @@ samples:
   #   output_dir: /home/laurits/tauLifeTime_FIX_noSmear
   QCD_new:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
-    output_dir: /home/laurits/tauLifeTime_Matching_QCD
+    output_dir: /home/laurits/tauLifeTime_Matching_QCD_noSmear
   QCD:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
     output_dir: /scratch/persistent/laurits/CLIC_data_20230502/QCD
