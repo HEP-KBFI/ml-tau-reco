@@ -92,8 +92,10 @@ def get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition):
                 mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
                 mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
             )
-            daughter_PDGs = np.abs(mc_particles.PDG[e_idx][daughter_indices])
-            event_decaymodes.append(g.get_decaymode(daughter_PDGs))
+            daughter_pdgs = np.abs(mc_particles.PDG[e_idx][daughter_indices])
+            daughter_charges = np.abs(mc_particles.charge[e_idx][daughter_indices])
+            PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
+            event_decaymodes.append(g.get_decaymode(PDGs, daughter_pdgs))
         all_decaymodes.append(event_decaymodes)
     return ak.from_iter(all_decaymodes)
 
@@ -227,7 +229,7 @@ def get_all_tau_best_combinations(vis_tau_p4s, gen_jets):
             "energy": gen_jets.energy,
         }
     )
-    tau_indices, gen_indices = match_jets(vis_tau_p4s, gen_jets_p4, 999.9)
+    tau_indices, gen_indices = match_jets(vis_tau_p4s, gen_jets_p4, 0.1)
     pairs = []
     for tau_idx, gen_idx in zip(tau_indices, gen_indices):
         pair = []
@@ -323,11 +325,13 @@ def map_pdgid_to_candid(pdgid, charge):
     if pdgid == 0:
         return 0
     # photon, electron, muon
-    if abs(pdgid) in [22, 11, 13, 15]:
-        return pdgid
+    if abs(pdgid) in [22, 11, 13, 15, 16, 1, 2, 3, 4, 5, 21, 12, 14]:
+        return abs(pdgid)
     # charged hadron
     if abs(charge) > 0:
         return 211
+    if pdgid == 311 or 111:
+        return 111
     # neutral hadron
     return 130
 
@@ -503,8 +507,10 @@ def get_hadronically_decaying_hard_tau_masks(mc_particles):
                 daughters_idx = range(
                     mc_particles.daughters_begin[tau_mask][i][d], mc_particles.daughters_end[tau_mask][i][d]
                 )
-                daughter_PDGs = mc_particles.PDG[i][daughters_idx]
-                decaymode = g.get_decaymode(daughter_PDGs)
+                daughter_pdgs = np.abs(mc_particles.PDG[i][daughters_idx])
+                daughter_charges = np.abs(mc_particles.charge[i][daughters_idx])
+                PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
+                decaymode = g.get_decaymode(PDGs, daughter_pdgs)
                 if decaymode != 16 and abs(parent_pdg) == 15:
                     daughter_mask.append(True)
                 else:
@@ -536,6 +542,45 @@ def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
     return gen_jets[mask]
 
 
+def get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles):
+    v_mc_p4 = to_vector(mc_p4)
+    v_reco_p4 = to_vector(reco_p4)
+    reco_part_indices, gen_part_indices = match_jets(v_reco_p4, v_mc_p4, 0.01)
+    matched_gen_PDG = []
+    for ev, (ri, gi) in enumerate(zip(reco_part_indices, gen_part_indices)):
+        matched_gen_PDG_ = np.ones(len(reco_particles.charge[ev]), dtype=int) * (-1)
+        matched_gen_PDG_[ri] = mc_particles.PDG[ev][gi]
+        matched_gen_PDG.append(matched_gen_PDG_)
+    return ak.from_iter(matched_gen_PDG)
+
+
+def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
+    all_daughter_PDGs = []
+    all_daughter_p4s = []
+    for ev in range(len(mc_particles.PDG)):
+        mask = mc_particles.PDG[ev] == 23
+        daughter_idx = range(mc_particles.daughters_begin[ev][mask][-1], mc_particles.daughters_end[ev][mask][-1])
+        daughter_PDGs = mc_particles.PDG[ev][daughter_idx]
+        #     print(daughter_PDGs, daughter_idx)
+        daughter_p4s = mc_p4[ev][daughter_idx]
+        all_daughter_PDGs.append(daughter_PDGs)
+        all_daughter_p4s.append(daughter_p4s)
+    all_daughter_PDGs = ak.from_iter(all_daughter_PDGs)
+    all_daughter_p4s = ak.from_iter(all_daughter_p4s)
+    all_daughter_p4s = g.reinitialize_p4(all_daughter_p4s)
+    v_all_daughter_p4s = to_vector(all_daughter_p4s)
+    reco_jets = to_vector(reco_jets)
+    jet_indices, Z_daughter_indices = match_jets(reco_jets, v_all_daughter_p4s, 0.1)
+    jet_parton_PDGs = []
+    for ev in range(len(jet_indices)):
+        ev_jet_parton_PDGs = np.zeros(len(reco_jets[ev]))
+        if len(jet_indices[ev]) > 0:
+            ev_jet_parton_PDGs[jet_indices[ev]] = all_daughter_PDGs[ev][Z_daughter_indices[ev]]
+        jet_parton_PDGs.append(ev_jet_parton_PDGs)
+    jet_parton_PDGs = ak.from_iter(jet_parton_PDGs)
+    return jet_parton_PDGs
+
+
 def process_input_file(arrays: ak.Array):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
@@ -553,6 +598,10 @@ def process_input_file(arrays: ak.Array):
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
     tau_mask, mask_addition = get_hadronically_decaying_hard_tau_masks(mc_particles)
     gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
+
+    reco_particle_genPDG = get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles)
+    jet_parton_PDGs = match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets)
+
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_lifetime_infos = ak.from_iter([findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
@@ -563,6 +612,7 @@ def process_input_file(arrays: ak.Array):
     event_d3 = event_lifetime_info[:, :, 2]
     event_d0 = event_lifetime_info[:, :, 3]
     event_z0 = event_lifetime_info[:, :, 4]
+
     event_dxy_f2D = event_lifetime_info[:, :, 5]
     event_dz_f2D = event_lifetime_info[:, :, 6]
     event_d3_f2D = event_lifetime_info[:, :, 7]
@@ -572,6 +622,9 @@ def process_input_file(arrays: ak.Array):
     event_PV_x = event_lifetime_info[:, :, 11]
     event_PV_y = event_lifetime_info[:, :, 12]
     event_PV_z = event_lifetime_info[:, :, 13]
+    event_phi0 = event_lifetime_info[:, :, 14]
+    event_tanL = event_lifetime_info[:, :, 15]
+    event_omega = event_lifetime_info[:, :, 16]
     event_dxy_err = event_lifetime_errs[:, :, 0]
     event_dz_err = event_lifetime_errs[:, :, 1]
     event_d3_err = event_lifetime_errs[:, :, 2]
@@ -603,6 +656,9 @@ def process_input_file(arrays: ak.Array):
     event_reco_cand_PV_x = ak.from_iter([[event_PV_x[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_reco_cand_PV_y = ak.from_iter([[event_PV_y[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_reco_cand_PV_z = ak.from_iter([[event_PV_z[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_phi0 = ak.from_iter([[event_phi0[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_tanL = ak.from_iter([[event_tanL[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
+    event_reco_cand_omega = ak.from_iter([[event_omega[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_reco_cand_dxy_err = ak.from_iter(
         [[event_dxy_err[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
     )
@@ -762,6 +818,10 @@ def process_input_file(arrays: ak.Array):
     reco_cand_PV_x = get_jet_constituent_property(event_PV_x, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_PV_y = get_jet_constituent_property(event_PV_y, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_PV_z = get_jet_constituent_property(event_PV_z, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_phi0 = get_jet_constituent_property(event_phi0, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_tanL = get_jet_constituent_property(event_tanL, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_omega = get_jet_constituent_property(event_omega, reco_jet_constituent_indices, num_ptcls_per_jet)
+
     reco_cand_dxy_err = get_jet_constituent_property(event_dxy_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_dz_err = get_jet_constituent_property(event_dz_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_d3_err = get_jet_constituent_property(event_d3_err, reco_jet_constituent_indices, num_ptcls_per_jet)
@@ -903,6 +963,10 @@ def process_input_file(arrays: ak.Array):
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
+        "reco_jet_Z_Dparton_pdg": jet_parton_PDGs,
+        "reco_cand_genPDG": get_jet_constituent_property(
+            reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet
+        ),
         "event_reco_cand_dxy": event_reco_cand_dxy,  # impact parameter in xy  for all pf in event
         "event_reco_cand_dz": event_reco_cand_dz,  # impact parameter in z for all pf in event
         "event_reco_cand_d3": event_reco_cand_d3,  # impact parameter in 3d for all pf in event
@@ -936,6 +1000,12 @@ def process_input_file(arrays: ak.Array):
         "event_reco_cand_PV_x": event_reco_cand_PV_x,  # primary vertex (PX) x-comp
         "event_reco_cand_PV_y": event_reco_cand_PV_y,  # primary vertex (PX) y-comp
         "event_reco_cand_PV_z": event_reco_cand_PV_z,  # primary vertex (PX) z-comp
+        "event_reco_cand_phi0": event_reco_cand_phi0,
+        "event_reco_cand_tanL": event_reco_cand_tanL,
+        "event_reco_cand_omega": event_reco_cand_omega,
+        "reco_cand_phi0": reco_cand_phi0,
+        "reco_cand_tanL": reco_cand_tanL,
+        "reco_cand_omega": reco_cand_omega,
         "reco_cand_dxy": reco_cand_dxy,  # impact parameter in xy
         "reco_cand_dz": reco_cand_dz,  # impact parameter in z
         "reco_cand_d3": reco_cand_d3,  # impact parameter in 3D
@@ -985,20 +1055,25 @@ def process_input_file(arrays: ak.Array):
     return data
 
 
-def process_single_file(input_path: str, tree_path: str, branches: list, output_dir: str):
+def process_single_file(
+    input_path: str,
+    output_dir: str,
+    tree_path: str = "events",
+    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"],
+):
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
     if not os.path.exists(output_ntuple_path):
-        try:
-            start_time = time.time()
-            arrays = load_single_file_contents(input_path, tree_path, branches)
-            data = process_input_file(arrays)
-            data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
-            save_record_to_file(data, output_ntuple_path)
-            end_time = time.time()
-            print(f"Finished processing in {end_time-start_time} s.")
-        except Exception:
-            print(f"Broken input file at {input_path}")
+        # try:
+        start_time = time.time()
+        arrays = load_single_file_contents(input_path, tree_path, branches)
+        data = process_input_file(arrays)
+        data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
+        save_record_to_file(data, output_ntuple_path)
+        end_time = time.time()
+        print(f"Finished processing in {end_time-start_time} s.")
+    # except Exception:
+    #     print(f"Broken input file at {input_path}")
     else:
         print("File already processed, skipping.")
 
@@ -1012,18 +1087,16 @@ def process_all_input_files(cfg: DictConfig) -> None:
         os.makedirs(output_dir, exist_ok=True)
         input_wcp = os.path.join(input_dir, "*.root")
         if cfg.test_run:
-            n_files = 10
+            n_files = 250
         else:
             n_files = None
         input_paths = glob.glob(input_wcp)[:n_files]
         if cfg.use_multiprocessing:
-            pool = multiprocessing.Pool(processes=8)
-            pool.starmap(
-                process_single_file, zip(input_paths, repeat(cfg.tree_path), repeat(cfg.branches), repeat(output_dir))
-            )
+            pool = multiprocessing.Pool(processes=10)
+            pool.starmap(process_single_file, zip(input_paths, repeat(output_dir)))
         else:
             for path in input_paths:
-                process_single_file(path, cfg.tree_path, cfg.branches, output_dir)
+                process_single_file(path, output_dir)
 
 
 if __name__ == "__main__":

@@ -432,7 +432,8 @@ def main(cfg):
         tensorboard_writer.add_scalar("epoch/lr", scheduler.get_last_lr()[0], iepoch)
         tensorboard_writer.add_pr_curve("epoch/roc_curve", retvals[0], retvals[1], iepoch)
 
-        fpr, tpr, thresh = sklearn.metrics.roc_curve(retvals[0], retvals[1])
+        # In the following retvals[1] is returned as always as NaN for some reason
+        fpr, tpr, thresh = sklearn.metrics.roc_curve(retvals[0], np.nan_to_num(retvals[1]))
         tensorboard_writer.add_scalar("epoch/fpr_at_tpr0p6", fpr[np.searchsorted(tpr, 0.6)], iepoch)
 
         print(

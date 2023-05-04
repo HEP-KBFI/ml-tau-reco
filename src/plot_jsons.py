@@ -50,6 +50,11 @@ def plot_json(cfg):
                 algo_roc_info = load_json(algo_input)
                 roc_info["efficiencies"][algo] = algo_roc_info["efficiencies"][algo]
                 roc_info["fakerates"][algo] = algo_roc_info["fakerates"][algo]
+            x = np.array(roc_info["efficiencies"][algo])
+            y = np.array(roc_info["fakerates"][algo])
+            print(f"Algorithm {algo} \t eff: {min(x[x > 0])} \t fake: {min(y[x > 0])}")
+            print(f"Algorithm {algo} \t eff: {max(x[x > 0])} \t fake: {max(y[x > 0])}")
+            print("______________________________________")
         roc_plotting_info = {}
         roc_plotting_info["efficiencies"] = {algo: roc_info["efficiencies"][algo] for algo in cfg.plotting_algorithms}
         roc_plotting_info["fakerates"] = {algo: roc_info["fakerates"][algo] for algo in cfg.plotting_algorithms}
@@ -87,13 +92,14 @@ def plot_json(cfg):
             dm_output_path = os.path.join(dm_output_dir, "decaymode_reconstruction.pdf")
             os.makedirs(dm_output_dir, exist_ok=True)
             print_category_fractions(decaymodes_info["gen"], decaymodes_info["categories"], algorithm)
-            pl.plot_decaymode_correlation_matrix(
+            pl.plot_decaymode_correlation_matrix_removed_row(
                 true_cats=decaymodes_info["gen"],
                 pred_cats=decaymodes_info["reco"],
                 categories=decaymodes_info["categories"],
                 output_path=dm_output_path,
                 y_label=r"Reconstructed $\tau$ decay mode",
                 x_label=r"Generated $\tau$ decay mode",
+                figsize=None,
             )
     if cfg.plotting_metrics.HPS_comparison:
         efficiencies = {}
@@ -103,7 +109,6 @@ def plot_json(cfg):
         for algo in cfg.HPS_comparison:
             input_path = os.path.join(cfg.HPS_comparison[algo], "roc.json")
             HPS_comp_roc_info = load_json(input_path)
-            print()
             if algo == "HPS":
                 algorithm = "HPS_NOquality"
             else:

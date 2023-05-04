@@ -3,7 +3,7 @@ set -e
 set -x
 
 # Delete artifacts
-rm -rf ntuple hps simplednn grid oracle ParticleTransformer LorentzNet
+rm -rf ntuple hps simplednn grid oracle ParticleTransformer LorentzNet data/dataset_*
 rm -f val.yaml train.yaml
 
 
