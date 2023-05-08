@@ -85,7 +85,7 @@ def build_taus(cfg: DictConfig) -> None:
             assert n_files == 1
         else:
             all_input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))
-            if n_files == None:
+            if n_files is None:
                 input_paths = all_input_paths
             else:
                 input_paths = all_input_paths[cfg.start : cfg.start + n_files]
