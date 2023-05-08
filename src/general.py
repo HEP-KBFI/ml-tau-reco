@@ -85,37 +85,37 @@ def get_decaymode(pdg_ids, daughter_pdgs):
     """
     pdg_ids = np.abs(np.array(pdg_ids))
     unique, counts = np.unique(pdg_ids, return_counts=True)
-    p_counts = {i: 0 for i in [16, 111, 211, 13, 14, 12, 11, 22]}
+    p_counts = {i: 0 for i in [16, 130, 211, 13, 14, 12, 11, 22]}
     p_counts.update(dict(zip(unique, counts)))
-    if np.sum(p_counts[211]) == 1 and p_counts[111] == 0:
+    if np.sum(p_counts[211]) == 1 and p_counts[130] == 0:
         return 0
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] == 1:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] == 1:
         return 1
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] == 2:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] == 2:
         return 2
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] == 3:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] == 3:
         return 3
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] > 3:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] > 3:
         return 4
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 0:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 0:
         return 5
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 1:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 1:
         return 6
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 2:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 2:
         return 7
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 3:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 3:
         return 8
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] > 3:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] > 3:
         return 9
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 0:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 0:
         return 10
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 1:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 1:
         return 11
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 2:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 2:
         return 12
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 3:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 3:
         return 13
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] > 3:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] > 3:
         return 14
     elif np.sum(p_counts[11] + p_counts[13]) > 0:
         return 16

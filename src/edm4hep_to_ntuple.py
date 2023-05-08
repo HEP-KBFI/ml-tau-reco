@@ -330,8 +330,6 @@ def map_pdgid_to_candid(pdgid, charge):
     # charged hadron
     if abs(charge) > 0:
         return 211
-    if pdgid == 311 or 111:
-        return 111
     # neutral hadron
     return 130
 
