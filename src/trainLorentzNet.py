@@ -54,6 +54,7 @@ def train_loop(
     accuracy_normalization_train = 0.0
     class_true_train = []
     class_pred_train = []
+    weights_train = []
     model.train()
     for idx_batch, (X, y, weight) in enumerate(dataloader_train):
         # Compute prediction and loss
@@ -80,6 +81,7 @@ def train_loop(
 
         class_true_train.extend(y.detach().cpu().numpy())
         class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
+        weights_train.extend(weight.detach().cpu().numpy())
 
         # Backpropagation
         optimizer.zero_grad()
@@ -96,7 +98,7 @@ def train_loop(
     accuracy_train /= accuracy_normalization_train
 
     logTrainingProgress(
-        tensorboard, idx_epoch, "train", loss_train, accuracy_train, np.array(class_true_train), np.array(class_pred_train)
+        tensorboard, idx_epoch, "train", loss_train, accuracy_train, np.array(class_true_train), np.array(class_pred_train), np.array(weights_train)
     )
 
     return loss_train
@@ -118,6 +120,7 @@ def validation_loop(
     accuracy_normalization_validation = 0.0
     class_true_validation = []
     class_pred_validation = []
+    weights_validation = []
     model.eval()
     with torch.no_grad():
         for idx_batch, (X, y, weight) in enumerate(dataloader_validation):
@@ -143,6 +146,7 @@ def validation_loop(
 
             class_true_validation.extend(y.detach().cpu().numpy())
             class_pred_validation.extend(pred.argmax(dim=1).detach().cpu().numpy())
+            weights_validation.extend(weight.detach().cpu().numpy())
 
     loss_validation /= loss_normalization_validation
     accuracy_validation /= accuracy_normalization_validation
@@ -155,6 +159,7 @@ def validation_loop(
         accuracy_validation,
         np.array(class_true_validation),
         np.array(class_pred_validation),
+        np.array(weights_validation)
     )
 
     return loss_validation
