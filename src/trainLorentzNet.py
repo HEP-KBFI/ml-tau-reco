@@ -98,7 +98,14 @@ def train_loop(
     accuracy_train /= accuracy_normalization_train
 
     logTrainingProgress(
-        tensorboard, idx_epoch, "train", loss_train, accuracy_train, np.array(class_true_train), np.array(class_pred_train), np.array(weights_train)
+        tensorboard,
+        idx_epoch,
+        "train",
+        loss_train,
+        accuracy_train,
+        np.array(class_true_train),
+        np.array(class_pred_train),
+        np.array(weights_train),
     )
 
     return loss_train
@@ -159,7 +166,7 @@ def validation_loop(
         accuracy_validation,
         np.array(class_true_validation),
         np.array(class_pred_validation),
-        np.array(weights_validation)
+        np.array(weights_validation),
     )
 
     return loss_validation
