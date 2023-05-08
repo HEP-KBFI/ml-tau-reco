@@ -14,4 +14,8 @@ use_class_weights: False
 use_per_jet_weights: True
 use_focal_loss: True
 focal_loss_gamma: 2.0
+#fast_optimizer: AdamW
+slow_optimizer: None
+fast_optimizer: RAdam
+#slow_optimizer: Lookahead
 verbosity: 1

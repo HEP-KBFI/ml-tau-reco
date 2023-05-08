@@ -60,6 +60,7 @@ class FeatureStandardization:
             # print("mean = ", mean)
             var = torch.sub(x2, x * x)
             sigma = torch.sqrt(var)
+            torch.clamp(sigma, min=1.0e-3 * var, max=None)
             # print("sigma = ", sigma)
             one_over_sigma = torch.div(torch.tensor(1), sigma)
             if torch.isnan(one_over_sigma).sum().item() > 0.0:
