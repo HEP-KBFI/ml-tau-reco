@@ -1,12 +1,13 @@
 import numpy as np
 
 
-def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true, class_pred):
-    assert len(class_true) == len(class_pred)
-    true_positive_rate = np.logical_and(class_true == 0, class_pred == 0).sum() / float(len(class_true))
-    false_positive_rate = np.logical_and(class_true == 0, class_pred == 1).sum() / float(len(class_true))
-    true_negative_rate = np.logical_and(class_true == 1, class_pred == 1).sum() / float(len(class_true))
-    false_negative_rate = np.logical_and(class_true == 1, class_pred == 0).sum() / float(len(class_true))
+def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true, class_pred, weights):
+    assert len(class_true) == len(class_pred) and len(class_true) == len(weights)
+    weights_sum = weights.sum()
+    true_positive_rate = (np.logical_and(class_true == 1, class_pred == 1) * weights).sum() / weights_sum
+    false_negative_rate = (np.logical_and(class_true == 1, class_pred == 0) * weights).sum() / weights_sum
+    true_negative_rate = (np.logical_and(class_true == 0, class_pred == 0) * weights).sum() / weights_sum
+    false_positive_rate = (np.logical_and(class_true == 0, class_pred == 1) * weights).sum() / weights_sum
 
     precision = true_positive_rate / (true_positive_rate + false_positive_rate)
     recall = true_positive_rate / (true_positive_rate + false_negative_rate)
