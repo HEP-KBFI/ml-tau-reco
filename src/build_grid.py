@@ -155,7 +155,7 @@ class GridBuilder(BasicTauBuilder):
         # CV: pdgId=111 added to work around the bug fixed in this commit:
         #       https://github.com/HEP-KBFI/ml-tau-reco/pull/135/files#diff-9b848ad8e5903b4346d4030ebe41a391612220637cdd302d30d34b3fa07c96ea
         #    (this work-around allows us to keep using old files)
-        self.pt_sorted_cand_isnh = self.pt_sorted_cand_pdgid in [111, 130]
+        self.pt_sorted_cand_isnh = (self.pt_sorted_cand_pdgid == 111) + (self.pt_sorted_cand_pdgid == 130)
         self.pt_sorted_cand_isgamma = self.pt_sorted_cand_pdgid == 22
         self.pt_sorted_cand_dtheta = self.reco_tau_p4.theta - self.pt_sorted_cand_theta
         self.pt_sorted_cand_dphi = self.reco_tau_p4.phi - self.pt_sorted_cand_p4.phi
