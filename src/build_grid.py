@@ -149,11 +149,14 @@ class GridBuilder(BasicTauBuilder):
         self.pt_sorted_cand_dz_err = self.data.event_reco_cand_dz_err[self.pt_sorted_idx]
         self.pt_sorted_cand_dz_sig = self.calcuclate_sig(self.pt_sorted_cand_dz, self.pt_sorted_cand_dz_err)
         self.pt_sorted_cand_pdgid = self.data.event_reco_cand_pdg[self.pt_sorted_idx]
-        self.pt_sorted_cand_isele = np.abs(self.pt_sorted_cand_pdgid) == 13
-        self.pt_sorted_cand_ismu = np.abs(self.pt_sorted_cand_pdgid) == 11
-        self.pt_sorted_cand_isch = self.pt_sorted_cand_pdgid == 211
-        self.pt_sorted_cand_isnh = self.pt_sorted_cand_pdgid == 130
-        self.pt_sorted_cand_isgamma = self.pt_sorted_cand_pdgid == 22
+        self.pt_sorted_cand_isele = (np.abs(self.pt_sorted_cand_pdgid) == 11)
+        self.pt_sorted_cand_ismu = (np.abs(self.pt_sorted_cand_pdgid) == 13)
+        self.pt_sorted_cand_isch = (self.pt_sorted_cand_pdgid == 211)
+        # CV: pdgId=111 added to work around the bug fixed in this commit:
+        #       https://github.com/HEP-KBFI/ml-tau-reco/pull/135/files#diff-9b848ad8e5903b4346d4030ebe41a391612220637cdd302d30d34b3fa07c96ea
+        #    (this work-around allows us to keep using old files)
+        self.pt_sorted_cand_isnh = (self.pt_sorted_cand_pdgid in [ 111, 130 ])
+        self.pt_sorted_cand_isgamma = (self.pt_sorted_cand_pdgid == 22)
         self.pt_sorted_cand_dtheta = self.reco_tau_p4.theta - self.pt_sorted_cand_theta
         self.pt_sorted_cand_dphi = self.reco_tau_p4.phi - self.pt_sorted_cand_p4.phi
         self.mask_dphi()

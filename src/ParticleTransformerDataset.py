@@ -31,7 +31,7 @@ def buildParticleTransformerTensors(
     use_pdgId,
     use_lifetime,
 ):
-    # print("<buildParticleTransformerTensors>:")
+    #print("<buildParticleTransformerTensors>:")
 
     jet_constituent_p4s = jet_constituent_p4s[:max_cands]
     jet_constituent_p4s_zipped = list(
@@ -44,6 +44,7 @@ def buildParticleTransformerTensors(
         jet_constituent_p4 = jet_constituent_p4s[idx]
         jet_constituent_pdgId = jet_constituent_pdgIds[idx]
         jet_constituent_abs_pdgId = abs(jet_constituent_pdgId)
+        #print("jet_constituent_abs_pdgId = %i" % jet_constituent_abs_pdgId)
         jet_constituent_q = jet_constituent_qs[idx]
         jet_constituent_d0 = jet_constituent_d0s[idx]
         jet_constituent_d0err = jet_constituent_d0errs[idx]
@@ -62,7 +63,10 @@ def buildParticleTransformerTensors(
         part_isMuon = 1.0 if jet_constituent_abs_pdgId == 13 else 0.0
         part_isPhoton = 1.0 if jet_constituent_abs_pdgId == 22 else 0.0
         part_isChargedHadron = 1.0 if jet_constituent_abs_pdgId == 211 else 0.0
-        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId == 130 else 0.0
+        # CV: pdgId=111 added to work around the bug fixed in this commit:
+        #       https://github.com/HEP-KBFI/ml-tau-reco/pull/135/files#diff-9b848ad8e5903b4346d4030ebe41a391612220637cdd302d30d34b3fa07c96ea
+        #    (this work-around allows us to keep using old files)
+        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId in [ 111, 130 ] else 0.0
         part_d0 = 0.0
         part_d0err = 0.0
         part_dz = 0.0
@@ -72,6 +76,24 @@ def buildParticleTransformerTensors(
             part_d0err = jet_constituent_d0 / max(0.01 * jet_constituent_d0, jet_constituent_d0err)
             part_dz = math.tanh(jet_constituent_dz)
             part_dzerr = jet_constituent_dz / max(0.01 * jet_constituent_dz, jet_constituent_dzerr)
+        #print("part_deta = %1.1f" % part_deta)
+        #print("part_dphi = %1.3f" % part_dphi)
+        #print("part_logpt = %1.3f" % part_logpt)
+        #print("part_loge = %1.3f" % part_loge)
+        #print("part_logptrel = %1.3f" % part_logptrel)
+        #print("part_logerel = %1.3f" % part_logerel)
+        #print("part_deltaR = %1.3f" % part_deltaR)
+        #print("part_charge = %1.3f" % part_charge)
+        #print("part_isElectron = %1.3f" % part_isElectron)
+        #print("part_isMuon = %1.3f" % part_isMuon)
+        #print("part_isPhoton = %1.3f" % part_isPhoton)
+        #print("part_isChargedHadron = %1.3f" % part_isChargedHadron)
+        #print("part_isNeutralHadron = %1.3f" % part_isNeutralHadron)
+        #print("part_d0 = %1.3f" % part_d0)
+        #print("part_d0err = %1.3f" % part_d0err)
+        #print("part_dz = %1.3f" % part_dz)
+        #print("part_dzerr = %1.3f" % part_dzerr)
+        #raise ValueError("STOP.")
         part_features = [
             part_deta,
             part_dphi,
@@ -101,15 +123,19 @@ def buildParticleTransformerTensors(
                     part_dzerr,
                 ]
             )
+        #print("len(part_features) = %i" % len(part_features))
+        #print("part_features = %s" % part_features)
         jet_constituent_features.append(part_features)
 
     x_tensor = torch.tensor(jet_constituent_features, dtype=torch.float32)
     x_tensor = torch.nn.functional.pad(x_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
     # print(" shape(x_tensor@1) = ", x_tensor.shape)
+    # print(" x_tensor@1 = ", x_tensor)
 
     v_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
     v_tensor = torch.nn.functional.pad(v_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
     # print(" shape(v_tensor@1) = ", v_tensor.shape)
+    # print(" v_tensor@1 = ", v_tensor)
 
     node_mask_tensor = torch.ones(num_jet_constituents, dtype=torch.float32)
     node_mask_tensor = torch.nn.functional.pad(node_mask_tensor, (0, max_cands - num_jet_constituents), "constant", 0.0)
@@ -128,9 +154,11 @@ def buildParticleTransformerTensors(
     x_tensor = torch.swapaxes(x_tensor, 0, 1)
     v_tensor = torch.swapaxes(v_tensor, 0, 1)
     node_mask_tensor = torch.swapaxes(node_mask_tensor, 0, 1)
-    # print(" shape(x_tensor@2) = ", x_tensor.shape)
-    # print(" shape(v_tensor@2) = ", v_tensor.shape)
-    # print(" shape(node_mask_tensor@2) = ", node_mask_tensor.shape)
+    #print(" shape(x_tensor@2) = ", x_tensor.shape)
+    #print(" x_tensor@2 = ", x_tensor)
+    #print(" shape(v_tensor@2) = ", v_tensor.shape)
+    #print(" v_tensor@2 = ", v_tensor)
+    #print(" shape(node_mask_tensor@2) = ", node_mask_tensor.shape)
 
     return x_tensor, v_tensor, node_mask_tensor
 
