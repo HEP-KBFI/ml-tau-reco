@@ -20,6 +20,7 @@ from ParticleTransformerDataset import ParticleTransformerDataset
 from ParticleTransformer import ParticleTransformer
 from FeatureStandardization import FeatureStandardization
 from FocalLoss import FocalLoss
+from Lookahead import Lookahead
 from logTrainingProgress import logTrainingProgress
 from initWeights import initWeights
 
@@ -54,6 +55,7 @@ def train_loop(
     accuracy_normalization_train = 0.0
     class_true_train = []
     class_pred_train = []
+    weights_train = []
     model.train()
     for idx_batch, (X, y, weight) in enumerate(dataloader_train):
         # Compute prediction and loss
@@ -80,6 +82,7 @@ def train_loop(
 
         class_true_train.extend(y.detach().cpu().numpy())
         class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
+        weights_train.extend(weight.detach().cpu().numpy())
 
         # Backpropagation
         optimizer.zero_grad()
@@ -96,7 +99,14 @@ def train_loop(
     accuracy_train /= accuracy_normalization_train
 
     logTrainingProgress(
-        tensorboard, idx_epoch, "train", loss_train, accuracy_train, np.array(class_true_train), np.array(class_pred_train)
+        tensorboard,
+        idx_epoch,
+        "train",
+        loss_train,
+        accuracy_train,
+        np.array(class_true_train),
+        np.array(class_pred_train),
+        np.array(weights_train),
     )
 
     return loss_train
@@ -118,6 +128,7 @@ def validation_loop(
     accuracy_normalization_validation = 0.0
     class_true_validation = []
     class_pred_validation = []
+    weights_validation = []
     model.eval()
     with torch.no_grad():
         for idx_batch, (X, y, weight) in enumerate(dataloader_validation):
@@ -143,6 +154,7 @@ def validation_loop(
 
             class_true_validation.extend(y.detach().cpu().numpy())
             class_pred_validation.extend(pred.argmax(dim=1).detach().cpu().numpy())
+            weights_validation.extend(weight.detach().cpu().numpy())
 
     loss_validation /= loss_normalization_validation
     accuracy_validation /= accuracy_normalization_validation
@@ -155,6 +167,7 @@ def validation_loop(
         accuracy_validation,
         np.array(class_true_validation),
         np.array(class_pred_validation),
+        np.array(weights_validation),
     )
 
     return loss_validation
@@ -176,6 +189,8 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
             config_path = cfg["path"]
     config_name = hydra_cfg["job"]["config_name"]
     print("Loading training configuration from file: %s/%s.yaml" % (config_path, config_name))
+    print(" model_file = %s" % train_cfg.model_file)
+    print(" model_config_file = %s" % train_cfg.model_config_file)
     outpath = hydra_cfg["runtime"]["output_dir"]
     print(" outpath = %s" % outpath)
 
@@ -286,12 +301,28 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     else:
         loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    base_optimizer = None
+    if train_cfg.fast_optimizer == "AdamW":
+        base_optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    elif train_cfg.fast_optimizer == "RAdam":
+        base_optimizer = torch.optim.RAdam(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    else:
+        raise RuntimeError("Invalid configuration parameter 'fast_optimizer' !!")
+    optimizer = None
+    if train_cfg.slow_optimizer == "Lookahead":
+        print("Using %s optimizer with Lookahead." % train_cfg.fast_optimizer)
+        optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
+    elif train_cfg.slow_optimizer == "None":
+        print("Using %s optimizer." % train_cfg.fast_optimizer)
+        optimizer = base_optimizer
+    else:
+        raise RuntimeError("Invalid configuration parameter 'slow_optimizer' !!")
+
     num_batches_train = len(dataloader_train)
     print("Training for %i epochs." % train_cfg.num_epochs)
     print("#batches(train) = %i" % num_batches_train)
     lr_scheduler = OneCycleLR(
-        optimizer, max_lr=1.0e-3, epochs=train_cfg.num_epochs, steps_per_epoch=num_batches_train, anneal_strategy="cos"
+        base_optimizer, max_lr=1.0e-3, epochs=train_cfg.num_epochs, steps_per_epoch=num_batches_train, anneal_strategy="cos"
     )
 
     print("Starting training...")
