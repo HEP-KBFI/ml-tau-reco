@@ -220,7 +220,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     max_cands = LorentzNet_cfg["max_cands"]
     add_beams = LorentzNet_cfg["add_beams"]
     use_pdgId = LorentzNet_cfg["use_pdgId"]
-    n_scalar = 8 if use_pdgId else 2
+    n_scalar = 7 if use_pdgId else 2
     standardize_inputs = LorentzNet_cfg["standardize_inputs"]
     preselection = {
         "min_jet_theta": LorentzNet_cfg["min_jet_theta"],
@@ -281,7 +281,12 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
 
     transform = None
     if standardize_inputs:
-        transform = FeatureStandardization(features=["x", "scalars"], dim=2, verbosity=train_cfg.verbosity)
+        transform = FeatureStandardization(
+            method=LorentzNet_cfg["method_FeatureStandardization"],
+            features=["x", "scalars"],
+            feature_dim=2,
+            verbosity=train_cfg.verbosity,
+        )
         transform.compute_params(dataloader_train)
         transform.save_params(LorentzNet_cfg["json_file_FeatureStandardization"])
 

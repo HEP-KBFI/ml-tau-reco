@@ -3,7 +3,7 @@ model_config_file: LorentzNet_cfg.json
 max_num_files: -1
 #max_num_files: 1
 batch_size: 128
-#batch_size: 1
+#batch_size: 16
 num_epochs: 100
 #num_epochs: 10
 #num_dataloader_workers: 0

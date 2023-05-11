@@ -285,7 +285,12 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     transform = None
     if standardize_inputs:
-        transform = FeatureStandardization(features=["x", "v"], dim=1, verbosity=train_cfg.verbosity)
+        transform = FeatureStandardization(
+            method=ParticleTransformer_cfg["method_FeatureStandardization"],
+            features=["x", "v"],
+            feature_dim=1,
+            verbosity=train_cfg.verbosity,
+        )
         transform.compute_params(dataloader_train)
         transform.save_params(ParticleTransformer_cfg["json_file_FeatureStandardization"])
 
