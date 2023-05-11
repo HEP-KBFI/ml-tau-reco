@@ -185,7 +185,7 @@ def buildParticleTransformerTensors(
     x_tensor = torch.swapaxes(x_tensor, 0, 1)
     x_is_one_hot_encoded = is_one_hot_encoded
     v_tensor = torch.swapaxes(v_tensor, 0, 1)
-    v_is_one_hot_encoded = [ False, False, False, False ]
+    v_is_one_hot_encoded = [False, False, False, False]
     node_mask_tensor = torch.swapaxes(node_mask_tensor, 0, 1)
     # print(" shape(x_tensor@2) = ", x_tensor.shape)
     # print(" x_tensor@2 = ", x_tensor)
@@ -314,7 +314,13 @@ class ParticleTransformerDataset(Dataset):
                 jet_constituent_dzs = data_cand_dzs[idx]
                 jet_constituent_dzerrs = data_cand_dzerrs[idx]
 
-                x_tensor, x_is_one_hot_encoded, v_tensor, v_is_one_hot_encoded, node_mask_tensor = buildParticleTransformerTensors(
+                (
+                    x_tensor,
+                    x_is_one_hot_encoded,
+                    v_tensor,
+                    v_is_one_hot_encoded,
+                    node_mask_tensor,
+                ) = buildParticleTransformerTensors(
                     jet_p4,
                     jet_constituent_p4s,
                     jet_constituent_pdgIds,

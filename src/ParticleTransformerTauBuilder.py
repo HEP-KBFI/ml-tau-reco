@@ -67,7 +67,12 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
 
         self.transform = None
         if standardize_inputs:
-            self.transform = FeatureStandardization(method=self._builderConfig["method_FeatureStandardization"], features=["x", "v"], feature_dim=1, verbosity=self.verbosity)
+            self.transform = FeatureStandardization(
+                method=self._builderConfig["method_FeatureStandardization"],
+                features=["x", "v"],
+                feature_dim=1,
+                verbosity=self.verbosity,
+            )
             self.transform.load_params(self.filename_transform)
 
         self.model = ParticleTransformer(

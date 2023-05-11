@@ -281,7 +281,12 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
 
     transform = None
     if standardize_inputs:
-        transform = FeatureStandardization(method=LorentzNet_cfg["method_FeatureStandardization"], features=["x", "scalars"], feature_dim=2, verbosity=train_cfg.verbosity)
+        transform = FeatureStandardization(
+            method=LorentzNet_cfg["method_FeatureStandardization"],
+            features=["x", "scalars"],
+            feature_dim=2,
+            verbosity=train_cfg.verbosity,
+        )
         transform.compute_params(dataloader_train)
         transform.save_params(LorentzNet_cfg["json_file_FeatureStandardization"])
 

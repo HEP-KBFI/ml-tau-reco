@@ -68,7 +68,7 @@ class FeatureStandardization:
                     xs[feature] = torch.add(xs[feature], sum_x)
                     x2s[feature] = torch.add(x2s[feature], sum_x2)
 
-                if not feature in self.is_one_hot_encoded.keys():
+                if feature not in self.is_one_hot_encoded.keys():
                     self.is_one_hot_encoded[feature] = X["%s_is_one_hot_encoded" % feature][0]
 
             mask = X["mask"]
@@ -98,7 +98,7 @@ class FeatureStandardization:
         for (X, y, weight) in dataloader:
             for feature in self.features:
                 x = X[feature]
-                
+
                 self.dims[feature] = x.dim()
 
                 if self.feature_dim != (x.dim() - 1):
@@ -108,20 +108,20 @@ class FeatureStandardization:
                 mask = X["mask"]
 
                 if self.feature_dim != (mask.dim() - 1):
-                    mask = torch.swapaxes(mask, self.feature_dim, -1)                
+                    mask = torch.swapaxes(mask, self.feature_dim, -1)
                 mask = mask.reshape(-1, mask.size(dim=-1))
 
                 mask = mask.ge(0.5)
 
                 x_masked = torch.masked_select(x, mask)
                 x_masked = x_masked.reshape(-1, x.size(dim=-1))
-                
+
                 if feature not in feature_values.keys():
                     feature_values[feature] = torch.tensor(x_masked)
                 else:
-                    feature_values[feature] = torch.cat([ feature_values[feature], x_masked ])
+                    feature_values[feature] = torch.cat([feature_values[feature], x_masked])
 
-                if not feature in self.is_one_hot_encoded.keys():
+                if feature not in self.is_one_hot_encoded.keys():
                     self.is_one_hot_encoded[feature] = X["%s_is_one_hot_encoded" % feature][0]
 
         for feature in self.features:
@@ -129,12 +129,12 @@ class FeatureStandardization:
             quantile_hi = torch.quantile(feature_values[feature], 0.975, dim=0)
             quantile_lo = torch.quantile(feature_values[feature], 0.025, dim=0)
             width = quantile_hi - quantile_lo
-         
+
             self.mean[feature] = median
             sigma = 0.5 * width
             torch.clamp(sigma, min=1.0e-8, max=None)
             one_over_sigma = torch.div(torch.tensor(1), sigma)
-            self.one_over_sigma[feature] = one_over_sigma          
+            self.one_over_sigma[feature] = one_over_sigma
 
     def reshape_params(self):
         # CV: add dimensions of size one before and after the "feature dimension"
@@ -182,7 +182,7 @@ class FeatureStandardization:
             self.dims[feature] = int(cfg[feature]["dims"])
 
             self.reshape_params()
-         
+
         if self.verbosity >= 1:
             self.print()
 
