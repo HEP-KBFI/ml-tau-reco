@@ -1054,7 +1054,7 @@ def process_input_file(arrays: ak.Array, remove_background):
 
     ## remove ZH bkg part
     if remove_background:
-        removal_mask = data['gen_jet_tau_decaymode'] != -1
+        removal_mask = data["gen_jet_tau_decaymode"] != -1
         data = {key: value[removal_mask] for key, value in data.items()}
     return data
 
@@ -1071,7 +1071,7 @@ def process_single_file(
     if not os.path.exists(output_ntuple_path):
         # try:
         start_time = time.time()
-        remove_bkg = sample == 'ZH_Htautau'
+        remove_bkg = sample == "ZH_Htautau"
         arrays = load_single_file_contents(input_path, tree_path, branches)
         data = process_input_file(arrays, remove_background=remove_bkg)
         save_record_to_file(data, output_ntuple_path)
