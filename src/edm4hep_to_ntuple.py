@@ -579,7 +579,7 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
     return jet_parton_PDGs
 
 
-def process_input_file(arrays: ak.Array):
+def process_input_file(arrays: ak.Array, remove_background):
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
@@ -1050,12 +1050,19 @@ def process_input_file(arrays: ak.Array):
             arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters
         ),
     }
+    data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
+
+    ## remove ZH bkg part
+    if remove_background:
+        removal_mask = data['gen_jet_tau_decaymode'] != -1
+        data = {key: value[removal_mask] for key, value in data.items()}
     return data
 
 
 def process_single_file(
     input_path: str,
     output_dir: str,
+    sample: str,
     tree_path: str = "events",
     branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"],
 ):
@@ -1064,9 +1071,9 @@ def process_single_file(
     if not os.path.exists(output_ntuple_path):
         # try:
         start_time = time.time()
+        remove_bkg = sample == 'ZH_Htautau'
         arrays = load_single_file_contents(input_path, tree_path, branches)
-        data = process_input_file(arrays)
-        data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
+        data = process_input_file(arrays, remove_background=remove_bkg)
         save_record_to_file(data, output_ntuple_path)
         end_time = time.time()
         print(f"Finished processing in {end_time-start_time} s.")
@@ -1085,16 +1092,16 @@ def process_all_input_files(cfg: DictConfig) -> None:
         os.makedirs(output_dir, exist_ok=True)
         input_wcp = os.path.join(input_dir, "*.root")
         if cfg.test_run:
-            n_files = 250
+            n_files = 10
         else:
             n_files = None
         input_paths = glob.glob(input_wcp)[:n_files]
         if cfg.use_multiprocessing:
             pool = multiprocessing.Pool(processes=10)
-            pool.starmap(process_single_file, zip(input_paths, repeat(output_dir)))
+            pool.starmap(process_single_file, zip(input_paths, repeat(output_dir), repeat(sample)))
         else:
             for path in input_paths:
-                process_single_file(path, output_dir)
+                process_single_file(path, output_dir, sample)
 
 
 if __name__ == "__main__":

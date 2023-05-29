@@ -267,10 +267,23 @@ def plot_all_metrics(cfg):
         bkg_paths_train = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "QCD" in path
         ]
-        sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
-        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
-        sig_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files)
-        bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files)
+        columns = [
+            'tauClassifier',
+            'gen_jet_tau_p4s',
+            'gen_jet_p4s',
+            'tau_p4s',
+            'gen_jet_tau_vis_energy',
+            'gen_jet_tau_decaymode',
+            'tau_decaymode',
+            "weight"
+        ]
+        zh_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files, columns=columns)
+        sig_data = zh_data[zh_data.gen_jet_tau_decaymode != -1]
+        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files, columns=columns)
+        zh_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files, columns=columns)
+        sig_data_train = zh_data_train[zh_data_train.gen_jet_tau_decaymode != -1]
+        bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files, columns=columns)
+
         # sig_paths_val = [
         #     os.path.join(sig_input_dir, os.path.basename(path))
         #     for path in cfg.datasets.validation.paths
@@ -441,8 +454,6 @@ def get_regional_tauClassifiers(
         regional_classifiers,
         os.path.join(algorithm_output_dir, "region_tauClassifiers.json"),
     )
-    # What is the tauClassifier value at 60% eff?
-    # return regional_classifiers
 
 
 def create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir):
