@@ -21,10 +21,8 @@ matplotlib.use("Agg")
 
 def load_samples(sig_dir: str, bkg_dir: str, n_files: int = -1, branches: list = None):
     ZH_data = load_all_data(sig_dir, n_files=n_files, branches=branches)
-    QCD_data = load_all_data(bkg_dir, n_files=n_files, branches=branches)
+    bkg_data = load_all_data(bkg_dir, n_files=n_files, branches=branches)
     sig_data = ZH_data[ZH_data.gen_jet_tau_decaymode != -1]
-    ZH_bkg = ZH_data[ZH_data.gen_jet_tau_decaymode == -1]
-    bkg_data = ak.concatenate([ZH_bkg, QCD_data], axis=0)
     return sig_data, bkg_data
 
 

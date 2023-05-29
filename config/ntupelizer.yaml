@@ -15,10 +15,10 @@ samples_to_process:
 samples:
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /scratch/persistent/laurits/CLIC_data_20230512/ZH_Htautau
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230525/ZH_Htautau
   QCD:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
-    output_dir: /scratch/persistent/laurits/CLIC_data_20230512/QCD
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230525/QCD
   ZH_Htautau_nosmear:
     input_dir: /local/joosep/clic_edm4hep_2023_04_21_noVtxSmear/p8_ee_ZH_Htautau_ecm380/
     output_dir: /home/laurits/230504_tauLifeTime_ZH_Htautau_noSmear
