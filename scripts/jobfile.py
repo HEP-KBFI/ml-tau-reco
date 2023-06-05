@@ -1,4 +1,4 @@
-#python3 scripts/jobfile.py -i /local/snandan/grid/Grid/ZH_Htautau/ -o /local/snandan/DeepTau/ -a DeepTau -n 30
+# python3 scripts/jobfile.py -i /local/snandan/grid/Grid/ZH_Htautau/ -o /local/snandan/DeepTau/ -a DeepTau -n 30
 import glob
 import getpass
 import os
