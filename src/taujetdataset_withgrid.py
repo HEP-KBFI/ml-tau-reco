@@ -1,4 +1,4 @@
-#./scripts/run-env.sh python3 src/taujetdataset_withgrid.py config/datasets/train.yaml /local/snandan/CLIC_data
+# ./scripts/run-env.sh python3 src/taujetdataset_withgrid.py config/datasets/train.yaml /local/snandan/CLIC_data
 import sys
 import vector
 import awkward as ak
@@ -121,9 +121,9 @@ class TauJetDatasetWithGrid:
             print("provide correct particle type")
             assert 0
         return torch.tensor(
-            np.sum(data[grid].to_numpy()[:, idx1, :, :], axis=(1,2))
-            + np.sum(data[grid].to_numpy()[:, idx2, :, :], axis=(1,2)),
-            dtype=torch.int
+            np.sum(data[grid].to_numpy()[:, idx1, :, :], axis=(1, 2))
+            + np.sum(data[grid].to_numpy()[:, idx2, :, :], axis=(1, 2)),
+            dtype=torch.int,
         )
 
     def get_part_block_features(self, data: ak.Record) -> dict:
