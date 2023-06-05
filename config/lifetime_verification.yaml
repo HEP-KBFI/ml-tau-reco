@@ -1,0 +1,8 @@
+samples:
+  noSmear:
+    input_dir: /home/laurits/tauLifeTime_FIX_normal  # Remove all weird constants when calculation lifetimes
+  normal:
+    input_dir: /home/laurits/tauLifeTime_FIX_noSmear/  # No vertex smearing (by Joosep)
+  # bkg:
+  #   input_dir: /home/laurits/tauLifetime_FIX_normal_QCD
+n_files: 50

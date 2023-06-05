@@ -5,10 +5,10 @@ plotting_algorithms:
   LorentzNet: ''
   ParticleTransformer: ''
   # MLReco_DeepTau: ''
-  FastCMSTau: ''
+  # FastCMSTau: ''
   # TwoStep_GNN
   # HPS_with_quality_cuts: '/home/laurits/230326_HPS_cutHPS'
-  # SimpleDNN: ''
+  SimpleDNN: ''
 plotting_metrics:
   ROC: True
   fakerate: True

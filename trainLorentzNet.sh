@@ -9,4 +9,4 @@ cd ~/ml-tau-reco
 
 # PyTorch training
 singularity exec -B /scratch/persistent --nv $IMG \
-  python3 src/trainParticleTransformer.py
+  python3 src/trainLorentzNet.py

@@ -10,7 +10,7 @@ from basicTauBuilder import BasicTauBuilder
 from ParticleTransformer import ParticleTransformer
 from ParticleTransformerDataset import buildParticleTransformerTensors
 from FeatureStandardization import FeatureStandardization
-from hpsAlgoTools import comp_angle, comp_deltaEta, comp_deltaTheta, comp_deltaR
+from hpsAlgoTools import comp_angle3d, comp_deltaEta, comp_deltaTheta, comp_deltaR_etaphi, comp_deltaR_thetaphi
 
 
 class ParticleTransformerTauBuilder(BasicTauBuilder):
@@ -49,10 +49,13 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         self.metric_dR_or_angle = None
         self.metric_dEta_or_dTheta = None
         if metric == "eta-phi":
-            self.metric_dR_or_angle = comp_deltaR
+            self.metric_dR_or_angle = comp_deltaR_etaphi
             self.metric_dEta_or_dTheta = comp_deltaEta
         elif metric == "theta-phi":
-            self.metric_dR_or_angle = comp_angle
+            self.metric_dR_or_angle = comp_deltaR_thetaphi
+            self.metric_dEta_or_dTheta = comp_deltaTheta
+        elif metric == "angle3d":
+            self.metric_dR_or_angle = comp_angle3d
             self.metric_dEta_or_dTheta = comp_deltaTheta
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
@@ -64,7 +67,12 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
 
         self.transform = None
         if standardize_inputs:
-            self.transform = FeatureStandardization(features=["x", "v"], dim=1, verbosity=self.verbosity)
+            self.transform = FeatureStandardization(
+                method=self._builderConfig["method_FeatureStandardization"],
+                features=["x", "v"],
+                feature_dim=1,
+                verbosity=self.verbosity,
+            )
             self.transform.load_params(self.filename_transform)
 
         self.model = ParticleTransformer(
@@ -121,7 +129,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             jet_constituent_dzs = data_cand_dzs[idx]
             jet_constituent_dzerrs = data_cand_dzerrs[idx]
 
-            x_tensor, v_tensor, node_mask_tensor = buildParticleTransformerTensors(
+            x_tensor, _, v_tensor, _, node_mask_tensor = buildParticleTransformerTensors(
                 jet_p4,
                 jet_constituent_p4s,
                 jet_constituent_pdgIds,

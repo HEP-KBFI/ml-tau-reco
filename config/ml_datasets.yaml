@@ -1,7 +1,7 @@
 list_dir: $HOME/ml-tau-reco/config/datasets
-train: 0.6
-validation: 0.2
-test: 0.2
+train: 0.22
+validation: 0.08
+test: 0.70
 only_append_to_test: False
 defaults:
   - datasets: datasets

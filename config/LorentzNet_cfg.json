@@ -12,7 +12,8 @@
         "min_jet_pt": 0.0,
         "max_jet_pt": 1.0e+3,
         "standardize_inputs": false,
-        "json_file_FeatureStandardization": "",
+        "method_FeatureStandardization": "median_quantile",
+        "json_file_FeatureStandardization": "LorentzNet_FeatureStandardization.json",
         "use_pdgId": true
     }
 }

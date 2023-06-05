@@ -6,7 +6,7 @@ import numpy as np
 import awkward as ak
 
 
-def load_all_data(input_dir: str, n_files: int = None) -> ak.Array:
+def load_all_data(input_dir: str, n_files: int = None, branches: list = None) -> ak.Array:
     """Loads all .parquet files from a given directory
 
     Args:
@@ -27,13 +27,13 @@ def load_all_data(input_dir: str, n_files: int = None) -> ak.Array:
     input_data = []
     for file_path in input_files:
         print(f"Loading from {file_path}")
-        input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
+        input_data.append(ak.Array((ak.from_parquet(file_path, columns=branches).tolist())))
     input_data = ak.concatenate(input_data)
     print("Input data loaded")
     return input_data
 
 
-def load_data_from_paths(input_paths: list, n_files: int = None) -> ak.Array:
+def load_data_from_paths(input_paths: list, n_files: int = None, columns=None) -> ak.Array:
     """Loads all .parquet files from a given directory
 
     Args:
@@ -51,14 +51,14 @@ def load_data_from_paths(input_paths: list, n_files: int = None) -> ak.Array:
     for file_path in input_paths[:n_files]:
         print(f"Loading from {file_path}")
         try:
-            input_data.append(ak.Array((ak.from_parquet(file_path).tolist())))
+            input_data.append(ak.Array((ak.from_parquet(file_path, columns=columns).tolist())))
         except ValueError:
             print(f"{file_path} does not exist")
     input_data = ak.concatenate(input_data)
     return input_data
 
 
-def get_decaymode(pdg_ids):
+def get_decaymode(pdg_ids, daughter_pdgs):
     """Tau decaymodes are the following:
     decay_mode_mapping = {
         0: 'OneProng0PiZero',
@@ -85,37 +85,37 @@ def get_decaymode(pdg_ids):
     """
     pdg_ids = np.abs(np.array(pdg_ids))
     unique, counts = np.unique(pdg_ids, return_counts=True)
-    p_counts = {i: 0 for i in [16, 111, 211, 13, 14, 12, 11, 22]}
+    p_counts = {i: 0 for i in [16, 130, 211, 13, 14, 12, 11, 22]}
     p_counts.update(dict(zip(unique, counts)))
-    if np.sum(p_counts[211]) == 1 and p_counts[111] == 0:
+    if np.sum(p_counts[211]) == 1 and p_counts[130] == 0:
         return 0
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] == 1:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] == 1:
         return 1
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] == 2:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] == 2:
         return 2
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] == 3:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] == 3:
         return 3
-    elif np.sum(p_counts[211]) == 1 and p_counts[111] > 3:
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] > 3:
         return 4
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 0:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 0:
         return 5
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 1:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 1:
         return 6
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 2:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 2:
         return 7
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] == 3:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] == 3:
         return 8
-    elif np.sum(p_counts[211]) == 2 and p_counts[111] > 3:
+    elif np.sum(p_counts[211]) == 2 and p_counts[130] > 3:
         return 9
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 0:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 0:
         return 10
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 1:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 1:
         return 11
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 2:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 2:
         return 12
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] == 3:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] == 3:
         return 13
-    elif np.sum(p_counts[211]) == 3 and p_counts[111] > 3:
+    elif np.sum(p_counts[211]) == 3 and p_counts[130] > 3:
         return 14
     elif np.sum(p_counts[11] + p_counts[13]) > 0:
         return 16
@@ -143,6 +143,7 @@ def get_reduced_decaymodes(decaymodes: np.array):
         13: 15,
         14: 15,
         15: 15,
+        16: 16,
     }
     return np.vectorize(target_mapping.get)(decaymodes)
 
