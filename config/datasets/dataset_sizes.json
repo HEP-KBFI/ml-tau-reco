@@ -1,0 +1,22 @@
+{
+    "train": {
+        "nSig": 199936,
+        "ZH_Htautau_nBkg": 775729,
+        "QCD_nBkg": 355700
+    },
+    "validation": {
+        "nSig": 72559,
+        "ZH_Htautau_nBkg": 282523,
+        "QCD_nBkg": 129699
+    },
+    "test": {
+        "nSig": 635654,
+        "ZH_Htautau_nBkg": 2470206,
+        "QCD_nBkg": 1130066
+    },
+    "total": {
+        "nSig": 908149,
+        "ZH_Htautau_nBkg": 3528458,
+        "QCD_nBkg": 1615465
+    }
+}

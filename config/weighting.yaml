@@ -12,6 +12,7 @@ weighting:
       n_bins: 41
 produce_plots: True
 add_weights: True
+n_files_per_sample: 100000
 defaults:
   - ntupelizer
   - _self_

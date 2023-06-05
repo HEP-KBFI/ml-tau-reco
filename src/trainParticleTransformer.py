@@ -20,6 +20,9 @@ from ParticleTransformerDataset import ParticleTransformerDataset
 from ParticleTransformer import ParticleTransformer
 from FeatureStandardization import FeatureStandardization
 from FocalLoss import FocalLoss
+from Lookahead import Lookahead
+from logTrainingProgress import logTrainingProgress
+from initWeights import initWeights
 
 
 def get_split_files(cfg_filename, split):
@@ -52,8 +55,7 @@ def train_loop(
     accuracy_normalization_train = 0.0
     class_true_train = []
     class_pred_train = []
-    false_positives_train = 0.0
-    false_negatives_train = 0.0
+    weights_train = []
     model.train()
     for idx_batch, (X, y, weight) in enumerate(dataloader_train):
         # Compute prediction and loss
@@ -79,13 +81,8 @@ def train_loop(
         accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
 
         class_true_train.extend(y.detach().cpu().numpy())
-        class_pred_train.extend(torch.softmax(pred, dim=1)[:, 1].squeeze().detach().cpu().numpy())
-        false_positives_train += (
-            ((y == torch.tensor(0)) * (pred.argmax(dim=1) == torch.tensor(1))).to(dtype=torch.float32).sum().item()
-        )
-        false_negatives_train += (
-            ((y == torch.tensor(1)) * (pred.argmax(dim=1) == torch.tensor(0))).to(dtype=torch.float32).sum().item()
-        )
+        class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
+        weights_train.extend(weight.detach().cpu().numpy())
 
         # Backpropagation
         optimizer.zero_grad()
@@ -100,28 +97,24 @@ def train_loop(
 
     loss_train /= loss_normalization_train
     accuracy_train /= accuracy_normalization_train
-    print("Train: Avg loss = %1.6f, accuracy = %1.2f%%" % (loss_train, 100 * accuracy_train))
 
-    tensorboard.add_scalar("Loss/train", loss_train, global_step=idx_epoch)
-    tensorboard.add_scalar("Accuracy/train", 100 * accuracy_train, global_step=idx_epoch)
-    tensorboard.add_pr_curve(
-        "ROC_curve/train", np.array(class_true_train), np.array(class_pred_train), global_step=idx_epoch
+    logTrainingProgress(
+        tensorboard,
+        idx_epoch,
+        "train",
+        loss_train,
+        accuracy_train,
+        np.array(class_true_train),
+        np.array(class_pred_train),
+        np.array(weights_train),
     )
-    false_positives_train /= num_jets_train
-    false_negatives_train /= num_jets_train
-    tensorboard.add_scalar("false_positives/train", false_positives_train, global_step=idx_epoch)
-    tensorboard.add_scalar("false_negatives/train", false_negatives_train, global_step=idx_epoch)
-    is_sig = np.array(class_true_train) == 1
-    is_bgr = np.array(class_true_train) == 0
-    tensorboard.add_histogram("tauClassifier_sig/train", np.array(class_pred_train)[is_sig], global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_bgr/train", np.array(class_pred_train)[is_bgr], global_step=idx_epoch)
 
     return loss_train
 
 
-def test_loop(
+def validation_loop(
     idx_epoch,
-    dataloader_test,
+    dataloader_validation,
     transform,
     model,
     dev,
@@ -129,18 +122,16 @@ def test_loop(
     use_per_jet_weights,
     tensorboard,
 ):
-    num_jets_test = len(dataloader_test.dataset)
-    loss_test = 0.0
-    loss_normalization_test = 0.0
-    accuracy_test = 0.0
-    accuracy_normalization_test = 0.0
-    class_true_test = []
-    class_pred_test = []
-    false_positives_test = 0.0
-    false_negatives_test = 0.0
+    loss_validation = 0.0
+    loss_normalization_validation = 0.0
+    accuracy_validation = 0.0
+    accuracy_normalization_validation = 0.0
+    class_true_validation = []
+    class_pred_validation = []
+    weights_validation = []
     model.eval()
     with torch.no_grad():
-        for idx_batch, (X, y, weight) in enumerate(dataloader_test):
+        for idx_batch, (X, y, weight) in enumerate(dataloader_validation):
             if transform:
                 X = transform(X)
             x = X["x"].to(device=dev)
@@ -155,38 +146,31 @@ def test_loop(
                 loss = loss * weight
             else:
                 loss = loss_fn(pred, y).item()
-            loss_test += loss.sum().item()
-            loss_normalization_test += torch.flatten(loss).size(dim=0)
+            loss_validation += loss.sum().item()
+            loss_normalization_validation += torch.flatten(loss).size(dim=0)
             accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
-            accuracy_test += accuracy.sum().item()
-            accuracy_normalization_test += torch.flatten(accuracy).size(dim=0)
+            accuracy_validation += accuracy.sum().item()
+            accuracy_normalization_validation += torch.flatten(accuracy).size(dim=0)
 
-            class_true_test.extend(y.detach().cpu().numpy())
-            class_pred_test.extend(torch.softmax(pred, dim=1)[:, 1].squeeze().detach().cpu().numpy())
-            false_positives_test += (
-                ((y == torch.tensor(0)) * (pred.argmax(dim=1) == torch.tensor(1))).to(dtype=torch.float32).sum().item()
-            )
-            false_negatives_test += (
-                ((y == torch.tensor(1)) * (pred.argmax(dim=1) == torch.tensor(0))).to(dtype=torch.float32).sum().item()
-            )
+            class_true_validation.extend(y.detach().cpu().numpy())
+            class_pred_validation.extend(pred.argmax(dim=1).detach().cpu().numpy())
+            weights_validation.extend(weight.detach().cpu().numpy())
 
-    loss_test /= loss_normalization_test
-    accuracy_test /= accuracy_normalization_test
-    print("Test: Avg loss = %1.6f, accuracy = %1.2f%%" % (loss_test, 100 * accuracy_test))
+    loss_validation /= loss_normalization_validation
+    accuracy_validation /= accuracy_normalization_validation
 
-    tensorboard.add_scalar("Loss/test", loss_test, global_step=idx_epoch)
-    tensorboard.add_scalar("Accuracy/test", 100 * accuracy_test, global_step=idx_epoch)
-    tensorboard.add_pr_curve("ROC_curve/test", np.array(class_true_test), np.array(class_pred_test), global_step=idx_epoch)
-    false_positives_test /= num_jets_test
-    false_negatives_test /= num_jets_test
-    tensorboard.add_scalar("false_positives/test", false_positives_test, global_step=idx_epoch)
-    tensorboard.add_scalar("false_negatives/test", false_negatives_test, global_step=idx_epoch)
-    is_sig = np.array(class_true_test) == 1
-    is_bgr = np.array(class_true_test) == 0
-    tensorboard.add_histogram("tauClassifier_sig/test", np.array(class_pred_test)[is_sig], global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_bgr/test", np.array(class_pred_test)[is_bgr], global_step=idx_epoch)
+    logTrainingProgress(
+        tensorboard,
+        idx_epoch,
+        "validation",
+        loss_validation,
+        accuracy_validation,
+        np.array(class_true_validation),
+        np.array(class_pred_validation),
+        np.array(weights_validation),
+    )
 
-    return loss_test
+    return loss_validation
 
 
 def run_command(cmd):
@@ -205,11 +189,13 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
             config_path = cfg["path"]
     config_name = hydra_cfg["job"]["config_name"]
     print("Loading training configuration from file: %s/%s.yaml" % (config_path, config_name))
+    print(" model_file = %s" % train_cfg.model_file)
+    print(" model_config_file = %s" % train_cfg.model_config_file)
     outpath = hydra_cfg["runtime"]["output_dir"]
     print(" outpath = %s" % outpath)
 
     filelist_train = get_split_files("config/datasets/train.yaml", "train")
-    filelist_test = get_split_files("config/datasets/validation.yaml", "validation")
+    filelist_validation = get_split_files("config/datasets/validation.yaml", "validation")
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device: %s" % dev)
@@ -256,6 +242,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         metric=metric,
         verbosity=train_cfg.verbosity,
     ).to(device=dev)
+    initWeights(model)
     print("Finished building model:")
     print(model)
     model_params = filter(lambda p: p.requires_grad, model.parameters())
@@ -277,8 +264,8 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     print("Starting to build validation dataset...")
     print(" current time:", datetime.datetime.now())
-    dataset_test = ParticleTransformerDataset(
-        filelist_test,
+    dataset_validation = ParticleTransformerDataset(
+        filelist_validation,
         max_num_files=train_cfg.max_num_files,
         metric=metric,
         max_cands=max_cands,
@@ -292,13 +279,18 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     dataloader_train = DataLoader(
         dataset_train, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True
     )
-    dataloader_test = DataLoader(
-        dataset_test, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True
+    dataloader_validation = DataLoader(
+        dataset_validation, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True
     )
 
     transform = None
     if standardize_inputs:
-        transform = FeatureStandardization(features=["x", "v"], dim=1, verbosity=train_cfg.verbosity)
+        transform = FeatureStandardization(
+            method=ParticleTransformer_cfg["method_FeatureStandardization"],
+            features=["x", "v"],
+            feature_dim=1,
+            verbosity=train_cfg.verbosity,
+        )
         transform.compute_params(dataloader_train)
         transform.save_params(ParticleTransformer_cfg["json_file_FeatureStandardization"])
 
@@ -314,18 +306,34 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     else:
         loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    base_optimizer = None
+    if train_cfg.fast_optimizer == "AdamW":
+        base_optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    elif train_cfg.fast_optimizer == "RAdam":
+        base_optimizer = torch.optim.RAdam(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    else:
+        raise RuntimeError("Invalid configuration parameter 'fast_optimizer' !!")
+    optimizer = None
+    if train_cfg.slow_optimizer == "Lookahead":
+        print("Using %s optimizer with Lookahead." % train_cfg.fast_optimizer)
+        optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
+    elif train_cfg.slow_optimizer == "None":
+        print("Using %s optimizer." % train_cfg.fast_optimizer)
+        optimizer = base_optimizer
+    else:
+        raise RuntimeError("Invalid configuration parameter 'slow_optimizer' !!")
+
     num_batches_train = len(dataloader_train)
     print("Training for %i epochs." % train_cfg.num_epochs)
     print("#batches(train) = %i" % num_batches_train)
     lr_scheduler = OneCycleLR(
-        optimizer, max_lr=1.0e-3, epochs=train_cfg.num_epochs, steps_per_epoch=num_batches_train, anneal_strategy="cos"
+        base_optimizer, max_lr=1.0e-3, epochs=train_cfg.num_epochs, steps_per_epoch=num_batches_train, anneal_strategy="cos"
     )
 
     print("Starting training...")
     print(" current time:", datetime.datetime.now())
     tensorboard = SummaryWriter(outpath + "/tensorboard")
-    min_loss_test = -1.0
+    min_loss_validation = -1.0
     for idx_epoch in range(train_cfg.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
@@ -346,9 +354,9 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         # print(" lr = %1.3e" % get_lr(optimizer))
         tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
-        loss_test = test_loop(
+        loss_validation = validation_loop(
             idx_epoch,
-            dataloader_test,
+            dataloader_validation,
             transform,
             model,
             dev,
@@ -356,17 +364,17 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
             train_cfg.use_per_jet_weights,
             tensorboard,
         )
-        if min_loss_test == -1.0 or loss_test < min_loss_test:
+        if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
             print("Found new best model :)")
             best_model_file = train_cfg.model_file.replace(".pt", "_best.pt")
             print("Saving best model to file %s" % best_model_file)
             torch.save(model.state_dict(), best_model_file)
             print("Done.")
-            min_loss_test = loss_test
+            min_loss_validation = loss_validation
 
         print("System utilization:")
         process = psutil.Process(os.getpid())
-        cpu_percent = process.cpu_percent(interval=None)
+        cpu_percent = process.cpu_percent(interval=1)
         print(" CPU-Util = %1.2f%%" % cpu_percent)
         print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
         if dev == "cuda":

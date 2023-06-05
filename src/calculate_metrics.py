@@ -104,11 +104,11 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, classifier_cut
     gen_tau_decaymodes = get_reduced_decaymodes(sig_data.gen_jet_tau_decaymode.to_numpy())
     reco_tau_decaymodes = get_reduced_decaymodes(sig_data.tau_decaymode.to_numpy())
     mapping = {
-        0: r"$\pi^{\pm}$",
-        1: r"$\pi^{\pm}\pi^{0}$",
-        2: r"$\pi^{\pm}\pi^{0}\pi^{0}$",
-        10: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}$",
-        11: r"$\pi^{\pm}\pi^{\mp}\pi^{\pm}\pi^{0}$",
+        0: r"$h^{\pm}$",
+        1: r"$h^{\pm}\pi^{0}$",
+        2: r"$h^{\pm}\pi^{0}\pi^{0}$",
+        10: r"$h^{\pm}h^{\mp}h^{\pm}$",
+        11: r"$h^{\pm}h^{\mp}h^{\pm}\pi^{0}$",
         15: "Other",
     }
     gen_tau_decaymodes_ = gen_tau_decaymodes[sig_data.tauClassifier > classifier_cut]
@@ -220,7 +220,7 @@ def calculate_region_eff_fake(raw_numerator_data, denominator_data, classifier_c
     eff_fakes = []
     raw_numerator_data_p4 = g.reinitialize_p4(raw_numerator_data.tau_p4s)
     if region == "barrel":
-        region_mask = 90 - np.abs(np.rad2deg(raw_numerator_data_p4.theta) - 90) > 45
+        region_mask = 90 - np.abs(np.rad2deg(raw_numerator_data_p4.theta) - 90) >= 45
     elif region == "endcap":
         region_mask = 90 - np.abs(np.rad2deg(raw_numerator_data_p4.theta) - 90) < 45
     else:
@@ -267,10 +267,23 @@ def plot_all_metrics(cfg):
         bkg_paths_train = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "QCD" in path
         ]
-        sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
-        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
-        sig_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files)
-        bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files)
+        columns = [
+            "tauClassifier",
+            "gen_jet_tau_p4s",
+            "gen_jet_p4s",
+            "tau_p4s",
+            "gen_jet_tau_vis_energy",
+            "gen_jet_tau_decaymode",
+            "tau_decaymode",
+            "weight",
+        ]
+        zh_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files, columns=columns)
+        sig_data = zh_data[zh_data.gen_jet_tau_decaymode != -1]
+        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files, columns=columns)
+        zh_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files, columns=columns)
+        sig_data_train = zh_data_train[zh_data_train.gen_jet_tau_decaymode != -1]
+        bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files, columns=columns)
+
         # sig_paths_val = [
         #     os.path.join(sig_input_dir, os.path.basename(path))
         #     for path in cfg.datasets.validation.paths
@@ -332,6 +345,16 @@ def plot_all_metrics(cfg):
         fake_data[algorithm] = {"numerator": raw_numerator_data_f, "denominator": denominator_data_f}
         algorithm_output_dir = os.path.join(output_dir, algorithm)
         os.makedirs(algorithm_output_dir, exist_ok=True)
+        get_regional_tauClassifiers(
+            raw_numerator_data_e,
+            raw_numerator_data_f,
+            classifier_cuts,
+            denominator_data_e,
+            algorithm_output_dir,
+            algorithm,
+            raw_numerator_data_e,
+            raw_numerator_data_f,
+        )
         print(f"Plotting for {algorithm}")
         medium_wp[algorithm] = save_wps(efficiencies[algorithm], classifier_cuts, algorithm_output_dir)
         plot_algo_tauClassifiers(
@@ -360,6 +383,77 @@ def plot_all_metrics(cfg):
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.pdf"))
     plot_tauClassifiers(tauClassifiers, "bkg", os.path.join(output_dir, "tauClassifier_bkg.pdf"))
+
+
+def get_regional_tauClassifiers(
+    raw_numerator_data_e,
+    raw_numerator_data_f,
+    classifier_cuts,
+    denominator_data_e,
+    algorithm_output_dir,
+    algorithm,
+    raw_numerator_data_e_train,
+    raw_numerator_data_f_train,
+):
+    raw_numerator_data_p4_e = g.reinitialize_p4(raw_numerator_data_e.tau_p4s)
+    barrel_mask_e = 90 - np.abs(np.rad2deg(raw_numerator_data_p4_e.theta) - 90) >= 45
+    raw_numerator_data_p4_f = g.reinitialize_p4(raw_numerator_data_f.tau_p4s)
+    barrel_mask_f = 90 - np.abs(np.rad2deg(raw_numerator_data_p4_f.theta) - 90) >= 45
+
+    raw_numerator_data_p4_e_train = g.reinitialize_p4(raw_numerator_data_e_train.tau_p4s)
+    barrel_mask_e_train = 90 - np.abs(np.rad2deg(raw_numerator_data_p4_e_train.theta) - 90) >= 45
+    raw_numerator_data_p4_f_train = g.reinitialize_p4(raw_numerator_data_f_train.tau_p4s)
+    barrel_mask_f_train = 90 - np.abs(np.rad2deg(raw_numerator_data_p4_f_train.theta) - 90) >= 45
+
+    efficiencies = calculate_efficiencies_fakerates(raw_numerator_data_e, denominator_data_e, classifier_cuts)
+    diff = abs(np.array(efficiencies) - 0.6)
+    idx = np.argmin(diff)
+    if not diff[idx] > 0.1:
+        cut = classifier_cuts[idx]
+    else:
+        cut = -1
+    regional_classifiers = {
+        "barrel": {
+            "train": {
+                "sig": list((raw_numerator_data_e_train[barrel_mask_e_train]).tauClassifier),
+                "bkg": list((raw_numerator_data_f_train[barrel_mask_f_train]).tauClassifier),
+                "MediumWP": cut,
+            },
+            "test": {
+                "sig": list((raw_numerator_data_e[barrel_mask_e]).tauClassifier),
+                "bkg": list((raw_numerator_data_f[barrel_mask_f]).tauClassifier),
+                "MediumWP": cut,
+            },
+        },
+        "endcap": {
+            "train": {
+                "sig": list((raw_numerator_data_e_train[~barrel_mask_e_train]).tauClassifier),
+                "bkg": list((raw_numerator_data_f_train[~barrel_mask_f_train]).tauClassifier),
+                "MediumWP": cut,
+            },
+            "test": {
+                "sig": list((raw_numerator_data_e[~barrel_mask_e]).tauClassifier),
+                "bkg": list((raw_numerator_data_f[~barrel_mask_f]).tauClassifier),
+                "MediumWP": cut,
+            },
+        },
+    }
+    plot_algo_tauClassifiers(
+        regional_classifiers["barrel"],
+        os.path.join(algorithm_output_dir, "tauClassifier_barrel.pdf"),
+        cut,
+        plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
+    )
+    plot_algo_tauClassifiers(
+        regional_classifiers["endcap"],
+        os.path.join(algorithm_output_dir, "tauClassifier_endcap.pdf"),
+        cut,
+        plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
+    )
+    save_to_json(
+        regional_classifiers,
+        os.path.join(algorithm_output_dir, "region_tauClassifiers.json"),
+    )
 
 
 def create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir):
@@ -399,7 +493,7 @@ def create_table_entries(efficiencies, eff_err, fakerates, fake_err, classifier_
     inverse_fake = 1 / fakerates
     relative_fake_err = fake_err / fakerates
     rel_fake_errs = inverse_fake * relative_fake_err
-    working_points = {"Loose": 0.4, "Medium": 0.6, "Tight": 0.8}
+    working_points = {"Tight": 0.4, "Medium": 0.6, "Loose": 0.8}
     wp_values = {}
     for wp_name, wp_value in working_points.items():
         diff = abs(np.array(efficiencies) - wp_value)
@@ -473,6 +567,7 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=
     # plt.axvline(medium_wp, color="k")
     plt.xlabel(r"$\mathcal{D}_{\tau}$", fontdict={"size": 28})
     plt.yscale("log")
+    plt.ylabel("Relative yield / bin")
     plt.title(algo_name, loc="left")
     plt.legend(prop={"size": 28})
     plt.savefig(output_path, format="pdf")
@@ -486,7 +581,7 @@ def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
     for wp_name, wp_value in working_points.items():
         diff = abs(np.array(efficiencies) - wp_value)
         idx = np.argmin(diff)
-        if not diff[idx] / wp_value > 0.3:
+        if not diff[idx] > 0.1:
             cut = classifier_cuts[idx]
         else:
             cut = -1

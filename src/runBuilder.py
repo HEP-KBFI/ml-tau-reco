@@ -84,7 +84,11 @@ def build_taus(cfg: DictConfig) -> None:
             input_paths = [samples_dir]
             assert n_files == 1
         else:
-            input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[cfg.start : cfg.start + n_files]
+            all_input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))
+            if n_files is None:
+                input_paths = all_input_paths
+            else:
+                input_paths = all_input_paths[cfg.start : cfg.start + n_files]
         if cfg.test_only:
             input_paths = [
                 input_path
@@ -93,7 +97,7 @@ def build_taus(cfg: DictConfig) -> None:
             ]
         print("Found %i input files." % len(input_paths))
         if cfg.use_multiprocessing:
-            pool = multiprocessing.Pool(processes=8)
+            pool = multiprocessing.Pool(processes=12)
             pool.starmap(process_single_file, zip(input_paths, repeat(builder), repeat(output_dir)))
         else:
             for input_path in input_paths:
