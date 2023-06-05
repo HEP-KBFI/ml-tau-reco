@@ -157,8 +157,10 @@ class DeepTau(nn.Module):
         )
         self.inner_grid.to(device=self.device)
         self.outer_grid.to(device=self.device)
-        self.tau_ftrs = ffn(21, 57, 100, self.act)
-        self.pred_istau = ffn(2 * self.output_from_grid + 21, 2, 100, self.act)
+        self.n_tau_ftrs = len(grid_cfg["tau_features"]) + 4
+        self.output_from_taublock = 50
+        self.tau_ftrs = ffn(self.n_tau_ftrs, self.output_from_taublock, 100, self.act)
+        self.pred_istau = ffn(2 * self.output_from_grid + self.output_from_taublock, 2, 100, self.act)
         # self.pred_istau = ffn(21, 2, 100, self.act)
         # self.pred_p4 = ffn(21, 4, 100, self.act)
         self.reduce_2d_inner_grid = reduce_2d(
@@ -244,8 +246,8 @@ def main(cfg):
     cfgFile = open(gridFileName, "r")
     grid_cfg = json.load(cfgFile)
 
-    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectpartmul/dataset_train/")
-    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectpartmul/dataset_validation/")
+    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataset_train/")
+    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataset_validation/")
 
     ds_train_iter = MyIterableDataset(ds_train)
     ds_val_iter = MyIterableDataset(ds_val)

@@ -1,5 +1,4 @@
-# python3 jobfile.py -i /scratch-persistent/veelken/CLIC_tau_ntuples/\
-# 2023Mar09_woPtCuts/HPS/ZH_Htautau/ -o /local/snandan/CLIC_tau_ntuples/
+# python3 scripts/jobfile.py -i /local/snandan/grid/Grid/ZH_Htautau/ -o /local/snandan/DeepTau/ -a DeepTau -n 30
 import glob
 import getpass
 import os
