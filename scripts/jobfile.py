@@ -42,7 +42,7 @@ def create_batchfile(cmd, idx):
             #!/bin/bash
             #SBATCH --job-name=%s_%s
             #SBATCH --ntasks=1
-            #SBATCH --cpus-per-task=1
+            #SBATCH --cpus-per-task=3
             #SBATCH --partition=short
             #SBATCH -e %s
             #SBATCH -o %s
