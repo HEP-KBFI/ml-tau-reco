@@ -195,8 +195,8 @@ if __name__ == "__main__":
 
     infile = sys.argv[1]
     ds = osp.basename(infile).split(".")[0]
-    sig_ntuples_dir = "/local/snandan/grid/Grid/ZH_Htautau"
-    bkg_ntuples_dir = "/local/snandan/grid/Grid/QCD/"
+    sig_ntuples_dir = "/local/snandan/DeepTau/Grid/ZH_Htautau/"
+    bkg_ntuples_dir = "/local/snandan/DeepTau/Grid/QCD/"
 
     filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
     outp = "data/dataset_{}".format(ds)
