@@ -11,6 +11,8 @@ class Var(Enum):
     dxy_sig = auto()
     dz = auto()
     dz_sig = auto()
+    d0 = auto()
+    d0_sig = auto()
     isele = auto()
     ismu = auto()
     isch = auto()

@@ -89,6 +89,12 @@ class GridBuilder(BasicTauBuilder):
             list_part_var[offset + Var.dz_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dz_sig[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
+            list_part_var[offset + Var.d0.value][etaidx, phiidx] = self.pt_sorted_cand_d0[self.pt_sorted_cone_mask > 0][
+                self.jetidx
+            ][idx]
+            list_part_var[offset + Var.d0_sig.value][etaidx, phiidx] = self.pt_sorted_cand_d0_sig[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             list_part_var[offset + Var.isele.value][etaidx, phiidx] = self.pt_sorted_cand_isele[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
@@ -148,6 +154,9 @@ class GridBuilder(BasicTauBuilder):
         self.pt_sorted_cand_dz = self.data.event_reco_cand_dz[self.pt_sorted_idx]
         self.pt_sorted_cand_dz_err = self.data.event_reco_cand_dz_err[self.pt_sorted_idx]
         self.pt_sorted_cand_dz_sig = self.calcuclate_sig(self.pt_sorted_cand_dz, self.pt_sorted_cand_dz_err)
+        self.pt_sorted_cand_d0 = self.data.event_reco_cand_d0[self.pt_sorted_idx]
+        self.pt_sorted_cand_d0_err = self.data.event_reco_cand_d0_err[self.pt_sorted_idx]
+        self.pt_sorted_cand_d0_sig = self.calcuclate_sig(self.pt_sorted_cand_d0, self.pt_sorted_cand_d0_err)
         self.pt_sorted_cand_pdgid = self.data.event_reco_cand_pdg[self.pt_sorted_idx]
         self.pt_sorted_cand_isele = np.abs(self.pt_sorted_cand_pdgid) == 11
         self.pt_sorted_cand_ismu = np.abs(self.pt_sorted_cand_pdgid) == 13
