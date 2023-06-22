@@ -261,8 +261,8 @@ def main(cfg):
     cfgFile = open(gridFileName, "r")
     grid_cfg = json.load(cfgFile)
 
-    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_wd0/dataset_train/")
-    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_wd0/dataset_validation/")
+    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataset_train/")
+    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataset_validation/")
 
     ds_train_iter = MyIterableDataset(ds_train)
     ds_val_iter = MyIterableDataset(ds_val)
