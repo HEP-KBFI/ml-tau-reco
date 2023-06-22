@@ -77,15 +77,15 @@ class GridBuilder(BasicTauBuilder):
             list_part_var[offset + Var.charge.value][etaidx, phiidx] = self.pt_sorted_cand_charge[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
-            list_part_var[offset + Var.dz_f2D.value][etaidx, phiidx] = self.pt_sorted_cand_dz_f2D[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
+            list_part_var[offset + Var.dz_f2D.value][etaidx, phiidx] = self.pt_sorted_cand_dz_f2D[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             list_part_var[offset + Var.dz_f2D_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dz_f2D_sig[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
-            list_part_var[offset + Var.dxy_f2D.value][etaidx, phiidx] = self.pt_sorted_cand_dxy_f2D[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
+            list_part_var[offset + Var.dxy_f2D.value][etaidx, phiidx] = self.pt_sorted_cand_dxy_f2D[
+                self.pt_sorted_cone_mask > 0
+            ][self.jetidx][idx]
             list_part_var[offset + Var.dxy_f2D_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dxy_f2D_sig[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
