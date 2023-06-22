@@ -89,12 +89,6 @@ class GridBuilder(BasicTauBuilder):
             list_part_var[offset + Var.dxy_f2D_sig.value][etaidx, phiidx] = self.pt_sorted_cand_dxy_f2D_sig[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
-            list_part_var[offset + Var.d0.value][etaidx, phiidx] = self.pt_sorted_cand_d0[self.pt_sorted_cone_mask > 0][
-                self.jetidx
-            ][idx]
-            list_part_var[offset + Var.d0_sig.value][etaidx, phiidx] = self.pt_sorted_cand_d0_sig[
-                self.pt_sorted_cone_mask > 0
-            ][self.jetidx][idx]
             list_part_var[offset + Var.isele.value][etaidx, phiidx] = self.pt_sorted_cand_isele[
                 self.pt_sorted_cone_mask > 0
             ][self.jetidx][idx]
@@ -149,8 +143,8 @@ class GridBuilder(BasicTauBuilder):
         self.pt_sorted_cand_mass = self.pt_sorted_cand_p4.mass
         self.pt_sorted_cand_charge = self.data.event_reco_cand_charge[self.pt_sorted_idx]
         self.pt_sorted_cand_dxy_f2D = self.data.event_reco_cand_dxy_f2D[self.pt_sorted_idx]
-        self.pt_sorted_cand_dxy_err_f2D = self.data.event_reco_cand_dxy_f2D_err[self.pt_sorted_idx]
-        self.pt_sorted_cand_dxy_sig_f2D = self.calcuclate_sig(self.pt_sorted_cand_dxy_f2D, self.pt_sorted_cand_dxy_f2D_err)
+        self.pt_sorted_cand_dxy_f2D_err = self.data.event_reco_cand_dxy_f2D_err[self.pt_sorted_idx]
+        self.pt_sorted_cand_dxy_f2D_sig = self.calcuclate_sig(self.pt_sorted_cand_dxy_f2D, self.pt_sorted_cand_dxy_f2D_err)
         self.pt_sorted_cand_dz_f2D = self.data.event_reco_cand_dz_f2D[self.pt_sorted_idx]
         self.pt_sorted_cand_dz_f2D_err = self.data.event_reco_cand_dz_f2D_err[self.pt_sorted_idx]
         self.pt_sorted_cand_dz_f2D_sig = self.calcuclate_sig(self.pt_sorted_cand_dz_f2D, self.pt_sorted_cand_dz_f2D_err)
