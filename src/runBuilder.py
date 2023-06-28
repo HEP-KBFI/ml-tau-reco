@@ -21,15 +21,18 @@ from deeptauTraining import DeepTau
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
-    print("Opening file %s" % input_path)
-    jets = ak.from_parquet(input_path)
-    print("Processing jets...")
-    pjets = builder.processJets(jets)
     output_path = os.path.join(output_dir, os.path.basename(input_path))
-    print("...done, writing output file %s" % output_path)
-    merged_info = {field: jets[field] for field in jets.fields if "grid" not in field}
-    merged_info.update(pjets)
-    ak.to_parquet(ak.Record(merged_info), output_path)
+    if not os.path.exists(output_path):
+        print("Opening file %s" % input_path)
+        jets = ak.from_parquet(input_path)
+        print("Processing jets...")
+        pjets = builder.processJets(jets)
+        print("...done, writing output file %s" % output_path)
+        merged_info = {field: jets[field] for field in jets.fields if "grid" not in field}
+        merged_info.update(pjets)
+        ak.to_parquet(ak.Record(merged_info), output_path)
+    else:
+        print("File already processed ... Skipping")
 
 
 @hydra.main(config_path="../config", config_name="tau_builder", version_base=None)
