@@ -16,6 +16,7 @@ import general as g
 import awkward as ak
 import mplhep as hep
 import plotting as pl
+from matplotlib import ticker
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
 from general import get_reduced_decaymodes, load_data_from_paths
@@ -130,7 +131,9 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, classifier_cut
     )
 
 
-def plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-5, 1), xlim=(0, 1), title=""):
+def plot_roc(
+        efficiencies, fakerates, output_dir, cfg, ylim=(1e-5, 1), xlim=(0, 1), title="", x_maj_tick_spacing=0.2, HPS_comp=False
+):
     hep.style.use(hep.styles.CMS)
     output_path = os.path.join(output_dir, "ROC.pdf")
     algorithms = efficiencies.keys()
@@ -146,21 +149,27 @@ def plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-5, 1), xlim=(0, 1), t
             mask = np.array(fakerates[algorithm]) != 0.0
             x_values = np.array(efficiencies[algorithm])[mask]
             y_values = np.array(fakerates[algorithm])[mask]
-            plt.plot(x_values, y_values, label=algo_names[algorithm], lw=2)
+            plt.plot(
+                x_values, y_values, color=cfg.colors[algorithm], marker=cfg.markers[algorithm], label=algo_names[algorithm],
+                lw=2, ls='', markevery=0.02, ms=12)
         else:
             indices = np.array([efficiencies[algorithm].index(loc) for loc in set(efficiencies[algorithm])])
             wp_x = np.array(efficiencies[algorithm])[indices][1:]
             wp_y = np.array(fakerates[algorithm])[indices][1:]
-            plt.scatter(
-                wp_x, wp_y, label=algo_names[algorithm], marker="o", facecolors="r", edgecolors="r", s=80, linewidths=3
+            plt.plot(
+                wp_x, wp_y, color=cfg.colors[algorithm], marker=cfg.markers[algorithm], label=algo_names[algorithm],
+                ms=15, ls=''
             )
     plt.grid()
-    plt.legend()
+    plt.legend(prop={'size': 30})
     plt.title(title, loc="left")
-    plt.ylabel(r"$P_{misid}$")
-    plt.xlabel(r"$\varepsilon_{\tau}$")
+    plt.ylabel(r"$P_{misid}$", fontsize=30)
+    plt.xlabel(r"$\varepsilon_{\tau}$", fontsize=30)
+    ax.tick_params(axis='x', labelsize=30)
+    ax.tick_params(axis='y', labelsize=30)
     plt.ylim(ylim)
     plt.xlim(xlim)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(x_maj_tick_spacing))
     plt.yscale("log")
     plt.savefig(output_path, format="pdf")
     plt.close("all")
@@ -371,14 +380,14 @@ def plot_all_metrics(cfg):
         plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, medium_wp[algorithm], cfg)
     print("Staring plotting for all algorithms")
     save_to_json({"efficiencies": efficiencies, "fakerates": fakerates}, os.path.join(output_dir, "roc.json"))
-    plot_roc(efficiencies, fakerates, output_dir)
+    plot_roc(efficiencies, fakerates, output_dir, cfg)
     barrel_output_dir = os.path.join(output_dir, "barrel")
     os.makedirs(barrel_output_dir, exist_ok=True)
     endcap_output_dir = os.path.join(output_dir, "endcap")
     os.makedirs(endcap_output_dir, exist_ok=True)
     create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir)
-    plot_roc(endcap_efficiencies, endcap_fakerates, endcap_output_dir)
-    plot_roc(barrel_efficiencies, barrel_fakerates, barrel_output_dir)
+    plot_roc(endcap_efficiencies, endcap_fakerates, endcap_output_dir, cfg)
+    plot_roc(barrel_efficiencies, barrel_fakerates, barrel_output_dir, cfg)
     plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.pdf"))
@@ -560,10 +569,10 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=
     test_hist_bkg_ = np.histogram(tauClassifiers["test"]["bkg"], bins=bin_edges)[0]
     test_hist_bkg = test_hist_bkg_ / np.sum(test_hist_bkg_)
     if plot_train:
-        hep.histplot(hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red")
-        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue")
-    hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red")
-    hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue")
+        hep.histplot(hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red", hatch="\\\\")
+        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue", hatch="//")
+    hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red", hatch="\\\\")
+    hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue", hatch="//")
     # plt.axvline(medium_wp, color="k")
     plt.xlabel(r"$\mathcal{D}_{\tau}$", fontdict={"size": 28})
     plt.yscale("log")

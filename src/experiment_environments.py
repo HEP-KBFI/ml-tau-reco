@@ -107,9 +107,9 @@ def plot_isolations(isolations, output_dir):
         sample_H = np.histogram(iso, bins=bin_edges)[0]
         sample_H = sample_H / sum(sample_H)
         hep.histplot(sample_H, bin_edges, label=sample_name, hatch=hatches[sample_name], color=colors[sample_name])
-    plt.legend()
-    plt.ylabel("Relative yield / bin", fontdict={"size": 25})
-    plt.xlabel(r"$\mathcal{I}_{\tau}$", fontdict={"size": 25})
+    plt.legend(prop={"size": 30})
+    plt.ylabel("Relative yield / bin", fontdict={"size": 30})
+    plt.xlabel(r"$\mathcal{I}_{\tau}$", fontdict={"size": 30})
     plt.savefig(output_path)
     plt.close("all")
 
@@ -123,9 +123,9 @@ def plot_n_constituents(n_constituents, output_dir):
         sample_H = np.histogram(np.clip(nc, bin_edges[0], bin_edges[-1]), bins=bin_edges)[0]
         sample_H = sample_H / sum(sample_H)
         hep.histplot(sample_H, bin_edges, label=sample_name, hatch=hatches[sample_name], color=colors[sample_name])
-    plt.legend()
-    plt.ylabel("Relative yield / bin", fontdict={"size": 25})
-    plt.xlabel("Number of particles in isolation cone", fontdict={"size": 25})
+    plt.legend(prop={"size": 30})
+    plt.ylabel("Relative yield / bin", fontdict={"size": 30})
+    plt.xlabel("Number of particles in isolation cone", fontdict={"size": 30})
     plt.savefig(output_path)
     plt.close("all")
 

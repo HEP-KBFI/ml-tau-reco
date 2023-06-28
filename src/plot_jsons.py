@@ -6,6 +6,7 @@ import numpy as np
 import mplhep as hep
 import plotting as pl
 from general import load_json
+from matplotlib import ticker
 import calculate_metrics as cm
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
@@ -24,7 +25,7 @@ def plot_json(cfg):
     if cfg.plotting_metrics.fakerate:
         fakerates = {}
         for algorithm in cfg.plotting_algorithms:
-            if algorithm not in ["SimpleDNN", "FastCMSTau", "HPS_with_quality_cuts"]:
+            if algorithm not in ["SimpleDNN", "HPS_with_quality_cuts"]:
                 fakerates[algorithm] = {}
                 for metric_entry in cfg.metrics.efficiency.variables:
                     metric = metric_entry.name
@@ -34,7 +35,7 @@ def plot_json(cfg):
     if cfg.plotting_metrics.efficiency:
         efficiencies = {}
         for algorithm in cfg.plotting_algorithms:
-            if algorithm not in ["SimpleDNN", "FastCMSTau", "HPS_with_quality_cuts"]:
+            if algorithm not in ["SimpleDNN", "HPS_with_quality_cuts"]:
                 efficiencies[algorithm] = {}
                 for metric_entry in cfg.metrics.efficiency.variables:
                     metric = metric_entry.name
@@ -58,7 +59,7 @@ def plot_json(cfg):
         roc_plotting_info = {}
         roc_plotting_info["efficiencies"] = {algo: roc_info["efficiencies"][algo] for algo in cfg.plotting_algorithms}
         roc_plotting_info["fakerates"] = {algo: roc_info["fakerates"][algo] for algo in cfg.plotting_algorithms}
-        cm.plot_roc(roc_plotting_info["efficiencies"], roc_plotting_info["fakerates"], cfg.plotting.output_dir)
+        cm.plot_roc(roc_plotting_info["efficiencies"], roc_plotting_info["fakerates"], cfg.plotting.output_dir, cfg)
     # if cfg.plotting_metrics.efficiency and cfg.plotting_metrics.fakerate:
     #     for algorithm in cfg.plotting_algorithms:
 
@@ -115,7 +116,10 @@ def plot_json(cfg):
                 algorithm = "HPS_quality"
             efficiencies[algorithm] = HPS_comp_roc_info["efficiencies"][algo]
             fakerates[algorithm] = HPS_comp_roc_info["fakerates"][algo]
-        cm.plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-3, 1), xlim=(0.5, 0.95), title="cut-based HPS algorithm")
+        cm.plot_roc(
+            efficiencies, fakerates, output_dir, cfg, ylim=(1e-3, 1), xlim=(0.5, 0.95),
+            title="cut-based HPS algorithm", x_maj_tick_spacing=0.2
+        )
 
     # if cfg.plotting_metrics.energy_resolution:
     #     for algorithm in cfg.plotting_algorithms:
@@ -149,7 +153,6 @@ def save_wps(efficiencies, classifier_cuts, algorithm_output_dir):
 
 
 def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
-    markers = ["o", "^", "s", "v", "*", "P"]
     if key == "fakerates":
         metrics = cfg.metrics.fakerate.variables
     else:
@@ -175,40 +178,52 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
             numerator_hist = Histogram(numerator, bin_edges, "numerator")
             denominator_hist = Histogram(denominator, bin_edges, "denominator")
             resulting_hist = numerator_hist / denominator_hist
+            if algorithm in cfg.colors:
+                color = cfg.colors[algorithm]
+            else:
+                color = None
             plt.errorbar(
                 resulting_hist.bin_centers,
                 resulting_hist.binned_data,
                 xerr=resulting_hist.bin_halfwidths,
                 yerr=resulting_hist.uncertainties,
                 ms=20,
-                marker=markers[i],
+                color=color,
+                marker=cfg.markers[algorithm],
                 linestyle="None",
                 label=algo_names[algorithm],
             )
         plt.grid()
-        plt.legend()
+        if metric.name == 'theta' or metric.name == 'eta':
+            x_maj_tick_spacing = 20
+        else:
+            x_maj_tick_spacing = 40
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(x_maj_tick_spacing))
         matplotlib.rcParams["axes.unicode_minus"] = False
         if metric.name == "pt":
             if key == "fakerates":
-                plt.xlabel(r"$p_T^{gen\mathrm{-}jet}\,\, [GeV]$")
+                plt.xlabel(r"$p_T^{gen\mathrm{-}jet}\,\, [GeV]$", fontsize=30)
             else:
-                plt.xlabel(r"$p_T^{gen\mathrm{-}\tau_h}\,\, [GeV]$")
+                plt.xlabel(r"$p_T^{gen\mathrm{-}\tau_h}\,\, [GeV]$", fontsize=30)
         elif metric.name == "eta":
             if key == "fakerates":
-                plt.xlabel(r"$\eta^{gen\mathrm{-}jet}\,\, [GeV]$")
+                plt.xlabel(r"$\eta^{gen\mathrm{-}jet}\,\, [GeV]$", fontsize=30)
             else:
-                plt.xlabel(r"$\eta^{gen\mathrm{-}\tau_h}\,\, [GeV]$")
+                plt.xlabel(r"$\eta^{gen\mathrm{-}\tau_h}\,\, [GeV]$", fontsize=30)
         elif metric.name == "theta":
             if key == "fakerates":
-                plt.xlabel(r"$\theta^{gen\mathrm{-}jet}\,\, [ ^{o} ]$")
+                plt.xlabel(r"$\theta^{gen\mathrm{-}jet}\,\, [ ^{o} ]$", fontsize=30)
             else:
-                plt.xlabel(r"$\theta^{gen\mathrm{-}\tau_h}\,\, [ ^{o} ]$")
+                plt.xlabel(r"$\theta^{gen\mathrm{-}\tau_h}\,\, [ ^{o} ]$", fontsize=30)
         if key == "fakerates":
-            plt.ylabel(r"$P_{misid}$")
+            plt.ylabel(r"$P_{misid}$", fontsize=30)
             plt.ylim((5e-6, 2e-2))
             plt.yscale("log")
         else:
-            plt.ylabel(r"$\varepsilon_{\tau}$")
+            plt.ylabel(r"$\varepsilon_{\tau}$", fontsize=30)
+            plt.legend(prop={'size': 30})
+        ax.tick_params(axis='x', labelsize=30)
+        ax.tick_params(axis='y', labelsize=30)
         plt.savefig(output_path, format="pdf")
         plt.close("all")
 
