@@ -132,7 +132,7 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, classifier_cut
 
 
 def plot_roc(
-        efficiencies, fakerates, output_dir, cfg, ylim=(1e-5, 1), xlim=(0, 1), title="", x_maj_tick_spacing=0.2, HPS_comp=False
+    efficiencies, fakerates, output_dir, cfg, ylim=(1e-5, 1), xlim=(0, 1), title="", x_maj_tick_spacing=0.2, HPS_comp=False
 ):
     hep.style.use(hep.styles.CMS)
     output_path = os.path.join(output_dir, "ROC.pdf")
@@ -150,23 +150,36 @@ def plot_roc(
             x_values = np.array(efficiencies[algorithm])[mask]
             y_values = np.array(fakerates[algorithm])[mask]
             plt.plot(
-                x_values, y_values, color=cfg.colors[algorithm], marker=cfg.markers[algorithm], label=algo_names[algorithm],
-                lw=2, ls='', markevery=0.02, ms=12)
+                x_values,
+                y_values,
+                color=cfg.colors[algorithm],
+                marker=cfg.markers[algorithm],
+                label=algo_names[algorithm],
+                lw=2,
+                ls="",
+                markevery=0.02,
+                ms=12,
+            )
         else:
             indices = np.array([efficiencies[algorithm].index(loc) for loc in set(efficiencies[algorithm])])
             wp_x = np.array(efficiencies[algorithm])[indices][1:]
             wp_y = np.array(fakerates[algorithm])[indices][1:]
             plt.plot(
-                wp_x, wp_y, color=cfg.colors[algorithm], marker=cfg.markers[algorithm], label=algo_names[algorithm],
-                ms=15, ls=''
+                wp_x,
+                wp_y,
+                color=cfg.colors[algorithm],
+                marker=cfg.markers[algorithm],
+                label=algo_names[algorithm],
+                ms=15,
+                ls="",
             )
     plt.grid()
-    plt.legend(prop={'size': 30})
+    plt.legend(prop={"size": 30})
     plt.title(title, loc="left")
     plt.ylabel(r"$P_{misid}$", fontsize=30)
     plt.xlabel(r"$\varepsilon_{\tau}$", fontsize=30)
-    ax.tick_params(axis='x', labelsize=30)
-    ax.tick_params(axis='y', labelsize=30)
+    ax.tick_params(axis="x", labelsize=30)
+    ax.tick_params(axis="y", labelsize=30)
     plt.ylim(ylim)
     plt.xlim(xlim)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(x_maj_tick_spacing))

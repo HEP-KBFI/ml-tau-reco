@@ -117,8 +117,14 @@ def plot_json(cfg):
             efficiencies[algorithm] = HPS_comp_roc_info["efficiencies"][algo]
             fakerates[algorithm] = HPS_comp_roc_info["fakerates"][algo]
         cm.plot_roc(
-            efficiencies, fakerates, output_dir, cfg, ylim=(1e-3, 1), xlim=(0.5, 0.95),
-            title="cut-based HPS algorithm", x_maj_tick_spacing=0.2
+            efficiencies,
+            fakerates,
+            output_dir,
+            cfg,
+            ylim=(1e-3, 1),
+            xlim=(0.5, 0.95),
+            title="cut-based HPS algorithm",
+            x_maj_tick_spacing=0.2,
         )
 
     # if cfg.plotting_metrics.energy_resolution:
@@ -194,7 +200,7 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
                 label=algo_names[algorithm],
             )
         plt.grid()
-        if metric.name == 'theta' or metric.name == 'eta':
+        if metric.name == "theta" or metric.name == "eta":
             x_maj_tick_spacing = 20
         else:
             x_maj_tick_spacing = 40
@@ -221,9 +227,9 @@ def plot_eff_fake(eff_fake_data, key, cfg, output_dir):
             plt.yscale("log")
         else:
             plt.ylabel(r"$\varepsilon_{\tau}$", fontsize=30)
-            plt.legend(prop={'size': 30})
-        ax.tick_params(axis='x', labelsize=30)
-        ax.tick_params(axis='y', labelsize=30)
+            plt.legend(prop={"size": 30})
+        ax.tick_params(axis="x", labelsize=30)
+        ax.tick_params(axis="y", labelsize=30)
         plt.savefig(output_path, format="pdf")
         plt.close("all")
 

@@ -187,8 +187,15 @@ def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, outp
 
 
 def plot_distributions(
-        sig_values, bkg_values, bkg_weights, sig_weights, output_path, xlabel=r"$p_T [GeV]$",
-        produce_label=True, x_maj_tick_spacing=None):
+    sig_values,
+    bkg_values,
+    bkg_weights,
+    sig_weights,
+    output_path,
+    xlabel=r"$p_T [GeV]$",
+    produce_label=True,
+    x_maj_tick_spacing=None,
+):
     mpl.rcParams.update(mpl.rcParamsDefault)
     hep.style.use(hep.styles.CMS)
     bkg_hist, bin_edges = np.histogram(bkg_values, weights=bkg_weights, bins=50)
@@ -199,8 +206,8 @@ def plot_distributions(
     ax.set_facecolor("white")
     plt.xlabel(xlabel, fontdict={"size": 30})
     plt.ylabel("Relative yield / bin", fontdict={"size": 30})
-    ax.tick_params(axis='x', labelsize=30)
-    ax.tick_params(axis='y', labelsize=30)
+    ax.tick_params(axis="x", labelsize=30)
+    ax.tick_params(axis="y", labelsize=30)
     if produce_label:
         plt.legend(loc="upper right")
     if x_maj_tick_spacing is not None:
