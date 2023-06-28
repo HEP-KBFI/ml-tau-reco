@@ -1,3 +1,4 @@
+# ./scripts/run-env.sh python3 src/taujetdataset_withgrid.py config/datasets/train.yaml /local/snandan/CLIC_data
 import sys
 import vector
 import awkward as ak
@@ -100,31 +101,28 @@ class TauJetDatasetWithGrid:
         return tau_features.to(dtype=torch.float32)
 
     def calculate_multiplicuty(self, data: ak.Record, part: str) -> torch.tensor:
-        grid = "inner" if "inner" in part else "outer"
+        grid = "inner_grid" if "inner" in part else "outer_grid"
         if "ele" in part:
-            idx1 = Var.isele - 1
-            idx2 = (Var.max_value + Var.isele) - 1
+            idx1 = Var.isele.value - 1
+            idx2 = (Var.max_value() + Var.isele.value) - 1
         elif "mu" in part:
-            idx1 = Var.ismu - 1
-            idx2 = (Var.max_value + Var.ismu) - 1
+            idx1 = Var.ismu.value - 1
+            idx2 = (Var.max_value() + Var.ismu.value) - 1
         elif "ch" in part:
-            idx1 = Var.isch - 1
-            idx2 = (Var.max_value + Var.isch) - 1
+            idx1 = Var.isch.value - 1
+            idx2 = (Var.max_value() + Var.isch.value) - 1
         elif "nh" in part:
-            idx1 = Var.isnh - 1
-            idx2 = (Var.max_value + Var.isnh) - 1
+            idx1 = Var.isnh.value - 1
+            idx2 = (Var.max_value() + Var.isnh.value) - 1
         elif "gamma" in part:
-            idx1 = Var.isgamma - 1
-            idx2 = (Var.max_value + Var.isgamma) - 1
+            idx1 = Var.isgamma.value - 1
+            idx2 = (Var.max_value() + Var.isgamma.value) - 1
         else:
             print("provide correct particle type")
             assert 0
         return torch.tensor(
-            np.sum(
-                np.sum(data[grid].to_numpy()[:, idx1, :, :], axis=(2, 3))
-                + np.sum(data[grid].to_numpy()[:, idx2, :, :], axis=(2, 3)),
-                axis=1,
-            ),
+            np.sum(data[grid].to_numpy()[:, idx1, :, :], axis=(1, 2))
+            + np.sum(data[grid].to_numpy()[:, idx2, :, :], axis=(1, 2)),
             dtype=torch.int,
         )
 
@@ -197,8 +195,8 @@ if __name__ == "__main__":
 
     infile = sys.argv[1]
     ds = osp.basename(infile).split(".")[0]
-    sig_ntuples_dir = "/local/snandan/grid/Grid/ZH_Htautau"
-    bkg_ntuples_dir = "/local/snandan/grid/Grid/QCD/"
+    sig_ntuples_dir = "/local/snandan/DeepTau/Grid/ZH_Htautau/"
+    bkg_ntuples_dir = "/local/snandan/DeepTau/Grid/QCD/"
 
     filelist = get_split_files(infile, ds, sig_ntuples_dir, bkg_ntuples_dir)
     outp = "data/dataset_{}".format(ds)

@@ -13,7 +13,7 @@ from torch_geometric.loader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from FocalLoss import FocalLoss
 
-focal_loss = FocalLoss(gamma=1)
+focal_loss = FocalLoss(gamma=2)
 import numpy as np
 import collections
 from taujetdataset_withgrid import TauJetDatasetWithGrid
@@ -156,16 +156,33 @@ class DeepTau(nn.Module):
             self.act,
         )
         self.inner_grid.to(device=self.device)
+        print("# of TP in inner grid: ", sum(p.numel() for p in self.inner_grid.parameters() if p.requires_grad))
         self.outer_grid.to(device=self.device)
-        self.tau_ftrs = ffn(21, 57, 100, self.act)
-        self.pred_istau = ffn(2 * self.output_from_grid + 21, 2, 100, self.act)
+        print("# of TP in outer grid: ", sum(p.numel() for p in self.outer_grid.parameters() if p.requires_grad))
+        self.n_tau_ftrs = len(grid_cfg["tau_features"]) + 4
+        self.output_from_taublock = 50
+        self.tau_ftrs = ffn(self.n_tau_ftrs, self.output_from_taublock, 100, self.act)
+        print(
+            "# of TP in tau high level features block: ",
+            sum(p.numel() for p in self.tau_ftrs.parameters() if p.requires_grad),
+        )
+        self.pred_istau = ffn(2 * self.output_from_grid + self.output_from_taublock, 2, 100, self.act)
+        print("# of TP in fully connected block: ", sum(p.numel() for p in self.pred_istau.parameters() if p.requires_grad))
         # self.pred_istau = ffn(21, 2, 100, self.act)
         # self.pred_p4 = ffn(21, 4, 100, self.act)
         self.reduce_2d_inner_grid = reduce_2d(
             self.grid_config["inner_grid"]["n_cells"], self.output_from_grid, self.device, self.act
         )
+        print(
+            "# of TP in reduced inner grid: ",
+            sum(p.numel() for p in self.reduce_2d_inner_grid.parameters() if p.requires_grad),
+        )
         self.reduce_2d_outer_grid = reduce_2d(
             self.grid_config["outer_grid"]["n_cells"], self.output_from_grid, self.device, self.act
+        )
+        print(
+            "# of TP in reduced outer grid: ",
+            sum(p.numel() for p in self.reduce_2d_outer_grid.parameters() if p.requires_grad),
         )
 
     # x represents our data
@@ -244,8 +261,8 @@ def main(cfg):
     cfgFile = open(gridFileName, "r")
     grid_cfg = json.load(cfgFile)
 
-    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectpartmul/dataset_train/")
-    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data_withcorrectpartmul/dataset_validation/")
+    ds_train = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataset_train/")
+    ds_val = TauJetDatasetWithGrid("/local/snandan/CLIC_data/dataset_validation/")
 
     ds_train_iter = MyIterableDataset(ds_train)
     ds_val_iter = MyIterableDataset(ds_val)

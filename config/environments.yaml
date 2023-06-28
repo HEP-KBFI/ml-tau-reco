@@ -1,5 +1,5 @@
 output_dir: /home/laurits/different_environments
 samples:
-  pp: /local/joosep/ml-tau-reco/forCV/2023_04_19/tev14_pythia8_zh_htautau_1.root
+  pp: /local/laurits/230627_experimental_env_data/2023_04_19/tev14_pythia8_zh_htautau_1.root
   ee: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
 max_events: 250

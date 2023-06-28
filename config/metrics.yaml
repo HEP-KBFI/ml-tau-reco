@@ -4,20 +4,24 @@ plotting:
   n_files: -1
 algorithms:
   LorentzNet:
-    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar24_wPdgId/LorentzNet/ZH_Htautau
-    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar24_wPdgId/LorentzNet/QCD
+    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wPdgId/LorentzNet/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wPdgId/LorentzNet/QCD
     compare: False
   HPS_DeepTau:
-    sig_ntuples_dir: /local/snandan/DeepTauBuilder_correctconv/DeepTau/ZH_Htautau
-    bkg_ntuples_dir: /local/snandan/DeepTauBuilder_correctconv/DeepTau/QCD/
-    compare: False
-  # HPS_DeepTau:
-  #     sig_ntuples_dir: /local/snandan/DeepTauBuilder_woreg/DeepTau/ZH_Htautau/
-  #     bkg_ntuples_dir: /local/snandan/DeepTauBuilder_woreg/DeepTau/QCD/
-  #     compare: True
+    sig_ntuples_dir: /local/snandan/Deeptau_fl2/DeepTau/ZH_Htautau
+    bkg_ntuples_dir: /local/snandan/Deeptau_fl2/DeepTau/QCD
+    compare: True
   ParticleTransformer:
-    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18/ParticleTransformer/ZH_Htautau
-    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Mar18/ParticleTransformer/QCD
+    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wLifetime/ParticleTransformer/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wLifetime/ParticleTransformer/QCD
+    compare: False
+  HPS:
+    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May29/HPS/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May29/HPS/QCD
+    compare: False
+  HPS_with_quality_cuts:
+    sig_ntuples_dir: /scratch/persistent/laurits/230608_HPS_wCuts/HPS/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/laurits/230608_HPS_wCuts/HPS/QCD
     compare: False
   MLReco_DeepTau:
     sig_ntuples_dir: /foo/bar
@@ -27,21 +31,13 @@ algorithms:
     sig_ntuples_dir: /local/tolange/CLIC_taus_20230306/TwoStepDNN/ZH_Htautau
     bkg_ntuples_dir: /local/tolange/CLIC_taus_20230306/TwoStepDNN/QCD
     compare: False
-  HPS_with_quality_cuts:
-    sig_ntuples_dir: /local/laurits/CLIC_taus_20230320/HPS/ZH_Htautau
-    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230320/HPS/QCD
-    compare: False
-  HPS:
-    sig_ntuples_dir: /scratch/persistent/laurits/HPS_230419/HPS/ZH_Htautau
-    bkg_ntuples_dir: /scratch/persistent/laurits/HPS_230419/HPS/QCD
-    compare: True
   Oracle:
     sig_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/ZH_Htautau
     bkg_ntuples_dir: /local/laurits/CLIC_taus_20230215_v1/Oracle/QCD
     compare: False
   FastCMSTau:
-    sig_ntuples_dir: /local/laurits/CLIC_taus_20230320/FastCMSTau/ZH_Htautau
-    bkg_ntuples_dir: /local/laurits/CLIC_taus_20230320/FastCMSTau/QCD
+    sig_ntuples_dir: /scratch/persistent/laurits/230607_FastCMSTau/FastCMSTau/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/laurits/230607_FastCMSTau/FastCMSTau/QCD
     compare: False
   SimpleDNN:
     sig_ntuples_dir: /scratch/persistent/joosep/ml-tau-reco/CLIC_data/2023_03_23/SimpleDNN/ZH_Htautau/
@@ -95,6 +91,22 @@ metrics:
         n_bins: 8
   # fake_ref: reco_jet
   # eff_obj: gen_jet
+markers:
+  HPS: "o"
+  HPS_DeepTau: "^"
+  LorentzNet: "s"
+  ParticleTransformer: "v"
+  FastCMSTau: "P"
+  HPS_quality: "D"
+  HPS_NOquality: "o"
+colors:
+  HPS: "tab:blue"
+  HPS_DeepTau: "tab:orange"
+  LorentzNet: "tab:green"
+  ParticleTransformer: "tab:purple"
+  FastCMSTau: "tab:red"
+  HPS_quality: "tab:black"
+  HPS_NOquality: "tab:blue"
 defaults:
   - datasets: datasets
   - _self_

@@ -21,15 +21,18 @@ from deeptauTraining import DeepTau
 
 
 def process_single_file(input_path: str, builder, output_dir) -> None:
-    print("Opening file %s" % input_path)
-    jets = ak.from_parquet(input_path)
-    print("Processing jets...")
-    pjets = builder.processJets(jets)
     output_path = os.path.join(output_dir, os.path.basename(input_path))
-    print("...done, writing output file %s" % output_path)
-    merged_info = {field: jets[field] for field in jets.fields if "grid" not in field}
-    merged_info.update(pjets)
-    ak.to_parquet(ak.Record(merged_info), output_path)
+    if not os.path.exists(output_path):
+        print("Opening file %s" % input_path)
+        jets = ak.from_parquet(input_path)
+        print("Processing jets...")
+        pjets = builder.processJets(jets)
+        print("...done, writing output file %s" % output_path)
+        merged_info = {field: jets[field] for field in jets.fields if "grid" not in field}
+        merged_info.update(pjets)
+        ak.to_parquet(ak.Record(merged_info), output_path)
+    else:
+        print("File already processed ... Skipping")
 
 
 @hydra.main(config_path="../config", config_name="tau_builder", version_base=None)
@@ -54,14 +57,7 @@ def build_taus(cfg: DictConfig) -> None:
         builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "DeepTau":
         model = torch.load(
-            "/home/snandan/mltaureco/ml-tau-reco/outputs/2023-04-17/16-40-29/model_best_epoch_9.pt"
-            # "/home/snandan/mltaureco/ml-tau-reco/outputs/\
-            # 2023-03-29/09-05-01/model_best_epoch_100.pt" #w/o conv
-            # "/home/snandan/mltaureco/ml-tau-reco/outputs/2023-04-04/\
-            # 21-32-14/model_best_epoch_12.pt" #with outer grid included in the whole"
-            # "/home/snandan/mltaureco/ml-tau-reco/outputs/2023-04-05/\
-            # 22-03-59/model_best_epoch_7.pt" #w/ correct grid
-            ,
+            "/home/snandan/mltaureco_paper/ml-tau-reco/outputs/2023-06-23/13-36-08/model_best_epoch_15.pt",
             map_location=torch.device("cpu"),
         )
         assert model.__class__ == DeepTau

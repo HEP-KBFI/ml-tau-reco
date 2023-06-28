@@ -32,11 +32,11 @@ def main(cfg: DictConfig) -> None:
 
 def calculate_bkg_and_sig_size(dataset, cfg):
     sig_paths, bkg_paths = get_paths(dataset, cfg)
-    sig_data = load_data_from_paths(sig_paths)
-    bkg_data = load_data_from_paths(bkg_paths)
+    sig_data = load_data_from_paths(sig_paths, columns=["gen_jet_tau_decaymode"])
+    bkg_data = load_data_from_paths(bkg_paths, columns=["gen_jet_tau_decaymode"])
     n_sig = sum(sig_data.gen_jet_tau_decaymode != -1)
-    n_bkg = sum(sig_data.gen_jet_tau_decaymode == -1)
-    ZH_Htautau_bkg = len(bkg_data.gen_jet_tau_decaymode)
+    n_bkg = len(bkg_data.gen_jet_tau_decaymode)
+    ZH_Htautau_bkg = sum(sig_data.gen_jet_tau_decaymode == -1)
     info = {"nSig": int(n_sig), "ZH_Htautau_nBkg": ZH_Htautau_bkg, "QCD_nBkg": int(n_bkg)}
     return info
 
