@@ -18,8 +18,10 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         print("<LorentzNetTauBuilder::LorentzNetTauBuilder>:")
         super(BasicTauBuilder, self).__init__()
 
-        self.filename_model = "data/LorentzNet_model_wReweighting_2023Mar24_wPdgId.pt"
+        self.filename_model = "data/LorentzNet_model_2023May30_wPdgId.pt"
+        print(" filename_model = %s" % self.filename_model)
         self.filename_transform = ""
+        print(" filename_transform = %s" % self.filename_transform)
 
         if os.path.isfile(cfgFileName):
             cfgFile = open(cfgFileName, "r")
@@ -44,13 +46,10 @@ class LorentzNetTauBuilder(BasicTauBuilder):
         self.use_pdgId = self._builderConfig["use_pdgId"]
         self.pdgId_embedding = None
         if self.use_pdgId:
-            # CV: pdgId=111 added to work around the bug fixed in this commit:
-            #       https://github.com/HEP-KBFI/ml-tau-reco/pull/135/files#diff-9b848ad8e5903b4346d4030ebe41a391612220637cdd302d30d34b3fa07c96ea
-            #    (this work-around allows us to keep using old files)
             self.pdgId_embedding = OneHotEncoder(handle_unknown="ignore", sparse_output=False).fit(
-                [[11], [13], [22], [111], [130], [211], [2212]]
+                [[11], [13], [22], [130], [211], [2212]]
             )
-        self.n_scalar = 8 if self.use_pdgId else 2
+        self.n_scalar = 7 if self.use_pdgId else 2
         standardize_inputs = self._builderConfig["standardize_inputs"]
         self.min_jet_theta = self._builderConfig["min_jet_theta"]
         self.max_jet_theta = self._builderConfig["max_jet_theta"]

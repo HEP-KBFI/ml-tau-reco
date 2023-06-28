@@ -63,10 +63,7 @@ def buildParticleTransformerTensors(
         part_isMuon = 1.0 if jet_constituent_abs_pdgId == 13 else 0.0
         part_isPhoton = 1.0 if jet_constituent_abs_pdgId == 22 else 0.0
         part_isChargedHadron = 1.0 if jet_constituent_abs_pdgId == 211 else 0.0
-        # CV: pdgId=111 added to work around the bug fixed in this commit:
-        #       https://github.com/HEP-KBFI/ml-tau-reco/pull/135/files#diff-9b848ad8e5903b4346d4030ebe41a391612220637cdd302d30d34b3fa07c96ea
-        #    (this work-around allows us to keep using old files)
-        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId in [111, 130] else 0.0
+        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId == 130 else 0.0
         part_d0 = 0.0
         part_d0err = 0.0
         part_dz = 0.0
@@ -284,10 +281,10 @@ class ParticleTransformerDataset(Dataset):
             )
             data_cand_pdgIds = data["reco_cand_pdg"]
             data_cand_qs = data["reco_cand_charge"]
-            data_cand_d0s = data["reco_cand_dxy"]
-            data_cand_d0errs = data["reco_cand_dxy_err"]
-            data_cand_dzs = data["reco_cand_dz"]
-            data_cand_dzerrs = data["reco_cand_dz_err"]
+            data_cand_d0s = data["reco_cand_dxy_f2D"]
+            data_cand_d0errs = data["reco_cand_dxy_f2D_err"]
+            data_cand_dzs = data["reco_cand_dz_f2D"]
+            data_cand_dzerrs = data["reco_cand_dz_f2D_err"]
 
             data_gen_tau_decaymodes = data["gen_jet_tau_decaymode"]
 

@@ -298,8 +298,10 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
     loss_fn = None
     if train_cfg.use_focal_loss:
+        print("Using FocalLoss.")
         loss_fn = FocalLoss(gamma=train_cfg.focal_loss_gamma, alpha=classweight_tensor, reduction="none")
     else:
+        print("Using CrossEntropyLoss.")
         loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
