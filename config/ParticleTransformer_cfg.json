@@ -7,9 +7,9 @@
         "max_cands": 25,
         "metric": "theta-phi",
         "standardize_inputs": true,
-        "method_FeatureStandardization": "median_quantile",
+        "method_FeatureStandardization": "mean_rms",
         "json_file_FeatureStandardization": "ParticleTransformer_FeatureStandardization.json",
         "use_pdgId": true,
-        "use_lifetime": false
+        "use_lifetime": true
     }
 }
