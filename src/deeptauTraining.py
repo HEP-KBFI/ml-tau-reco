@@ -13,7 +13,7 @@ from torch_geometric.loader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from FocalLoss import FocalLoss
 
-focal_loss = FocalLoss(gamma=1)
+focal_loss = FocalLoss(gamma=2)
 import numpy as np
 import collections
 from taujetdataset_withgrid import TauJetDatasetWithGrid

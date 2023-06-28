@@ -54,9 +54,7 @@ def build_taus(cfg: DictConfig) -> None:
         builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "DeepTau":
         model = torch.load(
-            "/home/snandan/mltaureco_paper/ml-tau-reco/outputs/2023-06-21/08-55-06/model_b\
-est_epoch_12.pt",
-            # "/home/snandan/mltaureco_paper/ml-tau-reco/outputs/2023-06-12/16-42-28/model_best_epoch_13.pt",
+            "/home/snandan/mltaureco_paper/ml-tau-reco/outputs/2023-06-23/13-36-08/model_best_epoch_15.pt",
             map_location=torch.device("cpu"),
         )
         assert model.__class__ == DeepTau
