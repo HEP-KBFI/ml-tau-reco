@@ -1,4 +1,4 @@
-# python3 jobfile.py -i /scratch-persistent/veelken/CLIC_tau_ntuples/\
+# python3 jobfile.py -i /scratch/persistent/veelken/CLIC_tau_ntuples/\
 # 2023Mar09_woPtCuts/HPS/ZH_Htautau/ -o /local/snandan/CLIC_tau_ntuples/
 import glob
 import getpass
