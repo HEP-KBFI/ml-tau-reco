@@ -165,8 +165,8 @@ def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, outp
         xlabel=r"$p$ [GeV]",
     )
     plot_distributions(
-        sig_values=sig_p4s.theta,
-        bkg_values=bkg_p4s.theta,
+        sig_values=np.rad2deg(sig_p4s.theta.to_numpy()),
+        bkg_values=np.rad2deg(bkg_p4s.theta.to_numpy()),
         bkg_weights=np.ones(len(bkg_p4s.pt)) / len(bkg_p4s.pt),
         sig_weights=np.ones(len(sig_p4s.pt)) / len(sig_p4s.pt),
         output_path=os.path.join(output_dir, "theta_normalized_unweighted.pdf"),
@@ -175,8 +175,8 @@ def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, outp
         x_maj_tick_spacing=50,
     )
     plot_distributions(
-        sig_values=sig_p4s.theta,
-        bkg_values=bkg_p4s.theta,
+        sig_values=np.rad2deg(sig_p4s.theta.to_numpy()),
+        bkg_values=np.rad2deg(bkg_p4s.theta.to_numpy()),
         bkg_weights=bkg_weights / sum(bkg_weights),
         sig_weights=sig_weights / sum(sig_weights),
         output_path=os.path.join(output_dir, "theta_normalized_weighted.pdf"),
@@ -194,7 +194,7 @@ def plot_distributions(
     output_path,
     xlabel=r"$p_T [GeV]$",
     produce_label=True,
-    x_maj_tick_spacing=None,
+    x_maj_tick_spacing=30,
 ):
     mpl.rcParams.update(mpl.rcParamsDefault)
     hep.style.use(hep.styles.CMS)
@@ -209,10 +209,11 @@ def plot_distributions(
     ax.tick_params(axis="x", labelsize=30)
     ax.tick_params(axis="y", labelsize=30)
     if produce_label:
-        plt.legend(loc="upper right")
+        plt.legend()
     if x_maj_tick_spacing is not None:
         ax.xaxis.set_major_locator(ticker.MultipleLocator(x_maj_tick_spacing))
-    plt.savefig(output_path)
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(0.01))
+    plt.savefig(output_path, bbox_inches='tight')
     plt.close("all")
 
 

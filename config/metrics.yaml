@@ -8,12 +8,12 @@ algorithms:
     bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wPdgId/LorentzNet/QCD
     compare: False
   HPS_DeepTau:
-    sig_ntuples_dir: /local/snandan/Deeptau_fl2/DeepTau/ZH_Htautau
-    bkg_ntuples_dir: /local/snandan/Deeptau_fl2/DeepTau/QCD
+    sig_ntuples_dir: /local/snandan/DeepTau_fl2/DeepTau/ZH_Htautau
+    bkg_ntuples_dir: /local/snandan/DeepTau_fl2/DeepTau/QCD
     compare: True
   ParticleTransformer:
-    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wLifetime/ParticleTransformer/ZH_Htautau
-    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wLifetime/ParticleTransformer/QCD
+    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/QCD
     compare: False
   HPS:
     sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May29/HPS/ZH_Htautau
@@ -105,7 +105,7 @@ colors:
   LorentzNet: "tab:green"
   ParticleTransformer: "tab:purple"
   FastCMSTau: "tab:red"
-  HPS_quality: "tab:black"
+  HPS_quality: "black"
   HPS_NOquality: "tab:blue"
 defaults:
   - datasets: datasets
