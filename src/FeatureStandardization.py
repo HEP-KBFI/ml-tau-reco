@@ -181,7 +181,7 @@ class FeatureStandardization:
             self.one_over_sigma[feature] = torch.tensor(cfg[feature]["one_over_sigma"])
             self.dims[feature] = int(cfg[feature]["dims"])
 
-            self.reshape_params()
+        self.reshape_params()
 
         if self.verbosity >= 1:
             self.print()
