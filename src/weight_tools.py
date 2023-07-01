@@ -213,7 +213,7 @@ def plot_distributions(
     if x_maj_tick_spacing is not None:
         ax.xaxis.set_major_locator(ticker.MultipleLocator(x_maj_tick_spacing))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(0.01))
-    plt.savefig(output_path, bbox_inches='tight')
+    plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
 
 

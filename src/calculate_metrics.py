@@ -582,7 +582,7 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=
     test_hist_sig = test_hist_sig_ / np.sum(test_hist_sig_)
     test_hist_bkg_ = np.histogram(tauClassifiers["test"]["bkg"], bins=bin_edges)[0]
     test_hist_bkg = test_hist_bkg_ / np.sum(test_hist_bkg_)
-    if algo_name == 'HPS cut-based':
+    if algo_name == "HPS cut-based":
         hatch1 = "\\\\"
         hatch2 = "//"
     else:
