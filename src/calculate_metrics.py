@@ -383,6 +383,7 @@ def plot_all_metrics(cfg):
             tauClassifiers[algorithm],
             os.path.join(algorithm_output_dir, "tauClassifier.pdf"),
             medium_wp[algorithm],
+            algo_name=algorithm,
             plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
         )
         save_to_json(
@@ -581,11 +582,17 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=
     test_hist_sig = test_hist_sig_ / np.sum(test_hist_sig_)
     test_hist_bkg_ = np.histogram(tauClassifiers["test"]["bkg"], bins=bin_edges)[0]
     test_hist_bkg = test_hist_bkg_ / np.sum(test_hist_bkg_)
+    if algo_name == "HPS cut-based":
+        hatch1 = "\\\\"
+        hatch2 = "//"
+    else:
+        hatch1 = None
+        hatch2 = None
     if plot_train:
-        hep.histplot(hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red", hatch="\\\\")
-        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue", hatch="//")
-    hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red", hatch="\\\\")
-    hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue", hatch="//")
+        hep.histplot(hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red", hatch=hatch1)
+        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue", hatch=hatch2)
+    hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red", hatch=hatch1)
+    hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue", hatch=hatch2)
     # plt.axvline(medium_wp, color="k")
     plt.xlabel(r"$\mathcal{D}_{\tau}$", fontdict={"size": 28})
     plt.yscale("log")
