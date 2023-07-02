@@ -220,7 +220,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     max_cands = LorentzNet_cfg["max_cands"]
     add_beams = LorentzNet_cfg["add_beams"]
     use_pdgId = LorentzNet_cfg["use_pdgId"]
-    n_scalar = 8 if use_pdgId else 2
+    n_scalar = 7 if use_pdgId else 2
     standardize_inputs = LorentzNet_cfg["standardize_inputs"]
     preselection = {
         "min_jet_theta": LorentzNet_cfg["min_jet_theta"],
@@ -281,7 +281,12 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
 
     transform = None
     if standardize_inputs:
-        transform = FeatureStandardization(features=["x", "scalars"], dim=2, verbosity=train_cfg.verbosity)
+        transform = FeatureStandardization(
+            method=LorentzNet_cfg["method_FeatureStandardization"],
+            features=["x", "scalars"],
+            feature_dim=2,
+            verbosity=train_cfg.verbosity,
+        )
         transform.compute_params(dataloader_train)
         transform.save_params(LorentzNet_cfg["json_file_FeatureStandardization"])
 
@@ -293,8 +298,10 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
     loss_fn = None
     if train_cfg.use_focal_loss:
+        print("Using FocalLoss.")
         loss_fn = FocalLoss(gamma=train_cfg.focal_loss_gamma, alpha=classweight_tensor, reduction="none")
     else:
+        print("Using CrossEntropyLoss.")
         loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)

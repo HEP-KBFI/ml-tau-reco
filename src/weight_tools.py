@@ -13,6 +13,7 @@ from itertools import repeat
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
 from general import load_all_data
+from matplotlib import ticker
 from matplotlib.ticker import AutoLocator
 
 hep.style.use(hep.styles.CMS)
@@ -21,10 +22,8 @@ matplotlib.use("Agg")
 
 def load_samples(sig_dir: str, bkg_dir: str, n_files: int = -1, branches: list = None):
     ZH_data = load_all_data(sig_dir, n_files=n_files, branches=branches)
-    QCD_data = load_all_data(bkg_dir, n_files=n_files, branches=branches)
+    bkg_data = load_all_data(bkg_dir, n_files=n_files, branches=branches)
     sig_data = ZH_data[ZH_data.gen_jet_tau_decaymode != -1]
-    ZH_bkg = ZH_data[ZH_data.gen_jet_tau_decaymode == -1]
-    bkg_data = ak.concatenate([ZH_bkg, QCD_data], axis=0)
     return sig_data, bkg_data
 
 
@@ -121,7 +120,7 @@ def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, outp
         bkg_weights=np.ones(len(bkg_p4s.pt)) / len(bkg_p4s.pt),
         sig_weights=np.ones(len(sig_p4s.pt)) / len(sig_p4s.pt),
         output_path=os.path.join(output_dir, "pt_normalized_unweighted.pdf"),
-        xlabel=r"$p_T$",
+        xlabel=r"$p_T$ [GeV]",
     )
     plot_distributions(
         sig_values=sig_p4s.pt,
@@ -129,7 +128,7 @@ def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, outp
         bkg_weights=bkg_weights / sum(bkg_weights),
         sig_weights=sig_weights / sum(sig_weights),
         output_path=os.path.join(output_dir, "pt_normalized_weighted.pdf"),
-        xlabel=r"$p_T$",
+        xlabel=r"$p_T$ [GeV]",
     )
     plot_distributions(
         sig_values=sig_p4s.eta,
@@ -138,6 +137,7 @@ def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, outp
         sig_weights=np.ones(len(sig_p4s.pt)) / len(sig_p4s.pt),
         output_path=os.path.join(output_dir, "eta_normalized_unweighted.pdf"),
         xlabel=r"$\eta$",
+        produce_label=False,
     )
     plot_distributions(
         sig_values=sig_p4s.eta,
@@ -146,22 +146,74 @@ def plot_weighting_results(all_ZH_data, QCD_data, sig_weights, bkg_weights, outp
         sig_weights=sig_weights / sum(sig_weights),
         output_path=os.path.join(output_dir, "eta_normalized_weighted.pdf"),
         xlabel=r"$\eta$",
+        produce_label=False,
+    )
+    plot_distributions(
+        sig_values=sig_p4s.p,
+        bkg_values=bkg_p4s.p,
+        bkg_weights=np.ones(len(bkg_p4s.p)) / len(bkg_p4s.p),
+        sig_weights=np.ones(len(sig_p4s.p)) / len(sig_p4s.p),
+        output_path=os.path.join(output_dir, "p_normalized_unweighted.pdf"),
+        xlabel=r"$p$ [GeV]",
+    )
+    plot_distributions(
+        sig_values=sig_p4s.p,
+        bkg_values=bkg_p4s.p,
+        bkg_weights=bkg_weights / sum(bkg_weights),
+        sig_weights=sig_weights / sum(sig_weights),
+        output_path=os.path.join(output_dir, "p_normalized_weighted.pdf"),
+        xlabel=r"$p$ [GeV]",
+    )
+    plot_distributions(
+        sig_values=np.rad2deg(sig_p4s.theta.to_numpy()),
+        bkg_values=np.rad2deg(bkg_p4s.theta.to_numpy()),
+        bkg_weights=np.ones(len(bkg_p4s.pt)) / len(bkg_p4s.pt),
+        sig_weights=np.ones(len(sig_p4s.pt)) / len(sig_p4s.pt),
+        output_path=os.path.join(output_dir, "theta_normalized_unweighted.pdf"),
+        xlabel=r"$\theta$ [$^{o}$]",
+        produce_label=False,
+        x_maj_tick_spacing=50,
+    )
+    plot_distributions(
+        sig_values=np.rad2deg(sig_p4s.theta.to_numpy()),
+        bkg_values=np.rad2deg(bkg_p4s.theta.to_numpy()),
+        bkg_weights=bkg_weights / sum(bkg_weights),
+        sig_weights=sig_weights / sum(sig_weights),
+        output_path=os.path.join(output_dir, "theta_normalized_weighted.pdf"),
+        xlabel=r"$\theta$ [$^{o}$]",
+        produce_label=False,
+        x_maj_tick_spacing=50,
     )
 
 
-def plot_distributions(sig_values, bkg_values, bkg_weights, sig_weights, output_path, xlabel=r"$p_T [GeV]$"):
+def plot_distributions(
+    sig_values,
+    bkg_values,
+    bkg_weights,
+    sig_weights,
+    output_path,
+    xlabel=r"$p_T [GeV]$",
+    produce_label=True,
+    x_maj_tick_spacing=30,
+):
     mpl.rcParams.update(mpl.rcParamsDefault)
     hep.style.use(hep.styles.CMS)
     bkg_hist, bin_edges = np.histogram(bkg_values, weights=bkg_weights, bins=50)
     sig_hist = np.histogram(sig_values, weights=sig_weights, bins=bin_edges)[0]
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    hep.histplot(bkg_hist, bins=bin_edges, histtype="step", label="Background", hatch="//", color="blue")
     hep.histplot(sig_hist, bins=bin_edges, histtype="step", label="Signal", hatch="\\\\", color="red")
+    hep.histplot(bkg_hist, bins=bin_edges, histtype="step", label="Background", hatch="//", color="blue")
     ax.set_facecolor("white")
-    plt.xlabel(xlabel, fontdict={"size": 25})
-    plt.ylabel("Relative yield / bin", fontdict={"size": 25})
-    plt.legend(loc="upper right")
-    plt.savefig(output_path)
+    plt.xlabel(xlabel, fontdict={"size": 30})
+    plt.ylabel("Relative yield / bin", fontdict={"size": 30})
+    ax.tick_params(axis="x", labelsize=30)
+    ax.tick_params(axis="y", labelsize=30)
+    if produce_label:
+        plt.legend()
+    if x_maj_tick_spacing is not None:
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(x_maj_tick_spacing))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(0.01))
+    plt.savefig(output_path, bbox_inches="tight")
     plt.close("all")
 
 
@@ -298,8 +350,8 @@ def plot_weight_distributions(signal_weights, bkg_weights, output_dir):
     fig, ax = plt.subplots(nrows=1, ncols=1)
     hep.histplot(bkg_hist, bin_edges, label="Quark/gluon jets", hatch="//", color="red")
     hep.histplot(sig_hist, bin_edges, label=r"$\tau_h$", hatch="\\\\", color="blue")
-    plt.xlabel("Weight", fontdict={"size": 25})
-    plt.ylabel("Relative yield / bin", fontdict={"size": 25})
+    plt.xlabel("Weight", fontdict={"size": 30})
+    plt.ylabel("Relative yield / bin", fontdict={"size": 30})
     plt.legend()
     ax.set_facecolor("white")
     output_path = os.path.join(output_dir, "weight_1D_distribution.pdf")

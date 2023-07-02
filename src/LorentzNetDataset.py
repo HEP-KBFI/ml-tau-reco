@@ -20,8 +20,10 @@ def buildLorentzNetTensors(
     num_jet_constituents = int(len(jet_constituent_p4s_zipped))
     x_tensor = torch.tensor(jet_constituent_p4s_zipped, dtype=torch.float32)
     x_tensor = torch.nn.functional.pad(x_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0)
+    x_is_one_hot_encoded = [False, False, False, False]
 
     scalars_tensor = None
+    scalars_is_one_hot_encoded = None
     if use_pdgId:
         jet_constituent_abs_pdgIds = abs(jet_constituent_pdgIds)
         jet_constituent_abs_pdgIds = [[jet_constituent_pdgId] for jet_constituent_pdgId in jet_constituent_pdgIds]
@@ -32,11 +34,16 @@ def buildLorentzNetTensors(
         scalars_tensor = torch.nn.functional.pad(
             scalars_tensor, (0, 0, 0, max_cands - num_jet_constituents), "constant", 0.0
         )
+        scalars_is_one_hot_encoded = []
+        for idx in range(len(pdgId_embedding.categories_[0])):
+            scalars_is_one_hot_encoded.append(True)
+        scalars_is_one_hot_encoded.append(False)
     else:
         scalars_tensor = psi(torch.tensor(jet_constituent_p4s.mass, dtype=torch.float32)).unsqueeze(-1)
         scalars_tensor = torch.nn.functional.pad(
             scalars_tensor, (0, 1, 0, max_cands - num_jet_constituents), "constant", 0.0
         )
+        scalars_is_one_hot_encoded = [False, False]
 
     node_mask_tensor = torch.ones(num_jet_constituents, dtype=torch.float32)
     node_mask_tensor = torch.nn.functional.pad(node_mask_tensor, (0, max_cands - num_jet_constituents), "constant", 0.0)
@@ -64,7 +71,10 @@ def buildLorentzNetTensors(
 
     node_mask_tensor = torch.unsqueeze(node_mask_tensor, dim=-1)
 
-    return x_tensor, scalars_tensor, node_mask_tensor
+    assert x_tensor.size(dim=1) == len(x_is_one_hot_encoded)
+    assert scalars_tensor.size(dim=1) == len(scalars_is_one_hot_encoded)
+
+    return x_tensor, x_is_one_hot_encoded, scalars_tensor, scalars_is_one_hot_encoded, node_mask_tensor
 
 
 def read_cut(cuts, key):
@@ -116,11 +126,8 @@ class LorentzNetDataset(Dataset):
         self.use_pdgId = use_pdgId
         self.pdgId_embedding = None
         if self.use_pdgId:
-            # CV: pdgId=111 added to work around the bug fixed in this commit:
-            #       https://github.com/HEP-KBFI/ml-tau-reco/pull/135/files#diff-9b848ad8e5903b4346d4030ebe41a391612220637cdd302d30d34b3fa07c96ea
-            #    (this work-around allows us to keep using old files)
             self.pdgId_embedding = OneHotEncoder(handle_unknown="ignore", sparse_output=False).fit(
-                [[11], [13], [22], [111], [130], [211], [2212]]
+                [[11], [13], [22], [130], [211], [2212]]
             )
 
         self.x_tensors = []
@@ -168,7 +175,13 @@ class LorentzNetDataset(Dataset):
                 jet_constituent_p4s = cand_p4s[idx]
                 jet_constituent_pdgIds = data_cand_pdgIds[idx]
                 jet_constituent_qs = data_cand_qs[idx]
-                x_tensor, scalars_tensor, node_mask_tensor = buildLorentzNetTensors(
+                (
+                    x_tensor,
+                    x_is_one_hot_encoded,
+                    scalars_tensor,
+                    scalars_is_one_hot_encoded,
+                    node_mask_tensor,
+                ) = buildLorentzNetTensors(
                     jet_constituent_p4s,
                     jet_constituent_pdgIds,
                     jet_constituent_qs,
@@ -182,7 +195,9 @@ class LorentzNetDataset(Dataset):
                 weight_tensor = torch.tensor([data_weights[idx]], dtype=torch.float32)
 
                 self.x_tensors.append(x_tensor)
+                self.x_is_one_hot_encoded = torch.tensor(x_is_one_hot_encoded, dtype=torch.bool)
                 self.scalars_tensors.append(scalars_tensor)
+                self.scalars_is_one_hot_encoded = torch.tensor(scalars_is_one_hot_encoded, dtype=torch.bool)
                 self.node_mask_tensors.append(node_mask_tensor)
                 self.y_tensors.append(y_tensor)
                 self.weight_tensors.append(weight_tensor)
@@ -207,7 +222,9 @@ class LorentzNetDataset(Dataset):
             return (
                 {
                     "x": self.x_tensors[idx],
+                    "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
                     "scalars": self.scalars_tensors[idx],
+                    "scalars_is_one_hot_encoded": self.scalars_is_one_hot_encoded,
                     "mask": self.node_mask_tensors[idx],
                 },
                 self.y_tensors[idx],

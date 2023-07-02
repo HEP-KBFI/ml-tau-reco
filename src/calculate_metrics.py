@@ -16,6 +16,7 @@ import general as g
 import awkward as ak
 import mplhep as hep
 import plotting as pl
+from matplotlib import ticker
 import matplotlib.pyplot as plt
 from metrics_tools import Histogram
 from general import get_reduced_decaymodes, load_data_from_paths
@@ -130,7 +131,9 @@ def plot_decaymode_reconstruction(sig_data, algorithm_output_dir, classifier_cut
     )
 
 
-def plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-5, 1), xlim=(0, 1), title=""):
+def plot_roc(
+    efficiencies, fakerates, output_dir, cfg, ylim=(1e-5, 1), xlim=(0, 1), title="", x_maj_tick_spacing=0.2, HPS_comp=False
+):
     hep.style.use(hep.styles.CMS)
     output_path = os.path.join(output_dir, "ROC.pdf")
     algorithms = efficiencies.keys()
@@ -146,21 +149,40 @@ def plot_roc(efficiencies, fakerates, output_dir, ylim=(1e-5, 1), xlim=(0, 1), t
             mask = np.array(fakerates[algorithm]) != 0.0
             x_values = np.array(efficiencies[algorithm])[mask]
             y_values = np.array(fakerates[algorithm])[mask]
-            plt.plot(x_values, y_values, label=algo_names[algorithm], lw=2)
+            plt.plot(
+                x_values,
+                y_values,
+                color=cfg.colors[algorithm],
+                marker=cfg.markers[algorithm],
+                label=algo_names[algorithm],
+                lw=2,
+                ls="",
+                markevery=0.02,
+                ms=12,
+            )
         else:
             indices = np.array([efficiencies[algorithm].index(loc) for loc in set(efficiencies[algorithm])])
             wp_x = np.array(efficiencies[algorithm])[indices][1:]
             wp_y = np.array(fakerates[algorithm])[indices][1:]
-            plt.scatter(
-                wp_x, wp_y, label=algo_names[algorithm], marker="o", facecolors="r", edgecolors="r", s=80, linewidths=3
+            plt.plot(
+                wp_x,
+                wp_y,
+                color=cfg.colors[algorithm],
+                marker=cfg.markers[algorithm],
+                label=algo_names[algorithm],
+                ms=15,
+                ls="",
             )
     plt.grid()
-    plt.legend()
+    plt.legend(prop={"size": 30})
     plt.title(title, loc="left")
-    plt.ylabel(r"$P_{misid}$")
-    plt.xlabel(r"$\varepsilon_{\tau}$")
+    plt.ylabel(r"$P_{misid}$", fontsize=30)
+    plt.xlabel(r"$\varepsilon_{\tau}$", fontsize=30)
+    ax.tick_params(axis="x", labelsize=30)
+    ax.tick_params(axis="y", labelsize=30)
     plt.ylim(ylim)
     plt.xlim(xlim)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(x_maj_tick_spacing))
     plt.yscale("log")
     plt.savefig(output_path, format="pdf")
     plt.close("all")
@@ -267,10 +289,23 @@ def plot_all_metrics(cfg):
         bkg_paths_train = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "QCD" in path
         ]
-        sig_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files)
-        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files)
-        sig_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files)
-        bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files)
+        columns = [
+            "tauClassifier",
+            "gen_jet_tau_p4s",
+            "gen_jet_p4s",
+            "tau_p4s",
+            "gen_jet_tau_vis_energy",
+            "gen_jet_tau_decaymode",
+            "tau_decaymode",
+            "weight",
+        ]
+        zh_data = load_data_from_paths(sig_paths, n_files=cfg.plotting.n_files, columns=columns)
+        sig_data = zh_data[zh_data.gen_jet_tau_decaymode != -1]
+        bkg_data = load_data_from_paths(bkg_paths, n_files=cfg.plotting.n_files, columns=columns)
+        zh_data_train = load_data_from_paths(sig_paths_train, n_files=cfg.plotting.n_files, columns=columns)
+        sig_data_train = zh_data_train[zh_data_train.gen_jet_tau_decaymode != -1]
+        bkg_data_train = load_data_from_paths(bkg_paths_train, n_files=cfg.plotting.n_files, columns=columns)
+
         # sig_paths_val = [
         #     os.path.join(sig_input_dir, os.path.basename(path))
         #     for path in cfg.datasets.validation.paths
@@ -348,6 +383,7 @@ def plot_all_metrics(cfg):
             tauClassifiers[algorithm],
             os.path.join(algorithm_output_dir, "tauClassifier.pdf"),
             medium_wp[algorithm],
+            algo_name=algorithm,
             plot_train=algorithm != "HPS" and algorithm != "HPS_with_quality_cuts",
         )
         save_to_json(
@@ -358,14 +394,14 @@ def plot_all_metrics(cfg):
         plot_decaymode_reconstruction(raw_numerator_data_e, algorithm_output_dir, medium_wp[algorithm], cfg)
     print("Staring plotting for all algorithms")
     save_to_json({"efficiencies": efficiencies, "fakerates": fakerates}, os.path.join(output_dir, "roc.json"))
-    plot_roc(efficiencies, fakerates, output_dir)
+    plot_roc(efficiencies, fakerates, output_dir, cfg)
     barrel_output_dir = os.path.join(output_dir, "barrel")
     os.makedirs(barrel_output_dir, exist_ok=True)
     endcap_output_dir = os.path.join(output_dir, "endcap")
     os.makedirs(endcap_output_dir, exist_ok=True)
     create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir)
-    plot_roc(endcap_efficiencies, endcap_fakerates, endcap_output_dir)
-    plot_roc(barrel_efficiencies, barrel_fakerates, barrel_output_dir)
+    plot_roc(endcap_efficiencies, endcap_fakerates, endcap_output_dir, cfg)
+    plot_roc(barrel_efficiencies, barrel_fakerates, barrel_output_dir, cfg)
     plot_eff_fake(eff_data, key="efficiencies", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_eff_fake(fake_data, key="fakerates", cfg=cfg, output_dir=output_dir, cut=medium_wp)
     plot_tauClassifiers(tauClassifiers, "sig", os.path.join(output_dir, "tauClassifier_sig.pdf"))
@@ -441,8 +477,6 @@ def get_regional_tauClassifiers(
         regional_classifiers,
         os.path.join(algorithm_output_dir, "region_tauClassifiers.json"),
     )
-    # What is the tauClassifier value at 60% eff?
-    # return regional_classifiers
 
 
 def create_eff_fake_table(eff_data, fake_data, classifier_cuts, output_dir):
@@ -548,11 +582,17 @@ def plot_algo_tauClassifiers(tauClassifiers, output_path, medium_wp, plot_train=
     test_hist_sig = test_hist_sig_ / np.sum(test_hist_sig_)
     test_hist_bkg_ = np.histogram(tauClassifiers["test"]["bkg"], bins=bin_edges)[0]
     test_hist_bkg = test_hist_bkg_ / np.sum(test_hist_bkg_)
+    if algo_name == "HPS cut-based":
+        hatch1 = "\\\\"
+        hatch2 = "//"
+    else:
+        hatch1 = None
+        hatch2 = None
     if plot_train:
-        hep.histplot(hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red")
-        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue")
-    hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red")
-    hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue")
+        hep.histplot(hist_sig, bins=bin_edges, histtype="step", ls="dashed", color="red", hatch=hatch1)
+        hep.histplot(hist_bkg, bins=bin_edges, histtype="step", ls="dashed", color="blue", hatch=hatch2)
+    hep.histplot(test_hist_sig, bins=bin_edges, histtype="step", label="Signal", ls="solid", color="red", hatch=hatch1)
+    hep.histplot(test_hist_bkg, bins=bin_edges, histtype="step", label="Background", ls="solid", color="blue", hatch=hatch2)
     # plt.axvline(medium_wp, color="k")
     plt.xlabel(r"$\mathcal{D}_{\tau}$", fontdict={"size": 28})
     plt.yscale("log")

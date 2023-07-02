@@ -40,11 +40,11 @@ def buildParticleTransformerTensors(
     num_jet_constituents = int(len(jet_constituent_p4s_zipped))
 
     jet_constituent_features = []
+    is_one_hot_encoded = []
     for idx in range(num_jet_constituents):
         jet_constituent_p4 = jet_constituent_p4s[idx]
         jet_constituent_pdgId = jet_constituent_pdgIds[idx]
         jet_constituent_abs_pdgId = abs(jet_constituent_pdgId)
-        # print("jet_constituent_abs_pdgId = %i" % jet_constituent_abs_pdgId)
         jet_constituent_q = jet_constituent_qs[idx]
         jet_constituent_d0 = jet_constituent_d0s[idx]
         jet_constituent_d0err = jet_constituent_d0errs[idx]
@@ -63,10 +63,7 @@ def buildParticleTransformerTensors(
         part_isMuon = 1.0 if jet_constituent_abs_pdgId == 13 else 0.0
         part_isPhoton = 1.0 if jet_constituent_abs_pdgId == 22 else 0.0
         part_isChargedHadron = 1.0 if jet_constituent_abs_pdgId == 211 else 0.0
-        # CV: pdgId=111 added to work around the bug fixed in this commit:
-        #       https://github.com/HEP-KBFI/ml-tau-reco/pull/135/files#diff-9b848ad8e5903b4346d4030ebe41a391612220637cdd302d30d34b3fa07c96ea
-        #    (this work-around allows us to keep using old files)
-        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId in [111, 130] else 0.0
+        part_isNeutralHadron = 1.0 if jet_constituent_abs_pdgId == 130 else 0.0
         part_d0 = 0.0
         part_d0err = 0.0
         part_dz = 0.0
@@ -103,6 +100,16 @@ def buildParticleTransformerTensors(
             part_logerel,
             part_deltaR,
         ]
+        if idx == 0:
+            is_one_hot_encoded = [
+                False,
+                False,
+                False,
+                False,
+                False,
+                False,
+                False,
+            ]
         if use_pdgId:
             part_features.extend(
                 [
@@ -114,6 +121,17 @@ def buildParticleTransformerTensors(
                     part_isNeutralHadron,
                 ]
             )
+            if idx == 0:
+                is_one_hot_encoded.extend(
+                    [
+                        False,
+                        True,
+                        True,
+                        True,
+                        True,
+                        True,
+                    ]
+                )
         if use_lifetime:
             part_features.extend(
                 [
@@ -123,8 +141,18 @@ def buildParticleTransformerTensors(
                     part_dzerr,
                 ]
             )
+            if idx == 0:
+                is_one_hot_encoded.extend(
+                    [
+                        False,
+                        False,
+                        False,
+                        False,
+                    ]
+                )
         # print("len(part_features) = %i" % len(part_features))
         # print("part_features = %s" % part_features)
+        assert len(part_features) == len(is_one_hot_encoded)
         jet_constituent_features.append(part_features)
 
     x_tensor = torch.tensor(jet_constituent_features, dtype=torch.float32)
@@ -152,7 +180,9 @@ def buildParticleTransformerTensors(
     #     as the batch dimension (1st axis) is not yet added.
     #     The batch dimension will be added automatically by PyTorch's DataLoader class later.
     x_tensor = torch.swapaxes(x_tensor, 0, 1)
+    x_is_one_hot_encoded = is_one_hot_encoded
     v_tensor = torch.swapaxes(v_tensor, 0, 1)
+    v_is_one_hot_encoded = [False, False, False, False]
     node_mask_tensor = torch.swapaxes(node_mask_tensor, 0, 1)
     # print(" shape(x_tensor@2) = ", x_tensor.shape)
     # print(" x_tensor@2 = ", x_tensor)
@@ -160,7 +190,7 @@ def buildParticleTransformerTensors(
     # print(" v_tensor@2 = ", v_tensor)
     # print(" shape(node_mask_tensor@2) = ", node_mask_tensor.shape)
 
-    return x_tensor, v_tensor, node_mask_tensor
+    return x_tensor, x_is_one_hot_encoded, v_tensor, v_is_one_hot_encoded, node_mask_tensor
 
 
 def read_cut(cuts, key):
@@ -251,10 +281,10 @@ class ParticleTransformerDataset(Dataset):
             )
             data_cand_pdgIds = data["reco_cand_pdg"]
             data_cand_qs = data["reco_cand_charge"]
-            data_cand_d0s = data["reco_cand_dxy"]
-            data_cand_d0errs = data["reco_cand_dxy_err"]
-            data_cand_dzs = data["reco_cand_dz"]
-            data_cand_dzerrs = data["reco_cand_dz_err"]
+            data_cand_d0s = data["reco_cand_dxy_f2D"]
+            data_cand_d0errs = data["reco_cand_dxy_f2D_err"]
+            data_cand_dzs = data["reco_cand_dz_f2D"]
+            data_cand_dzerrs = data["reco_cand_dz_f2D_err"]
 
             data_gen_tau_decaymodes = data["gen_jet_tau_decaymode"]
 
@@ -281,7 +311,13 @@ class ParticleTransformerDataset(Dataset):
                 jet_constituent_dzs = data_cand_dzs[idx]
                 jet_constituent_dzerrs = data_cand_dzerrs[idx]
 
-                x_tensor, v_tensor, node_mask_tensor = buildParticleTransformerTensors(
+                (
+                    x_tensor,
+                    x_is_one_hot_encoded,
+                    v_tensor,
+                    v_is_one_hot_encoded,
+                    node_mask_tensor,
+                ) = buildParticleTransformerTensors(
                     jet_p4,
                     jet_constituent_p4s,
                     jet_constituent_pdgIds,
@@ -300,7 +336,9 @@ class ParticleTransformerDataset(Dataset):
                 weight_tensor = torch.tensor([data_weights[idx]], dtype=torch.float32)
 
                 self.x_tensors.append(x_tensor)
+                self.x_is_one_hot_encoded = torch.tensor(x_is_one_hot_encoded, dtype=torch.bool)
                 self.v_tensors.append(v_tensor)
+                self.v_is_one_hot_encoded = torch.tensor(v_is_one_hot_encoded, dtype=torch.bool)
                 self.node_mask_tensors.append(node_mask_tensor)
                 self.y_tensors.append(y_tensor)
                 self.weight_tensors.append(weight_tensor)
@@ -325,7 +363,9 @@ class ParticleTransformerDataset(Dataset):
             return (
                 {
                     "v": self.v_tensors[idx],
+                    "v_is_one_hot_encoded": self.v_is_one_hot_encoded,
                     "x": self.x_tensors[idx],
+                    "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
                     "mask": self.node_mask_tensors[idx],
                 },
                 self.y_tensors[idx],
