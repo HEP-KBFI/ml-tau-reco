@@ -11,7 +11,7 @@ parser.add_argument("-i", dest="inputpath", help="inputpath")
 parser.add_argument("-o", dest="outputdir", help="outputdir")
 parser.add_argument("-a", dest="algo", help="algo", choices=["DeepTau", "HPS", "Grid", "ParticleTransformer"])
 parser.add_argument("-n", type=int, dest="nfiles", help="number of files to be processed in each job")
-parser.add_argument("-t", dest="test_only", help="want to run only on test file", action='store_true', default=False)
+parser.add_argument("-t", dest="test_only", help="want to run only on test file", action="store_true", default=False)
 
 options = parser.parse_args()
 inputpath = options.inputpath
