@@ -2,7 +2,7 @@
 #SBATCH -p gpu
 #SBATCH --gres gpu:rtx:1
 #SBATCH --mem-per-gpu=10G
-#SBATCH -o slurm-conv_fl2_tanhlifetime.out
+#SBATCH -o slurm-conv_fl2.out
 
 IMG=/home/software/singularity/pytorch.simg
 cd $1
