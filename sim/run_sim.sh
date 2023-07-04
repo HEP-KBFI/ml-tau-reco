@@ -24,11 +24,11 @@ mkdir -p $FULLOUTDIR
 mkdir -p $WORKDIR
 cd $WORKDIR
 
-cp $SIMDIR/fcc/${SAMPLE}.cmd card.cmd
-cp $SIMDIR/fcc/pythia.py ./
-cp $SIMDIR/fcc/clic_steer.py ./
-cp -R $SIMDIR/fcc/PandoraSettings ./
-cp -R $SIMDIR/fcc/clicRec_e4h_input.py ./
+cp $SIMDIR/${SAMPLE}.cmd card.cmd
+cp $SIMDIR/pythia.py ./
+cp $SIMDIR/clic_steer.py ./
+cp -R $SIMDIR/PandoraSettings ./
+cp -R $SIMDIR/clicRec_e4h_input.py ./
 
 echo "Random:seed=${NUM}" >> card.cmd
 cat card.cmd
@@ -37,7 +37,7 @@ cat card.cmd
 source /cvmfs/sw.hsf.org/spackages6/key4hep-stack/2023-01-15/x86_64-centos7-gcc11.2.0-opt/csapx/setup.sh
 
 #Run generation
-k4run $SIMDIR/fcc/pythia.py -n $NEV --Dumper.Filename out.hepmc --Pythia8.PythiaInterface.pythiacard card.cmd
+k4run $SIMDIR/pythia.py -n $NEV --Dumper.Filename out.hepmc --Pythia8.PythiaInterface.pythiacard card.cmd
 
 #Run simulation
 ddsim --compactFile $LCGEO/CLIC/compact/CLIC_o3_v14/CLIC_o3_v14.xml \

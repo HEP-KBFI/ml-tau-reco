@@ -1,13 +1,12 @@
 input_dir: '/home/laurits/230607_newRun'
 plotting_algorithms:
   HPS: ''
-  HPS_DeepTau: '/home/laurits/230626_DeepTau_fl2'
+  HPS_DeepTau: '/home/laurits/230701_Deeptau_fl2'
   LorentzNet: ''
-  ParticleTransformer: ''
-  # MLReco_DeepTau: ''
+  ParticleTransformer: '/home/laurits/230630_ParticleTransformer_final'
   FastCMSTau: '/home/laurits/230607_FastCMS'
+  # MLReco_DeepTau: ''
   # TwoStep_GNN
-  # HPS_with_quality_cuts: '/home/laurits/230326_HPS_cutHPS'
   # SimpleDNN: ''
 plotting_metrics:
   ROC: True
