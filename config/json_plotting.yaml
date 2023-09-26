@@ -1,21 +1,23 @@
 input_dir: '/home/laurits/230607_newRun'
 plotting_algorithms:
+  HPS_Z: '/home/laurits/HPS_Metrics_230922'
   HPS: ''
-  HPS_DeepTau: '/home/laurits/230701_Deeptau_fl2'
-  LorentzNet: ''
-  ParticleTransformer: '/home/laurits/230630_ParticleTransformer_final'
-  FastCMSTau: '/home/laurits/230607_FastCMS'
+  # HPS_DeepTau: '/home/laurits/230701_Deeptau_fl2'
+  # HPS_DeepTau_Z: '/home/laurits/CLIC_metrics_202300921'
+  # LorentzNet: ''
+  # ParticleTransformer: '/home/laurits/230630_ParticleTransformer_final'
+  # FastCMSTau: '/home/laurits/230607_FastCMS'
   # MLReco_DeepTau: ''
   # TwoStep_GNN
   # SimpleDNN: ''
 plotting_metrics:
   ROC: True
-  fakerate: True
-  efficiency: True
-  tauClassifier: True
+  fakerate: False
+  efficiency: False
+  tauClassifier: False
   energy_resolution: False
-  decaymode: True
-  HPS_comparison: True
+  decaymode: False
+  HPS_comparison: False
 HPS_comparison:
   HPS_with_quality_cuts: '/home/laurits/230612_HPS_cuts/'
   HPS: '/home/laurits/230607_newRun'

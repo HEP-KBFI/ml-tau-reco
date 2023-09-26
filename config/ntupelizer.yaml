@@ -8,11 +8,14 @@ branches:
   - PrimaryVertices
 test_run: False
 samples_to_process:
-  - ZH_Htautau
-  - QCD
-  # - QCD_new
+  - Z_Ztautau
+  # - ZH_Htautau
+  # - QCD
   # - ZH_Htautau_nosmear
 samples:
+  Z_Ztautau:
+    input_dir: /local/joosep/clic_edm4hep/p8_ee_Z_Ztautau_ecm380/
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230925/Z_Ztautau
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
     output_dir: /scratch/persistent/laurits/CLIC_data_20230525/ZH_Htautau
@@ -29,7 +32,8 @@ samples:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_tt_ecm365
     output_dir: /scratch/persistent/laurits/CLIC_data_20230316/TT
 validation:
-  output_dir: $HOME/CLIC_ntuple_validation
+  output_dir: $HOME/CLIC_ntuple_validation_v5
   validation_samples:
-    - ZH_Htautau
-    - QCD
+    - Z_Ztautau
+    # - ZH_Htautau
+    # - QCD

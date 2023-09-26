@@ -1,16 +1,21 @@
 tauClassifierCut: 0.5
 plotting:
-  output_dir: /home/laurits/CLIC_metrics_20230331
+  output_dir: /home/laurits/CLIC_metrics_202300921
   n_files: -1
+sig_sample: Z_Ztautau
 algorithms:
   LorentzNet:
     sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wPdgId/LorentzNet/ZH_Htautau
     bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May30_wPdgId/LorentzNet/QCD
     compare: False
+  HPS_DeepTau_Z:
+    sig_ntuples_dir: /local/snandan/DeepTau_Ztautau/DeepTau/Z_Ztautau/
+    bkg_ntuples_dir: /local/snandan/DeepTau_fl2/DeepTau/QCD
+    compare: False
   HPS_DeepTau:
     sig_ntuples_dir: /local/snandan/DeepTau_fl2/DeepTau/ZH_Htautau
     bkg_ntuples_dir: /local/snandan/DeepTau_fl2/DeepTau/QCD
-    compare: True
+    compare: False
   ParticleTransformer:
     sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/ZH_Htautau
     bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/QCD
@@ -19,6 +24,10 @@ algorithms:
     sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May29/HPS/ZH_Htautau
     bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May29/HPS/QCD
     compare: False
+  HPS_Z:
+    sig_ntuples_dir: /local/snandan/DeepTau_Ztautau/HPS/Z_Ztautau/
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023May29/HPS/QCD
+    compare: True
   HPS_with_quality_cuts:
     sig_ntuples_dir: /scratch/persistent/laurits/230608_HPS_wCuts/HPS/ZH_Htautau
     bkg_ntuples_dir: /scratch/persistent/laurits/230608_HPS_wCuts/HPS/QCD
@@ -94,6 +103,8 @@ metrics:
 markers:
   HPS: "o"
   HPS_DeepTau: "^"
+  HPS_DeepTau_Z: "+"
+  HPS_Z: "+"
   LorentzNet: "s"
   ParticleTransformer: "v"
   FastCMSTau: "P"
@@ -102,6 +113,8 @@ markers:
 colors:
   HPS: "tab:blue"
   HPS_DeepTau: "tab:orange"
+  HPS_DeepTau_Z: "tab:pink"
+  HPS_Z: "tab:pink"
   LorentzNet: "tab:green"
   ParticleTransformer: "tab:purple"
   FastCMSTau: "tab:red"

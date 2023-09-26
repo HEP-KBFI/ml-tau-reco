@@ -278,13 +278,15 @@ def plot_all_metrics(cfg):
         bkg_input_dir = os.path.expandvars(cfg.algorithms[algorithm].bkg_ntuples_dir)
         print(f"Loading files for {algorithm}")
         sig_paths = [
-            os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "ZH_Htautau" in path
+            os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if cfg.sig_sample in path
         ]
         bkg_paths = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.test.paths if "QCD" in path
         ]
         sig_paths_train = [
-            os.path.join(sig_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "ZH_Htautau" in path
+            os.path.join(sig_input_dir, os.path.basename(path))
+            for path in cfg.datasets.train.paths
+            if cfg.sig_sample in path
         ]
         bkg_paths_train = [
             os.path.join(bkg_input_dir, os.path.basename(path)) for path in cfg.datasets.train.paths if "QCD" in path
