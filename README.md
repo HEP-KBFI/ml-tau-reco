@@ -86,3 +86,10 @@ After updating in ```config/metrics``` the paths where the tauBuilder for a spec
 ```bash
 ./scripts/run-env.sh python3 src/calculate_metrics.py
 ```
+
+# Refferences and additional documentation
+
+The code in this repo was used in the context of the paper "Identification of hadronic tau decays with neural-network architectures developed for jet-flavour tagging" containing more on the idividual algorithms implemented in this repo. The paper can be found in as a preprin [here](https://arxiv.org/abs/2307.07747).
+
+Our implementaton of tau lepton impact parameters using the Key4HEP format is documented in [impactparameters/impact.pdf](impactparameters/impact.pdf)
+
