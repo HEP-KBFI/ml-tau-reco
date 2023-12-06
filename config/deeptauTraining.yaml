@@ -1,0 +1,11 @@
+DeepTau_training:
+  n_training_files: -1
+  epochs: 200
+  batch_size: 500
+  lr: 0.0001
+  outpath: /local/snandan/CLIC
+  grid_config: config/grid_builder.json
+defaults:
+  - datasets: datasets
+  - metrics
+  - _self_

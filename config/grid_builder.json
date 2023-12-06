@@ -25,6 +25,8 @@
                      "tau_dPhi_strip",
                      "tau_dR_signal",
                      "tau_dR_iso",
+                     "tau_nCharged",
+                     "tau_leadChargedCand_pt",
                      "inner_ele_multiplicity",
                      "inner_mu_multiplicity",
                      "inner_ch_multiplicity",

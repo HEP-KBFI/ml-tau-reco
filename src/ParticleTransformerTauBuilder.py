@@ -19,10 +19,15 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         super(BasicTauBuilder, self).__init__()
 
         filepath = "/home/veelken/ml-tau-reco/data/"
-        self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wReweighting_2023Mar25_woLifetime.pt")
+        # self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wLifetime_2023May30.pt")
+        self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wLifetime_2023Jun22.pt")
+        print(" filename_model = %s" % self.filename_model)
         self.filename_transform = os.path.join(
-            filepath, "ParticleTransformer_FeatureStandardization_wReweighting_2023Mar25_woLifetime.json"
+            # filepath, "ParticleTransformer_FeatureStandardization_wLifetime_2023May30.json"
+            filepath,
+            "ParticleTransformer_FeatureStandardization_wLifetime_2023Jun22.json",
         )
+        print(" filename_transform = %s" % self.filename_transform)
 
         if os.path.isfile(cfgFileName):
             cfgFile = open(cfgFileName, "r")
@@ -67,7 +72,12 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
 
         self.transform = None
         if standardize_inputs:
-            self.transform = FeatureStandardization(features=["x", "v"], dim=1, verbosity=self.verbosity)
+            self.transform = FeatureStandardization(
+                method=self._builderConfig["method_FeatureStandardization"],
+                features=["x", "v"],
+                feature_dim=1,
+                verbosity=self.verbosity,
+            )
             self.transform.load_params(self.filename_transform)
 
         self.model = ParticleTransformer(
@@ -124,7 +134,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             jet_constituent_dzs = data_cand_dzs[idx]
             jet_constituent_dzerrs = data_cand_dzerrs[idx]
 
-            x_tensor, v_tensor, node_mask_tensor = buildParticleTransformerTensors(
+            x_tensor, _, v_tensor, _, node_mask_tensor = buildParticleTransformerTensors(
                 jet_p4,
                 jet_constituent_p4s,
                 jet_constituent_pdgIds,

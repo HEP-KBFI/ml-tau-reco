@@ -11,24 +11,20 @@ samples_to_process:
   - ZH_Htautau
   - QCD
   # - QCD_new
-  # - ZH_Htautau_normal2
   # - ZH_Htautau_nosmear
 samples:
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /scratch/persistent/laurits/CLIC_data_20230504/ZH_Htautau
-  ZH_Htautau_normal2:
-    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /home/laurits/tauLifeTime_Matching
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230525/ZH_Htautau
+  QCD:
+    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230525/QCD
   ZH_Htautau_nosmear:
     input_dir: /local/joosep/clic_edm4hep_2023_04_21_noVtxSmear/p8_ee_ZH_Htautau_ecm380/
     output_dir: /home/laurits/230504_tauLifeTime_ZH_Htautau_noSmear
   QCD_new:
-    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
-    output_dir: /home/laurits/tauLifeTime_Matching_QCD_noSmear
-  QCD:
-    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
-    output_dir: /scratch/persistent/laurits/CLIC_data_20230504/QCD
+    input_dir: /local/joosep/clic_edm4hep_2023_04_21_noVtxSmear/p8_ee_qq_ecm380/
+    output_dir: /scratch/persistent/laurits/tauLifeTime_Matching_QCD_noSmear
   TT:
     input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_tt_ecm365
     output_dir: /scratch/persistent/laurits/CLIC_data_20230316/TT

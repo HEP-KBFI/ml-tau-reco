@@ -285,7 +285,12 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
 
     transform = None
     if standardize_inputs:
-        transform = FeatureStandardization(features=["x", "v"], dim=1, verbosity=train_cfg.verbosity)
+        transform = FeatureStandardization(
+            method=ParticleTransformer_cfg["method_FeatureStandardization"],
+            features=["x", "v"],
+            feature_dim=1,
+            verbosity=train_cfg.verbosity,
+        )
         transform.compute_params(dataloader_train)
         transform.save_params(ParticleTransformer_cfg["json_file_FeatureStandardization"])
 
@@ -297,8 +302,10 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
     loss_fn = None
     if train_cfg.use_focal_loss:
+        print("Using FocalLoss.")
         loss_fn = FocalLoss(gamma=train_cfg.focal_loss_gamma, alpha=classweight_tensor, reduction="none")
     else:
+        print("Using CrossEntropyLoss.")
         loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
 
     base_optimizer = None

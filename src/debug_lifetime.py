@@ -314,7 +314,7 @@ def distribution_in_tau_direction(gen_jet_tau_p4s, data, suitable_cands_mask, ou
 def study_lifetime_resolution(cfg: DictConfig) -> None:
     for sample in cfg.samples.keys():
         data = g.load_all_data(cfg.samples[sample].input_dir, n_files=cfg.n_files)
-        output_dir = os.path.join(cfg.samples[sample].input_dir, "plots")
+        output_dir = os.path.join("/home/laurits/some_plots")
         os.makedirs(output_dir, exist_ok=True)
         process_data(data, output_dir)
 
