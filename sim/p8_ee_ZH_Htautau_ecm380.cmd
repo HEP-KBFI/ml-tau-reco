@@ -12,15 +12,16 @@ Next:numberShowEvent = 0           ! print event record n times
 
 Beams:idA = 11                     ! first beam, e+ = 11
 Beams:idB = -11                    ! second beam, e- = -11
+
 Beams:eCM = 380                    ! CM energy of collision
 
 PartonLevel:ISR = on
 PartonLevel:FSR = on
 
-! 3) Hard process : ZH at 380 GeV
+! Hard process : ZH at 380 GeV
 HiggsSM:ffbar2HZ = on
 
-! 5) Non-standard settings; exemplifies tuning possibilities.
+! Higgs to tau decays
 25:m0        = 125.0               ! Higgs mass
 25:onMode    = off
 25:onIfAny   = 15

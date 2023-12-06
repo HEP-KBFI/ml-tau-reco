@@ -7,6 +7,7 @@ outpath = "/local/joosep/clic_edm4hep/"
 samples = [
     ("p8_ee_qq_ecm380",         100001, 120011),
     ("p8_ee_ZH_Htautau_ecm380", 200001, 210011),
+    ("p8_ee_Z_Ztautau_ecm380", 400001, 410011),
 ]
 
 if __name__ == "__main__":
