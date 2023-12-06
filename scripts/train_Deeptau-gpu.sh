@@ -2,10 +2,11 @@
 #SBATCH -p gpu
 #SBATCH --gres gpu:rtx:1
 #SBATCH --mem-per-gpu=10G
-#SBATCH -o slurm-%x-%j-%N_wconv.out
+#SBATCH -o slurm-conv_fl2.out
 
 IMG=/home/software/singularity/pytorch.simg
-cd ~/mltaureco_paper/ml-tau-reco
+cd $1
+echo $(pwd)
 
 #pytorch training
 #input data files should be in /scratch-persistent or /home, NOT in /local (too slow)

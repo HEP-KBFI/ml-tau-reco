@@ -9,14 +9,16 @@ from textwrap import dedent
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", dest="inputpath", help="inputpath")
 parser.add_argument("-o", dest="outputdir", help="outputdir")
-parser.add_argument("-a", dest="algo", help="algo", choices=["DeepTau", "HPS", "Grid"])
+parser.add_argument("-a", dest="algo", help="algo", choices=["DeepTau", "HPS", "Grid", "ParticleTransformer"])
 parser.add_argument("-n", type=int, dest="nfiles", help="number of files to be processed in each job")
+parser.add_argument("-t", dest="test_only", help="want to run only on test file", action="store_true", default=False)
 
 options = parser.parse_args()
 inputpath = options.inputpath
 outputdir = options.outputdir
 algo = options.algo
 nfiles = options.nfiles
+test_only = options.test_only
 sample = inputpath.split("/")[-2]
 outputdir = os.path.join(outputdir, algo, sample)
 os.makedirs(outputdir, exist_ok=True)
@@ -63,7 +65,7 @@ for idx, f in enumerate(range(0, len(files) + 1, nfiles)):
     python3 {pwd}/src/runBuilder.py builder={algo}\
     samples_to_process=['{sample}'] n_files={nfiles}\
     start={f} output_dir=dir_$SLURM_JOBID verbosity=1\
-    samples.{sample}.output_dir={inputpath} use_multiprocessing=False"
+    samples.{sample}.output_dir={inputpath} use_multiprocessing=False test_only={test_only}"
     cmd += f" && mv dir_$SLURM_JOBID/{algo}/{sample}/* {outputdir}"
     jobfile = create_batchfile(cmd, idx)
     os.system(f"sbatch {jobfile}")

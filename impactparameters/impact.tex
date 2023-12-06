@@ -1,0 +1,240 @@
+\documentclass[a4paper,english,11pt]{article}
+\usepackage[bindingoffset=0.5cm,left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm,footskip=1.0cm]{geometry}
+
+% Prevent breaking of footnotes to pages that are different from the page where the footnote symbol appears
+\interfootnotelinepenalty=10000
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xspace}
+%\usepackage{heppennames}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{subcaption}
+\usepackage{relsize}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{lineno}
+\usepackage[english]{babel}
+\usepackage[bb=dsserif]{mathalpha}
+\usepackage{bbding}
+%\usepackage{hepparticles}
+
+\usepackage{authblk}
+\bibliographystyle{elsarticle-num}
+
+
+\newcommand{\Pagne}{\ensuremath{\bar{\nu}_{\textrm{e}}}\xspace}
+\newcommand{\Pagngm}{\ensuremath{\bar{\nu}_{\mu}}\xspace}
+\newcommand{\Pagngt}{\ensuremath{\bar{\nu}_{\tau}}\xspace}
+\newcommand{\Paq}{\ensuremath{\bar{\textrm{q}}}\xspace}
+\newcommand{\Paqb}{\ensuremath{\bar{\textrm{b}}}\xspace}
+\newcommand{\Paqc}{\ensuremath{\bar{\textrm{c}}}\xspace}
+\newcommand{\PcB}{\ensuremath{\textrm{B}_{\textrm{c}}^{+}}\xspace}
+\newcommand{\Pe}{\ensuremath{\textrm{e}}\xspace}
+\newcommand{\Pem}{\ensuremath{\textrm{e}^{-}}\xspace}
+\newcommand{\Pep}{\ensuremath{\textrm{e}^{+}}\xspace}
+\newcommand{\Pgg}{\ensuremath{\gamma}\xspace}
+\newcommand{\Pggx}{\ensuremath{\gamma^{\textasteriskcentered}}\xspace}
+\newcommand{\Pgm}{\ensuremath{\mu}\xspace}
+\newcommand{\Pgn}{\ensuremath{\nu}\xspace}
+\newcommand{\Pgne}{\ensuremath{\nu_{\textrm{e}}}\xspace}
+\newcommand{\Pgngm}{\ensuremath{\nu_{\mu}}\xspace}
+\newcommand{\Pgngt}{\ensuremath{\nu_{\tau}}\xspace}
+\newcommand{\Pgpm}{\ensuremath{\pi^{-}}\xspace}
+\newcommand{\Pgpp}{\ensuremath{\pi^{+}}\xspace}
+\newcommand{\Pgppm}{\ensuremath{\pi^{\pm}}\xspace}
+\newcommand{\Pgpz}{\ensuremath{\pi^{\textrm{0}}}\xspace}
+\newcommand{\Pgt}{\ensuremath{\tau}\xspace}
+\newcommand{\Pgtm}{\ensuremath{\tau^{-}}\xspace}
+\newcommand{\Pgtp}{\ensuremath{\tau^{+}}\xspace}
+\newcommand{\Pgtpm}{\ensuremath{\tau^{\pm}}\xspace}
+\newcommand{\PH}{\ensuremath{\textrm{H}}\xspace}
+\newcommand{\PHm}{\ensuremath{\textrm{H}^{-}}\xspace}
+\newcommand{\PHp}{\ensuremath{\textrm{H}^{+}}\xspace}
+\newcommand{\PHpm}{\ensuremath{\textrm{H}^{\pm}}\xspace}
+\newcommand{\PK}{\ensuremath{\textrm{K}}\xspace}
+\newcommand{\PKm}{\ensuremath{\textrm{K}^{-}}\xspace}
+\newcommand{\PKp}{\ensuremath{\textrm{K}^{+}}\xspace}
+\newcommand{\PKpm}{\ensuremath{\textrm{K}^{\pm}}\xspace}
+\newcommand{\PKz}{\ensuremath{\textrm{K}^{\textrm{0}}}\xspace}
+\newcommand{\PKzL}{\ensuremath{\textrm{K}_{\textrm{L}}^{\textrm{0}}}\xspace}
+\newcommand{\PKzS}{\ensuremath{\textrm{K}_{\textrm{S}}^{\textrm{0}}}\xspace}
+\newcommand{\Pl}{\ensuremath{\ell}\xspace}
+\newcommand{\Pp}{\ensuremath{\textrm{p}}\xspace}
+\newcommand{\Pq}{\ensuremath{\textrm{q}}\xspace}
+\newcommand{\Pqb}{\ensuremath{\textrm{b}}\xspace}
+\newcommand{\Pqc}{\ensuremath{\textrm{c}}\xspace}
+\newcommand{\PW}{\ensuremath{\textrm{W}}\xspace}
+\newcommand{\PWm}{\ensuremath{\textrm{W}^{-}}\xspace}
+\newcommand{\PWp}{\ensuremath{\textrm{W}^{+}}\xspace}
+\newcommand{\PWpm}{\ensuremath{\textrm{W}^{\pm}}\xspace}
+\newcommand{\PZ}{\ensuremath{\textrm{Z}}\xspace}
+
+%
+% please place your own definitions here and don't use \def but
+% \newcommand{}{}
+%
+\newcommand{\tauh}{\ensuremath{\Pgt_{\textrm{h}}}\xspace}
+\newcommand{\h}{\ensuremath{\textrm{h}}\xspace}
+\newcommand{\hpm}{\ensuremath{\textrm{h}^{\pm}}\xspace}
+\newcommand{\hplus}{\ensuremath{\textrm{h}^{+}}\xspace}
+\newcommand{\hminus}{\ensuremath{\textrm{h}^{-}}\xspace}
+\newcommand{\hzero}{\ensuremath{\textrm{h}^{\textrm{0}}}\xspace}
+\newcommand{\aone}{\ensuremath{\textrm{a}_{\textrm{1}}}\xspace}
+\newcommand{\pT}{\ensuremath{p_{\textrm{T}}}\xspace}
+\newcommand{\pTi}{\ensuremath{p_{\textrm{T},i}}\xspace}
+\newcommand{\pTj}{\ensuremath{p_{\textrm{T},j}}\xspace}
+\newcommand{\kt}{\ensuremath{k_{\textrm{t}}}\xspace}
+\newcommand{\ptmiss}{\ensuremath{p_{\textrm{T}}^\textrm{miss}}\xspace}
+\newcommand{\MeV}{\ensuremath{\textrm{MeV}}\xspace}
+\newcommand{\GeV}{\ensuremath{\textrm{GeV}}\xspace}
+\newcommand{\TeV}{\ensuremath{\textrm{TeV}}\xspace}
+\newcommand{\sig}{\ensuremath{\textrm{sig}}\xspace}
+\newcommand{\bgr}{\ensuremath{\textrm{bgr}}\xspace}
+\newcommand{\gen}{\ensuremath{\textrm{gen}}\xspace}
+\newcommand{\rec}{\ensuremath{\textrm{rec}}\xspace}
+\newcommand{\jet}{\ensuremath{\textrm{jet}}\xspace}
+\newcommand{\PCA}{\ensuremath{\textrm{PCA}}\xspace}
+\newcommand{\PV}{\ensuremath{\textrm{PV}}\xspace}
+\newcommand{\trk}{\ensuremath{\textrm{trk}}\xspace}
+\newcommand{\refpt}{\ensuremath{\textrm{ref}}\xspace}
+\newcommand{\jetR}{\ensuremath{\langle r \rangle}\xspace}
+\newcommand{\jetM}{\ensuremath{M_{\jet}}\xspace}
+\newcommand{\Dtau}{\ensuremath{\mathcal{D}_{\Pgt}}\xspace}
+\newcommand{\R}{\ensuremath{\rm I\!R}\xspace}
+\newcommand{\degr}{\ensuremath{^{\circ}}\xspace}
+\newcommand{\iso}{\ensuremath{\textrm{iso}}\xspace}
+\newcommand{\misid}{\ensuremath{\textrm{misid}}\xspace}
+\newcommand{\gentauh}{\ensuremath{\textrm{\gen-\tauh}}\xspace}
+\newcommand{\genjet}{\ensuremath{\textrm{\gen-jet}}\xspace}
+\newcommand{\conjunction}{\ensuremath{\,\, \& \,\,}\xspace}
+\newcommand{\cf}{cf.\xspace}
+\newcommand{\efficiency}{\ensuremath{\varepsilon_{\Pgt}}\xspace}
+\newcommand{\fakerate}{\ensuremath{P_{\textrm{misid}}}\xspace}
+\newcommand{\X}{\ensuremath{\textrm{X}}\xspace}
+\newcommand{\genX}{\ensuremath{\textrm{\gen-X}}\xspace}
+\newcommand{\dxy}{\ensuremath{d_{\textrm{xy}}}\xspace}
+\newcommand{\sigmaxy}{\ensuremath{\sigma_{d{\textrm{xy}}}}\xspace}
+\newcommand{\dz}{\ensuremath{d_{\textrm{z}}}\xspace}
+\newcommand{\sigmaz}{\ensuremath{\sigma_{d{\textrm{z}}}}\xspace}
+\newcommand{\indicator}{\ensuremath{\mathcal{O}}\xspace}
+\newcommand{\ch}{\ensuremath{\textrm{ch}}\xspace}
+\newcommand{\nh}{\ensuremath{\textrm{nh}}\xspace}
+\newcommand{\ig}{\ensuremath{\textrm{i}}\xspace}
+\newcommand{\og}{\ensuremath{\textrm{o}}\xspace}
+\DeclareMathOperator{\sign}{sgn}
+
+
+
+\begin{document}
+	\title{Reconstruction of transverse and longitudinal impact parameters with Key4HEP}
+	\author[1]{Torben Lange}
+	\affil[1]{National Institute of Chemical Physics and Biophysics (NICPB), R\"{a}vala pst 10, 10143 Tallinn, Estonia, torben.lange@cern.ch}
+	\maketitle
+	\begin{abstract}
+		This short letter contains additional information for the $\tauh$ reconstruction algorithms found in \cite{christian_veelken_2023_8113344} and used in \cite{Lange:2023gbe}.
+		Previous work on $\tauh$ identification has shown that the finite but non-zero lifetime of the $\Pgt$ lepton provides a handle to improve the discrimination of hadronic $\Pgt$ decays from quark and gluon jets. How these are computed in the context of the afformentioned software package and publication using the Key4HEP~\cite{Ganis:2021vgv} format is documented in the following.
+	\end{abstract}
+
+	The finite distance that a $\Pgt$ lepton travels between its production and decay ($c\tau = 87$~$\mu$m) causes the tracks of the $\hpm$ produced in the $\Pgt$ decay to be displaced from the primary event vertex (PV).
+	The transverse ($\dxy$) and longitudinal ($\dz$) impact parameters quantify this displacement in the directions perpendicular and parallel to the beam axis.
+	The $\dxy$ and $\dz$ are determined by the point of closest approach (PCA) between the track and the PV:
+	\begin{eqnarray}
+		\dxy & = & \sign\left(\left( \vec{r}_{\PCA} - \vec{r}_{\PV} \right) \cdot \vec{p}_{\jet}\right) \, \sqrt{ (x_{\PCA} - x_{\PV})^{2} + (y_{\PCA} - y_{\PV})^{2}} \nonumber \\
+		\dz & = & \sign\left(\left( \vec{r}_{\PCA} - \vec{r}_{\PV} \right) \cdot \vec{p}_{\jet}\right) \, \vert z_{\PCA} - z_{\PV}) \vert \, ,
+		\label{eq:ImpactParameters}
+	\end{eqnarray}
+	where $\sign$ refers to the signum function.
+	Concerning the sign of $\dxy$ and $\dz$, we follow the convention used in Ref.~\cite{CMS:2011hta} and use a positive sign in case the momentum vector of the jet that seeds the $\tauh$ reconstruction points towards the same hemisphere as the difference between the PV and the PCA, and a negative sign if it points towards the opposite hemisphere.
+	We denote the former by the symbol $\vec{p}_{\jet}$ and the latter by $\vec{r}_{\PCA} - \vec{r}_{\PV}$.
+	The difference between the PV and the PCA represents an estimate of the $\Pgt$ flight direction.
+
+	The $\dxy$ and $\dz$, and their respective uncertainties, $\sigmaxy$ and $\sigmaz$, are not part of the Key4HEP format used in Pandora and thus need to be computed for the work presented in this paper.
+	We compute $\dxy$ and $\dz$ using the set of standard track parameters ($\phi_{0},\,\lambda,\,d_{0},\,z_{0},\,\Omega$) used in Key4HEP.
+	The parameters $d_{0}$ and $z_{0}$ denote the distances between the track and the reference point in the $x$-$y$ plane and in $z$-direction, respectively; $\phi_{0}$ denotes the angle between the tangent to the track and the $x$-direction;
+	$\lambda= \cot\theta$ denotes the slope of the track in the $r$-$z$ plane; and $\Omega$ the inverse of the track's radius of curvature. Details on the definition of these parameters can be found in Ref.~\cite{Kramer:2006zz}. The trajectory of charged particles propagating through the solenoidal magnetic field within the detector has the form of a helix. Computing the PCA of the helix with respect to the PV is a non-trivial task, because the relevant equations are non-linear.
+	We simplify this task by taking advantage of the fact that the distances that $\Pgt$ leptons travel between their production and decay are typically small compared to the expected radius of curvature of the tracks produced in the $\Pgt$ decay, which allows us to use a linear approximation of the helix equations.
+
+	To obtain the expressions for the linear approximation, we start with the parametrisation of the helix given in Ref.~\cite{Kuhr:1998jk}:
+	\begin{equation}
+		\vec{r}_{\trk}(s) = \begin{pmatrix}
+			x_c + 1/\Omega \, \sin(\phi_0 + s \, \Omega) \\
+			y_c - 1/\Omega \, \cos(\phi_0 + s \, \Omega) \\
+			z_c + s \, \lambda
+		\end{pmatrix}
+		\, ,
+		\label{eq:helixtrk1}
+	\end{equation}
+	where $\vec{r}_{\trk}(s)$ denotes a point on the helix and $s$ the travel distance of the charged particle in the transverse plane.
+	To obtain a linear approximation of this equation we perform a Taylor expansion with respect to the travel distance $s$ at the point $s = 0$ and keep the constant term and the term linear in $s$. This yields:
+	\begin{equation}
+		\vec{r}_{\trk}(s) = \begin{pmatrix}
+			s \, \cos(\phi_0) + x_{c} + 1/\Omega \, \sin(\phi_0) \\
+			s \, \sin(\phi_0) + y_{c} - 1/\Omega \, \cos(\phi_0) \\
+			z_c + s \, \lambda
+		\end{pmatrix}
+		\, .
+		\label{eq:lineartrk}
+	\end{equation}
+The parametrisations in Eqs.~(\ref{eq:helixtrk1}) and~(\ref{eq:lineartrk}) use the centre, $\vec{r}_{c} = (x_{c},\,y_{c},\,z_{c})$, of the helix trajectory in the $x$-$y$ plane as the reference point.
+The track parameters ($\phi_{0},\,\lambda,\,d_{0},\,z_{0},\,\Omega$) are available for different reference points $\vec{r}_{\refpt} = (x_{\refpt},\,y_{\refpt},\,z_{\refpt})$ in Key4HEP. Among the available $\vec{r}_{\refpt}$, we choose the one that we expect to be closest to the PV: the reference point coinciding with the nominal interaction point at the centre of the detector, $\vec{r}_{\refpt} = (0,\,0,\,0)$.
+We follow the convention of Ref.~\cite{Kramer:2006zz} and change the parametrisation such that it refers to a general reference point $\vec{r}_{\refpt} = (x_{\refpt},\,y_{\refpt},\,z_{\refpt})$. By definition of the track parameters $\phi_{0}$, $d_{0}$, and $z_{0}$ the position of the point on the helix at the travel distance $s=0$ is given by:
+\begin{equation}
+\vec{r}_{\trk}(s=0) = \begin{pmatrix}
+	x_{\refpt} + \cos(\frac{\pi}{2} - \phi_0) \, d_0 \\
+	y_{\refpt} - \sin(\frac{\pi}{2} - \phi_0) \, d_0 \\
+	z_{\refpt} + z_0
+\end{pmatrix}
+\label{eq:trkats0}
+\end{equation}
+By comparing Eqs.~(\ref{eq:lineartrk}) and ~(\ref{eq:trkats0}), we find that the linear parametrisation with respect to the reference point $\vec{r}_{\refpt}$ is given by the expression:
+\begin{equation}
+\vec{r}_{\trk}(s) = \begin{pmatrix}
+	s \, \cos(\phi_0) + x_{\refpt} + \cos(\frac{\pi}{2} - \phi_0) \, d_0 \\
+	s \, \sin(\phi_0) + y_{\refpt} - \sin(\frac{\pi}{2} - \phi_0) \, d_0 \\
+	s \, \lambda + z_{\refpt} + z_0 \, .
+\end{pmatrix}
+\label{eq:lineartrk2}
+\end{equation}
+We rewrite Eq.~(\ref{eq:lineartrk2}) in the form:
+\begin{equation}
+\vec{r}_{\trk}(s) = \vec{r}_{a} + \left(\vec{r}_{b} - \vec{r}_{a}\right) \, s \, ,
+\label{eq:lineartrk3}
+\end{equation}
+with:
+\begin{equation}
+\vec{r}_{a} = \begin{pmatrix}
+	x_{\refpt} + \cos(\frac{\pi}{2} - \phi_0) \, d_0 \\
+	y_{\refpt} - \sin(\frac{\pi}{2} - \phi_0) \, d_0 \\
+	z_{\refpt} + z_0
+\end{pmatrix}
+\quad \textrm{and} \quad
+\vec{r}_{b} - \vec{r}_{a} = \begin{pmatrix}
+	\cos(\phi_0) \\
+	 \sin(\phi_0) \\
+	\lambda
+\end{pmatrix}
+\, .
+\end{equation}
+This is the equation of a straight line in three dimensions.
+
+Using this linear approximation, the PCA between the track and the PV is given by the following expression for the travel distance $s$~\cite{weissteinWolfram}:
+\begin{equation}
+s_{\PCA} = -\frac{\left(\vec{r}_a - \vec{r}_{\PV}\right) \cdot \left(\vec{r}_{b} - \vec{r}_{a}\right)}{\vert\vec{r}_{b} - \vec{r}_{a}\vert^{2}} \, .
+\label{eq:pca3d}
+\end{equation}
+The above expression holds in three dimensions.
+We restrict the computation of the PCA between the track and the PV to the $x$-$y$ plane. The corresponding expression for the travel distance $s$ in two dimensions is:
+\begin{equation}
+s_{\PCA} = -\frac{\left(x_{a} - x_{\PV}\right) \cdot \left(x_{b} - x_{a} \right) + \left(y_{a} - y_{\PV}\right) \cdot \left(y_{b} - y_{a}\right)}{\left(x_{b} - x_{a}\right)^{2} + \left(y_{b} - y_{a}\right)^{2}} \, .
+\label{eq:pca2d}
+\end{equation}
+Inserting Eq.~(\ref{eq:pca2d}) into Eq.~(\ref{eq:lineartrk3}), we obtain the location of the PCA: $\vec{r}_{\PCA}=\vec{r}_{\trk}(s_{\PCA})$, which allows us to compute the transverse and longitudinal impact parameters by means of Eq.~(\ref{eq:ImpactParameters}). The uncertainties $\sigmaxy$ and $\sigmaz$ are computed by standard error propagation~\cite{Cowan:1998ji}, assuming the uncertainties on the five track parameters ($\phi_{0},\,\lambda,\,d_{0},\,z_{0},\,\Omega$) to be uncorrelated.
+\section*{Acknowledgements}
+The work presented here was performed in the context of the paper in \cite{Lange:2023gbe} and profited from fruitfull discussions with all of its authors who also contributed to the review and editing of this text. Therefore I would like to thank Saswati Nandan, Joosep Pataa, Laurits Tani and Christian Veelken for their contributions.
+\clearpage
+\bibliography{impact}
+\end{document}
