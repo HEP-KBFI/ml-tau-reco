@@ -40,6 +40,11 @@ git push origin my_new_feature_branch
 ```
 Then open a PR on github for your new branch. Basic tests should pass and your code should run in the tests to ensure it's usable by others.
 
+# Submitting training jobs
+```
+sbatch scripts/trainSimpleDnn.sh
+```
+
 # Jupyter notebook
 
 Launch the notebook server on manivald once
@@ -87,8 +92,8 @@ After updating in ```config/metrics``` the paths where the tauBuilder for a spec
 ./scripts/run-env.sh python3 src/calculate_metrics.py
 ```
 
-# Refferences and additional documentation
+# References and additional documentation
 
-The code in this repo was used in the context of the paper "Identification of hadronic tau decays with neural-network architectures developed for jet-flavour tagging" containing more on the idividual algorithms implemented in this repo. The paper can be found in as a preprint [here](https://arxiv.org/abs/2307.07747).
+The code in this repo was used in the context of the paper "Tau lepton identification and reconstruction: a new frontier for jet-tagging ML algorithms" containing more on the individual algorithms implemented in this repo. The paper can be found as a preprint [here](https://arxiv.org/abs/2307.07747).
 
-Our implementaton of tau lepton impact parameters using the Key4HEP format is documented in [impactparameters/impact.pdf](impactparameters/impact.pdf)
+Our implementation of tau lepton impact parameters using the Key4HEP format is documented in [impactparameters/impact.pdf](impactparameters/impact.pdf)
