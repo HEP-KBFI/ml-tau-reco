@@ -104,8 +104,11 @@ class TauEndToEndSimple(nn.Module):
 
         self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(self.num_jet_features + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
+        # lisada uue ffn definitsiooni DM kohta
+
 
     # forward function for training with pytorch geometric
+    # siia lisada decay modes
     def forward_sparse(self, inputs):
         jet_features, jet_pf_features, jet_pf_features_batch = inputs
 
@@ -131,8 +134,9 @@ class TauEndToEndSimple(nn.Module):
         # run a per-jet NN for visible energy prediction
         jet_p4 = jet_features[:, :4]
         pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
+        print(jet_p4)
 
-        return pred_istau, pred_p4
+        return pred_istau, pred_p4 # kutsun pred_DM välja, mis annab 16 väljundit
 
     # custom forward function for HLS4ML export, assuming a single 3D input
     def forward_3d(self, inputs):
