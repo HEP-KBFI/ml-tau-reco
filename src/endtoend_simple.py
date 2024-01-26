@@ -68,7 +68,8 @@ class EarlyStopper:
         elif validation_loss > (self.min_validation_loss + self.min_delta):
             self.counter += 1
             if self.patience >= 0 and self.counter >= self.patience:
-                print(f"val_los has not decreased in {self.patience} epochs, stopping")
+                #print(f"val_los has not decreased in {self.patience} epochs, stopping")
+                print("val_loss has not decreased in {} epochs, stopping".format(self.patience))
                 return True
         return False
 

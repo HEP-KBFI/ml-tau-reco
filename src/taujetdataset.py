@@ -91,7 +91,8 @@ class TauJetDataset(Dataset):
     @property
     def processed_file_names(self):
         proc_list = glob(osp.join(self.processed_dir, "*.pt"))
-        return sorted(proc_list)
+        return sorted(proc_list)[:4] # [:mitu faili laeb] vähendan laetud failide arvu
+        #return sorted(proc_list) 
 
     @property
     def processed_dir(self):
@@ -170,7 +171,7 @@ class TauJetDataset(Dataset):
         pf_to_jet = torch.tensor(np.repeat(np.arange(len(jet_features)), pf_per_jet))
         return pf_features.to(dtype=torch.float32), pf_to_jet.to(dtype=torch.long)
 
-    def process_file_data(self, data):
+    def process_file_data(self, data): # see on põhi funkt
         # collect all jet features
         jet_features = self.get_jet_features(data)
 
@@ -233,7 +234,7 @@ class TauJetDataset(Dataset):
         # for p in pars:
         #     process_func(p)
 
-    def get(self, idx):
+    def get(self, idx): # siit ta võtab failid
         fn = "data_{}.pt".format(idx)
         p = osp.join(self.processed_dir, fn)
         data = torch.load(p, map_location="cpu")
