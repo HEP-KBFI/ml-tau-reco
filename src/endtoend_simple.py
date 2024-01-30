@@ -76,20 +76,45 @@ class EarlyStopper:
 
 class TauEndToEndSimple(nn.Module):
     def __init__(self, sparse_mode=False):
+        """SIIN DEFINITSIOONID JA INITSIAALID"""
         super(TauEndToEndSimple, self).__init__()
 
         self.act = nn.ReLU
         self.act_obj = self.act()
-        self.dropout = 0.1
+        self.dropout = 0.1 # tõenäosus disablib ffn'is paar node During training, randomly zeroes some of the elements of the input tensor with probability p using samples from a Bernoulli distribution
         self.width = 512
         self.embedding_dim = 512
         self.sparse_mode = sparse_mode
 
         self.num_jet_features = 8
-        self.num_pf_features = 36
+        self.num_pf_features = 36 # pf_featurs ja pf_extras (taujetdataset.py)
+
+        self.num_dm_features = 16 # decay modes
+        
+        # lagunemiskanalid
+        self.dm_mapping = {
+                0: 'OneProng0PiZero',
+                1: 'OneProng1PiZero',
+                2: 'OneProng2PiZero',
+                3: 'OneProng3PiZero',
+                4: 'OneProngNPiZero',
+                5: 'TwoProng0PiZero',
+                6: 'TwoProng1PiZero',
+                7: 'TwoProng2PiZero',
+                8: 'TwoProng3PiZero',
+                9: 'TwoProngNPiZero',
+                10: 'ThreeProng0PiZero',
+                11: 'ThreeProng1PiZero',
+                12: 'ThreeProng2PiZero',
+                13: 'ThreeProng3PiZero',
+                14: 'ThreeProngNPiZero',
+                15: 'RareDecayMode',
+                16: 'LeptonicDecay'
+            }
+        
 
         self.nn_pf_initialembedding = ffn(self.num_pf_features, self.embedding_dim, self.width, self.act, self.dropout)
-
+        
         self.A_mean = torch.nn.Parameter(data=torch.Tensor(self.num_jet_features), requires_grad=False)
         self.A_std = torch.nn.Parameter(data=torch.Tensor(self.num_jet_features), requires_grad=False)
         self.B_mean = torch.nn.Parameter(data=torch.Tensor(self.num_pf_features), requires_grad=False)
@@ -104,39 +129,63 @@ class TauEndToEndSimple(nn.Module):
 
         self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(self.num_jet_features + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
-        # lisada uue ffn definitsiooni DM kohta
+        
+        # ffn definitsiooni DM kohta
+        self.nn_pred_dm = ffn(self.num_jet_features + 3 * self.embedding_dim, self.num_dm_features, self.width, self.act, self.dropout) 
 
 
-    # forward function for training with pytorch geometric
-    # siia lisada decay modes
+    # forward function for training with pytorch geometric    
     def forward_sparse(self, inputs):
-        jet_features, jet_pf_features, jet_pf_features_batch = inputs
+        """SIIN ARVUTUSED"""
+        #print('\n  -->',)
+        jet_features, jet_pf_features, jet_pf_features_batch = inputs # jettide osakeste featureid
+        
+        print('\n jet_pf_features -->',jet_pf_features.shape)
+        print('\n jet_features -->',jet_features.shape)
+        print('\n jet_pf_features_batch -->',jet_pf_features_batch.shape)
+        print('\n jet_pf_features_batch väärtused-->',jet_pf_features_batch)
 
+        # normeerime 0 ümber
         jet_features_normed = jet_features - self.A_mean
+        # skaleerimine vahemikku [-std, 0, std]
         jet_features_normed = jet_features_normed / self.A_std
         jet_pf_features_normed = jet_pf_features - self.B_mean
+
         jet_pf_features_normed = jet_pf_features_normed / self.B_std
-
+        print('\n jet_features_normed shape -->',jet_features_normed.shape)
+        
         pf_encoded = self.act_obj(self.nn_pf_initialembedding(jet_pf_features_normed))
+        print('\n pf_encoded -->',pf_encoded.shape)
 
+        # proovida agg1(act_obj())
         # # now collapse the PF information in each jet with a global attention layer
         jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
         jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
         jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
         # jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
+        print('\n jet_encoded1 -->',jet_encoded1)
+        print('\n jet_encoded2 -->',jet_encoded2)
+        print('\n jet_encoded3 -->',jet_encoded3)
 
         # get the list of per-jet features as a concat of
         jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+        print('\n jet_feats -->', jet_feats.shape)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = self.nn_pred_istau(jet_feats)
-
+        print('\n  pred_istau-->',pred_istau)
+        
         # run a per-jet NN for visible energy prediction
         jet_p4 = jet_features[:, :4]
+        print('\n  jet_p4-->',jet_p4)
         pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
-        print(jet_p4)
+        print('\n  pred_p4-->', pred_p4)
+        # #########
+        #pred_dm = self.nn_pred_dm(jet_feats)
+        
+        # #########
+        return pred_istau, pred_p4#, pred_dm
 
-        return pred_istau, pred_p4 # kutsun pred_DM välja, mis annab 16 väljundit
 
     # custom forward function for HLS4ML export, assuming a single 3D input
     def forward_3d(self, inputs):
@@ -417,7 +466,9 @@ def main(cfg):
     early_stopper = EarlyStopper(patience=50, min_delta=10)
 
     best_loss = np.inf
-    for iepoch in range(cfg.epochs):
+    
+    #for iepoch in range(cfg.epochs): # siin on epochide arv
+    for iepoch in range(2): # siin on epochide arv
         loss_cls_train, loss_p4_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )
