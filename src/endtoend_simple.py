@@ -490,7 +490,7 @@ def main(cfg):
     best_loss = np.inf
     
     #for iepoch in range(cfg.epochs): # siin on epochide arv
-    for iepoch in range(40): # lisa loss_dm_train
+    for iepoch in range(3): # lisa loss_dm_train
         loss_cls_train, loss_p4_train, loss_dm_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )
@@ -517,7 +517,7 @@ def main(cfg):
         tensorboard_writer.add_scalar("epoch/fpr_at_tpr0p6", fpr[np.searchsorted(tpr, 0.6)], iepoch)
 
         print(
-            "epoch={} cls={:.4f}/{:.4f} p4={:.4f}/{:.4f}".format(
+            "\nepoch={} \ncls={:.4f}/{:.4f} \np4={:.4f}/{:.4f} \ndm={:.4f}/{:.4f}".format( # siia ka lisada xd
                 # lisan
                 iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val, loss_cls_train, loss_dm_val
             )
