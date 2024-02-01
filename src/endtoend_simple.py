@@ -251,6 +251,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
     loss_dm_tot = 0.0
+    
     if is_train:
         model.train()
     else:
@@ -490,10 +491,11 @@ def main(cfg):
     best_loss = np.inf
     
     #for iepoch in range(cfg.epochs): # siin on epochide arv
-    for iepoch in range(3): # lisa loss_dm_train
+    for iepoch in range(4): # lisa loss_dm_train
         loss_cls_train, loss_p4_train, loss_dm_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )
+        
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_dm_loss", loss_dm_train, iepoch) # lisan selle
@@ -515,11 +517,10 @@ def main(cfg):
         # In the following retvals[1] is returned as always as NaN for some reason
         fpr, tpr, thresh = sklearn.metrics.roc_curve(retvals[0], np.nan_to_num(retvals[1]))
         tensorboard_writer.add_scalar("epoch/fpr_at_tpr0p6", fpr[np.searchsorted(tpr, 0.6)], iepoch)
-
+        print('\nLOSS DM TRAIN --> ',loss_dm_train,'<--')
         print(
-            "\nepoch={} \ncls={:.4f}/{:.4f} \np4={:.4f}/{:.4f} \ndm={:.4f}/{:.4f}".format( # siia ka lisada xd
-                # lisan
-                iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val, loss_cls_train, loss_dm_val
+            "\nepoch={} \ncls={:.8f}/{:.8f} \np4={:.8f}/{:.8f} \ndm={:.8f}/{:.8f}\n\n".format( # siia ka lisada xd
+                iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val, loss_dm_train, loss_dm_val # lisan
             )
         )
 
