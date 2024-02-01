@@ -278,12 +278,13 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
     def processJets(self, jets):
         ds = TauJetDataset()
         data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
-        pred_istau, pred_p4 = self.model((data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch))
+        pred_istau, pred_p4, pred_dm = self.model((data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch))
 
         pred_istau = torch.softmax(pred_istau, axis=-1)[:, 1]
         pred_istau = pred_istau.contiguous().detach().numpy()
         # to solve "ValueError: ndarray is not contiguous"
         pred_p4 = np.asfortranarray(pred_p4.detach().contiguous().numpy())
+        pred_dm_value = torch.argmax(pred_dm, axis=-1)
 
         njets = len(jets["reco_jet_p4s"]["x"])
         assert njets == len(pred_istau)
@@ -302,7 +303,6 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
 
         # dummy placeholders for now
         tauCharges = np.zeros(njets)
-        dmode = np.zeros(njets)
 
         # as a dummy placeholder, just return the first PFCand for each jet
         tau_cand_p4s = jets["reco_cand_p4s"][:, 0:1]
@@ -311,7 +311,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
             "tauSigCand_p4s": tau_cand_p4s,
             "tauClassifier": pred_istau,
             "tau_charge": tauCharges,
-            "tau_decaymode": dmode,
+            "tau_decaymode": pred_dm_value,
         }
 
 
