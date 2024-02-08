@@ -286,6 +286,11 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
 
         #compute the loss between the predicted decay mode values and the true values, for the cases where the jet was really from tau 
         loss_dm = torch.nn.functional.cross_entropy(pred_dm[true_istau_mask], true_dm_onehot)
+        
+        if torch.isnan(loss_dm):
+            print('\n pred_dm nan ',pred_dm[true_istau_mask])
+            print('\n true_dm onehot nan',true_dm_onehot)
+        
         print('\nLosses p4 ',loss_p4)#, loss_cls, loss_dm)
         print('\nLosses cls ',loss_cls)
         print('\nLosses dm ',loss_dm)
@@ -490,8 +495,8 @@ def main(cfg):
 
     best_loss = np.inf
     
-    #for iepoch in range(cfg.epochs): # siin on epochide arv
-    for iepoch in range(4): # lisa loss_dm_train
+    for iepoch in range(cfg.epochs): # siin on epochide arv
+    #for iepoch in range(4): # lisa loss_dm_train
         loss_cls_train, loss_p4_train, loss_dm_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )
@@ -517,7 +522,7 @@ def main(cfg):
         # In the following retvals[1] is returned as always as NaN for some reason
         fpr, tpr, thresh = sklearn.metrics.roc_curve(retvals[0], np.nan_to_num(retvals[1]))
         tensorboard_writer.add_scalar("epoch/fpr_at_tpr0p6", fpr[np.searchsorted(tpr, 0.6)], iepoch)
-        print('\nLOSS DM TRAIN --> ',loss_dm_train,'<--')
+        #print('\nLOSS DM TRAIN --> ',loss_dm_train,'<--')
         print(
             "\nepoch={} \ncls={:.8f}/{:.8f} \np4={:.8f}/{:.8f} \ndm={:.8f}/{:.8f}\n\n".format( # siia ka lisada xd
                 iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val, loss_dm_train, loss_dm_val # lisan

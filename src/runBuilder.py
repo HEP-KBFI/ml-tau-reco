@@ -47,6 +47,8 @@ def build_taus(cfg: DictConfig) -> None:
         builder = GridBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "FastCMSTau":
         builder = FastCMSTauBuilder()
+    # viimane treeningu state on data model.pt, iga kord kirjutab üle
+    # data model pt kirjutatakse üle pärast simplednn jooksutamist
     elif cfg.builder == "SimpleDNN":
         pytorch_model = torch.load("data/model.pt", map_location=torch.device("cpu"))
         assert pytorch_model.__class__ == TauEndToEndSimple
