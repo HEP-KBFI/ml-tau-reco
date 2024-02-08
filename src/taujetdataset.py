@@ -36,7 +36,7 @@ class TauJetDataset(Dataset):
         self._processed_dir = processed_dir
 
         self.filelist = filelist
-        random.shuffle(self.filelist)
+        random.shuffle(self.filelist) # siin laadimise järjestus shuffle
 
         # The order of features in the jet feature tensor
         self.reco_jet_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e"]
@@ -91,8 +91,8 @@ class TauJetDataset(Dataset):
     @property
     def processed_file_names(self):
         proc_list = glob(osp.join(self.processed_dir, "*.pt"))
-        return sorted(proc_list) # [:mitu faili laeb] vähendan laetud failide arvu
-        #return sorted(proc_list) 
+        #return sorted(proc_list)[:5] # [:mitu faili laeb] vähendan laetud failide arvu
+        return sorted(proc_list) 
 
     @property
     def processed_dir(self):

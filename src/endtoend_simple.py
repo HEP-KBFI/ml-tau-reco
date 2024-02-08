@@ -244,14 +244,14 @@ def weighted_bce_with_logits(pred_istau, true_istau, weights):
     loss_cls = focal_loss(pred_istau, true_istau.long())
     weighted_loss_cls = loss_cls * weights
     return weighted_loss_cls.mean()
-# dm def?
 
 def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboard_writer):
     global ISTEP_GLOBAL
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
     loss_dm_tot = 0.0
-    
+    dm_weights = torch.ones(16) # adding equal weights to dm
+
     if is_train:
         model.train()
     else:
@@ -270,7 +270,12 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         # siia pred_dm ja lossiga optimeerida
         pred_istau, pred_p4, pred_dm = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
         true_p4 = batch.gen_tau_p4
+        
+        # millistel jettidel dm polnud -1
+        # kui maskis on kõik flase / -1 siis tekib tühi vektor ->>
         true_istau_mask = batch.gen_tau_decaymode != -1 # ainult jetid kus olid tau, arvutame dm
+        print('Gen tau gecay mode --- >>>>',batch.gen_tau_decaymode)
+        print('Gen tau gecay mode MASK --- >>>>',true_istau_mask)
         true_istau = true_istau_mask.to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
         weights = batch.weight
@@ -285,8 +290,9 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         true_dm_onehot = torch.nn.functional.one_hot(true_dm_vals, model.num_decaymodes).to(torch.float32)
 
         #compute the loss between the predicted decay mode values and the true values, for the cases where the jet was really from tau 
-        loss_dm = torch.nn.functional.cross_entropy(pred_dm[true_istau_mask], true_dm_onehot)
+        loss_dm = torch.nn.functional.cross_entropy(pred_dm[true_istau_mask], true_dm_onehot,weight=dm_weights)
         
+
         if torch.isnan(loss_dm):
             print('\n pred_dm nan ',pred_dm[true_istau_mask])
             print('\n true_dm onehot nan',true_dm_onehot)
