@@ -108,8 +108,7 @@ class TauEndToEndSimple(nn.Module):
                 12: 'ThreeProng2PiZero',
                 13: 'ThreeProng3PiZero',
                 14: 'ThreeProngNPiZero',
-                15: 'RareDecayMode',
-                16: 'LeptonicDecay'
+                15: 'RareDecayMode'
             }
         
         # iga osakese jaoks korrelatsioonid
@@ -250,7 +249,28 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
     loss_dm_tot = 0.0
-    dm_weights = torch.ones(16) # adding equal weights to dm
+    
+    #dm_weights = torch.ones(16).to(device=dev) # adding equal weights to dm
+    
+    # lisada esinemise arvu pöördväärtusele kaalud nt 1/DM1
+    dm_weights = torch.Tensor([
+        0.0009242144177449168, # dm 0
+        0.00036023054755043225, # 1
+        0.0008169934640522876, # 2
+        0.006993006993006993, # 3
+        0.09090909090909091, # 4
+        0.023255813953488372, # dm 5
+        0.06666666666666667,
+        1.0,
+        0.0, # 8 dm tühi
+        0.0, # 9 dm tühi
+        0.0008960573476702509, # dm 10
+        0.0019342359767891683,
+        0.02,
+        0.0, # 13 dm tühi
+        0.002551020408163265, # 14 dm 
+        0.0 # 15 dm tühi
+        ]).to(device=dev)
 
     if is_train:
         model.train()
@@ -274,8 +294,8 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         # millistel jettidel dm polnud -1
         # kui maskis on kõik flase / -1 siis tekib tühi vektor ->>
         true_istau_mask = batch.gen_tau_decaymode != -1 # ainult jetid kus olid tau, arvutame dm
-        print('Gen tau gecay mode --- >>>>',batch.gen_tau_decaymode)
-        print('Gen tau gecay mode MASK --- >>>>',true_istau_mask)
+        print('\nGen tau gecay mode --- >>>>',batch.gen_tau_decaymode)
+        print('\nGen tau gecay mode MASK --- >>>>',true_istau_mask)
         true_istau = true_istau_mask.to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
         weights = batch.weight
@@ -290,15 +310,24 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         true_dm_onehot = torch.nn.functional.one_hot(true_dm_vals, model.num_decaymodes).to(torch.float32)
 
         #compute the loss between the predicted decay mode values and the true values, for the cases where the jet was really from tau 
-        loss_dm = torch.nn.functional.cross_entropy(pred_dm[true_istau_mask], true_dm_onehot,weight=dm_weights)
+        if torch.sum(true_istau_mask)==0:
+            loss_dm = torch.Tensor([0]) # kui esineb nan siis los on 0
+            print('\nTühi vektor')
+        else:
+            #print('\npred_dm true tau mask',pred_dm[true_istau_mask].shape)
+            #print('\ndm_weights',dm_weights.shape)
+            #print('\ntrue_dm_onehot',true_dm_onehot.shape)
+
+            loss_dm = torch.nn.functional.cross_entropy(pred_dm[true_istau_mask], true_dm_onehot, weight=dm_weights)
         
 
         if torch.isnan(loss_dm):
+            print('\nNNANANANANANAN')
             print('\n pred_dm nan ',pred_dm[true_istau_mask])
             print('\n true_dm onehot nan',true_dm_onehot)
         
-        print('\nLosses p4 ',loss_p4)#, loss_cls, loss_dm)
-        print('\nLosses cls ',loss_cls)
+        #print('\nLosses p4 ',loss_p4)#, loss_cls, loss_dm)
+        #print('\nLosses cls ',loss_cls)
         print('\nLosses dm ',loss_dm)
         #sum all loss components from binary classification, momentum regression and decay mode prediction
         loss = loss_cls + loss_p4 + loss_dm
@@ -316,7 +345,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         
         loss_cls_tot += loss_cls.detach().cpu().item()
         loss_p4_tot += loss_p4.detach().cpu().item()
-        loss_dm_tot += loss_dm.detach().cpu().item() # dm loss
+        loss_dm_tot += loss_dm.detach().cpu().item() # dm total loss
         
         nsteps += 1
         njets += batch.jet_features.shape[0]
@@ -502,7 +531,7 @@ def main(cfg):
     best_loss = np.inf
     
     for iepoch in range(cfg.epochs): # siin on epochide arv
-    #for iepoch in range(4): # lisa loss_dm_train
+    #for iepoch in range(6): # lisa loss_dm_train
         loss_cls_train, loss_p4_train, loss_dm_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )

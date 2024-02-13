@@ -91,8 +91,7 @@ class TauJetDataset(Dataset):
     @property
     def processed_file_names(self):
         proc_list = glob(osp.join(self.processed_dir, "*.pt"))
-        #return sorted(proc_list)[:5] # [:mitu faili laeb] vähendan laetud failide arvu
-        return sorted(proc_list) 
+        return sorted(proc_list)#[:4] # [:mitu faili laeb] vähendan laetud failide arvu
 
     @property
     def processed_dir(self):
