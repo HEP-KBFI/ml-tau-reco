@@ -83,7 +83,7 @@ class TauEndToEndSimple(nn.Module):
         self.act_obj = self.act()
         self.dropout = 0.1 # tõenäosus disablib ffn'is paar node During training, randomly zeroes some of the elements of the input tensor with probability p using samples from a Bernoulli distribution
         self.width = 512
-        self.embedding_dim = 512
+        self.embedding_dim = 256
         self.sparse_mode = sparse_mode
 
         self.num_jet_features = 8
