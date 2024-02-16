@@ -252,25 +252,25 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
     
     #dm_weights = torch.ones(16).to(device=dev) # adding equal weights to dm
     
-    # lisada esinemise arvu pöördväärtusele kaalud nt 1/DM1
+    # lisada esinemise arvu pöördväärtusele kaalud nt 1/DM1 (1000 faili)
     dm_weights = torch.Tensor([
-        0.00020964360587002095,
-        8.21827744904668e-05,
-        0.00019696671262556627,
-        0.0016891891891891893,
-        0.02127659574468085,
-        0.004830917874396135,
-        0.014705882352941176,
-        0.16666666666666666,
+        9.019572472264814e-05,
+        3.538445207175967e-05,
+        8.599191675982457e-05,
+        0.0007067137809187279,
+        0.00909090909090909,
+        0.0021141649048625794,
+        0.005988023952095809,
+        0.06666666666666667,
+        0.3333333333333333,
+        0,
+        8.960573476702509e-05,
+        0.0001849796522382538,
+        0.001594896331738437,
         0,
         0,
-        0.00020785699438786114,
-        0.00043122035360068997,
-        0.0038910505836575876,
-        0,
-        0,
-        0.0005787037037037037
-        ]).to(device=dev)
+        0.00024807740014884643]
+        ).to(device=dev)
 
     if is_train:
         model.train()
@@ -530,8 +530,8 @@ def main(cfg):
 
     best_loss = np.inf
     
-    #for iepoch in range(cfg.epochs): # siin on epochide arv
-    for iepoch in range(40): # loss_val_dm on hakkab 30 juures tõusma
+    for iepoch in range(cfg.epochs): # siin on epochide arv
+    #for iepoch in range(40): # loss_val_dm on hakkab 30 juures tõusma
         loss_cls_train, loss_p4_train, loss_dm_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )

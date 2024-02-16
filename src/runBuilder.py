@@ -53,7 +53,7 @@ def build_taus(cfg: DictConfig) -> None:
        
     elif cfg.builder == "SimpleDNN":
          # lic copy model_best.pt path
-        pytorch_model = torch.load("/home/hardiveski/ml-tau-reco/outputs/2024-02-13/14-09-27/model_best.pt", map_location=torch.device("cpu"))
+        pytorch_model = torch.load("/home/hardiveski/ml-tau-reco/outputs/2024-02-15/18-53-18/model_best.pt", map_location=torch.device("cpu"))
         assert pytorch_model.__class__ == TauEndToEndSimple
         builder = SimpleDNNTauBuilder(pytorch_model)
     elif cfg.builder == "LorentzNet":
