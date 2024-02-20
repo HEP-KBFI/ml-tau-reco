@@ -83,7 +83,7 @@ class TauEndToEndSimple(nn.Module):
         self.act_obj = self.act()
         self.dropout = 0.1 # tõenäosus disablib ffn'is paar node During training, randomly zeroes some of the elements of the input tensor with probability p using samples from a Bernoulli distribution
         self.width = 512
-        self.embedding_dim = 256
+        self.embedding_dim = 1024
         self.sparse_mode = sparse_mode
 
         self.num_jet_features = 8
@@ -123,7 +123,7 @@ class TauEndToEndSimple(nn.Module):
             self.agg1 = torch_geometric.nn.MeanAggregation()
             self.agg2 = torch_geometric.nn.MaxAggregation()
             self.agg3 = torch_geometric.nn.StdAggregation()
-            # self.agg4 = torch_geometric.nn.AttentionalAggregation(
+            self.agg4 = torch_geometric.nn.AttentionalAggregation()
             # ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
 
         self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
@@ -159,12 +159,12 @@ class TauEndToEndSimple(nn.Module):
         jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
         jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
         jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
-        # jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
+        jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
         #print('\n jet_encoded1 -->',jet_encoded1.shape)
 
 
         # get the list of per-jet features as a concat of
-        jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+        jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
         #print('\n jet_feats -->', jet_feats.shape) # 1544 = 512 * 3 + 8
 
         # run a binary classification whether or not this jet is from a tau
@@ -211,9 +211,10 @@ class TauEndToEndSimple(nn.Module):
         jet_encoded1 = self.act_obj(torch.mean(pf_encoded, axis=1))
         jet_encoded2 = self.act_obj(torch.max(pf_encoded, axis=1).values)
         jet_encoded3 = self.act_obj(torch.std(pf_encoded, axis=1))
+        jet_encoded4 = self.act_obj(torch.std(pf_encoded, axis=1))
 
         # get the list of per-jet features as a concat of
-        jet_features = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
+        jet_features = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
 
         # run a binary classification whether or not this jet is from a tau
         pred_istau = self.nn_pred_istau(jet_features)
