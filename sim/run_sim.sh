@@ -14,7 +14,7 @@ NUM=$1 #random seed
 SAMPLE=$2 #main card
 
 #Change these as needed
-OUTDIR=/local/joosep/clic_edm4hep/
+OUTDIR=/local/joosep/clic_edm4hep/2024_03/
 SIMDIR=/home/joosep/ml-tau-reco/sim
 WORKDIR=/scratch/local/$USER/${SAMPLE}_${SLURM_JOB_ID}
 FULLOUTDIR=${OUTDIR}/${SAMPLE}
@@ -34,7 +34,8 @@ echo "Random:seed=${NUM}" >> card.cmd
 cat card.cmd
 
 #Use a tagged version of Key4HEP
-source /cvmfs/sw.hsf.org/spackages6/key4hep-stack/2023-01-15/x86_64-centos7-gcc11.2.0-opt/csapx/setup.sh
+#source /cvmfs/sw.hsf.org/spackages6/key4hep-stack/2023-01-15/x86_64-centos7-gcc11.2.0-opt/csapx/setup.sh
+source /cvmfs/sw.hsf.org/spackages7/key4hep-stack/2023-04-08/x86_64-centos7-gcc11.2.0-opt/urwcv/setup.sh
 
 #Run generation
 k4run $SIMDIR/pythia.py -n $NEV --Dumper.Filename out.hepmc --Pythia8.PythiaInterface.pythiacard card.cmd
@@ -52,6 +53,8 @@ k4run clicRec_e4h_input.py -n $NEV --EventDataSvc.input out_sim_edm4hep.root --P
 
 #Copy the outputs
 cp out_reco_edm4hep.root reco_${SAMPLE}_${NUM}.root
+cp out.hepmc sim_${SAMPLE}_${NUM}.hepmc
 cp reco_${SAMPLE}_${NUM}.root $FULLOUTDIR/
+cp sim_${SAMPLE}_${NUM}.hepmc $FULLOUTDIR/
 
 rm -Rf $WORKDIR

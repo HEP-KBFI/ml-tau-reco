@@ -1,13 +1,14 @@
 import os
 
 #check for file presence in this path
-outpath = "/local/joosep/clic_edm4hep/"
+outpath = "/local/joosep/clic_edm4hep/2024_03"
+#outpath = "/home/joosep/clic_edm4hep/"
 
 #pythia card, start seed, end seed
 samples = [
-    ("p8_ee_qq_ecm380",         100001, 120011),
-    ("p8_ee_ZH_Htautau_ecm380", 200001, 210011),
-    ("p8_ee_Z_Ztautau_ecm380", 400001, 410011),
+    ("p8_ee_qq_ecm380",         100001, 105011),
+    # ("p8_ee_ZH_Htautau_ecm380", 200001, 205011),
+    # ("p8_ee_Z_Ztautau_ecm380", 400001, 405011),
 ]
 
 if __name__ == "__main__":

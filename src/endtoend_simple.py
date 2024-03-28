@@ -199,8 +199,10 @@ def weighted_bce_with_logits(pred_istau, true_istau, weights):
 
 def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboard_writer):
     global ISTEP_GLOBAL
+    loss_tot = 0.0
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
+    loss_dm_tot = 0.0
 
     if is_train:
         model.train()
@@ -217,10 +219,13 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         batch = batch.to(device=dev)
         pred_istau, pred_p4, pred_dm = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
         true_p4 = batch.gen_tau_p4
-        true_istau_mask = batch.gen_tau_decaymode != -1
+        true_istau_mask = (batch.gen_tau_decaymode != -1) & (batch.gen_tau_decaymode != 16)
         true_istau = true_istau_mask.to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
-        weights = batch.weight
+
+        # no pt/theta dependent reweighting in the new samples
+        #weights = batch.weight
+        weights = torch.ones_like(true_p4[..., 0])
 
         loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
         loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
@@ -233,10 +238,10 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
 
         #compute the loss between the predicted decay mode values and the true values, for the cases where the jet was really from tau 
         loss_dm = torch.nn.functional.cross_entropy(pred_dm[true_istau_mask], true_dm_onehot)
-        print(loss_p4, loss_cls, loss_dm)
 
         #sum all loss components from binary classification, momentum regression and decay mode prediction
-        loss = loss_cls + loss_p4 + loss_dm
+        # loss = loss_cls + loss_p4 + loss_dm
+        loss = loss_p4 + loss_dm
 
         if is_train:
             loss.backward()
@@ -248,15 +253,17 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         else:
             class_true.append(true_istau.cpu().numpy())
             class_pred.append(torch.softmax(pred_istau, axis=-1)[:, 1].detach().cpu().numpy())
+        loss_tot += loss.detach().cpu().item()
         loss_cls_tot += loss_cls.detach().cpu().item()
         loss_p4_tot += loss_p4.detach().cpu().item()
+        loss_dm_tot += loss_dm.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
         sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
         class_pred = np.concatenate(class_pred)
-    return loss_cls_tot / njets, loss_p4_tot / njets, (class_true, class_pred)
+    return loss_tot / njets, loss_cls_tot / njets, loss_p4_tot / njets, loss_dm_tot / njets, (class_true, class_pred)
 
 
 def count_parameters(model):
@@ -430,20 +437,21 @@ def main(cfg):
 
     best_loss = np.inf
     for iepoch in range(cfg.epochs):
-        loss_cls_train, loss_p4_train, _ = model_loop(
+        loss_train, loss_cls_train, loss_p4_train, loss_dm_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
-        tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
+        tensorboard_writer.add_scalar("epoch/train_dm_loss", loss_dm_train, iepoch)
+        tensorboard_writer.add_scalar("epoch/train_loss", loss_train, iepoch)
 
-        loss_cls_val, loss_p4_val, retvals = model_loop(
+        loss_val, loss_cls_val, loss_p4_val, loss_dm_val, retvals = model_loop(
             model, ds_val_loader, optimizer, scheduler, False, dev, tensorboard_writer
         )
-        loss_val = loss_cls_val + loss_p4_val
 
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
+        tensorboard_writer.add_scalar("epoch/val_dm_loss", loss_dm_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
 
         tensorboard_writer.add_scalar("epoch/lr", scheduler.get_last_lr()[0], iepoch)
@@ -454,8 +462,8 @@ def main(cfg):
         tensorboard_writer.add_scalar("epoch/fpr_at_tpr0p6", fpr[np.searchsorted(tpr, 0.6)], iepoch)
 
         print(
-            "epoch={} cls={:.4f}/{:.4f} p4={:.4f}/{:.4f}".format(
-                iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val
+            "epoch={} cls={:.4f}/{:.4f} p4={:.4f}/{:.4f} dm={:.4f}/{:.4f}".format(
+                iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val, loss_dm_train, loss_dm_val
             )
         )
 

@@ -90,7 +90,7 @@ class TauJetDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        proc_list = glob(osp.join(self.processed_dir, "*.pt"))
+        proc_list = list(glob(osp.join(self.processed_dir, "*.pt")))
         return sorted(proc_list)
 
     @property
@@ -179,10 +179,21 @@ class TauJetDataset(Dataset):
 
         gen_tau_decaymode = torch.tensor(data["gen_jet_tau_decaymode"]).to(dtype=torch.int32)
         p4 = data["gen_jet_tau_p4s"]
-        gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.tau], axis=-1)).to(dtype=torch.float32)
+        p4 = vector.awk(
+            ak.zip(
+                {
+                    "energy": p4.t,
+                    "x": p4.x,
+                    "y": p4.y,
+                    "z": p4.z,
+                }
+            )
+        )
+
+        gen_tau_p4 = torch.tensor(np.stack([p4.x, p4.y, p4.z, p4.mass], axis=-1)).to(dtype=torch.float32)
         assert gen_tau_p4.shape[0] == gen_tau_decaymode.shape[0]
 
-        weights = torch.tensor(data["weight"]).to(dtype=torch.float32)
+        # weights = torch.tensor(data["weight"]).to(dtype=torch.float32)
 
         # Data object with:
         #   - reco jet (jet_features, jet_pf_features)
@@ -195,7 +206,7 @@ class TauJetDataset(Dataset):
                 jet_pf_features=pf_features[pf_to_jet == ijet],
                 gen_tau_decaymode=gen_tau_decaymode[ijet : ijet + 1],
                 gen_tau_p4=gen_tau_p4[ijet : ijet + 1],
-                weight=weights[ijet : ijet + 1],
+                # weight=weights[ijet : ijet + 1],
             )
             for ijet in range(len(jet_features))
         ]
@@ -257,3 +268,4 @@ if __name__ == "__main__":
 
     # merge 50 files, run 16 processes
     ds.process_parallel(50, 16)
+    # ds.process(50)
