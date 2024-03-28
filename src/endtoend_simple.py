@@ -87,7 +87,7 @@ class TauEndToEndSimple(nn.Module):
         self.sparse_mode = sparse_mode
 
         self.num_jet_features = 8
-        self.num_pf_features = 36 # pf_featurs ja pf_extras (taujetdataset.py)
+        self.num_pf_features = 22 # pf_features ja pf_extras (taujetdataset.py)
 
         self.num_decaymodes = 16 # decay modes
         
@@ -123,7 +123,7 @@ class TauEndToEndSimple(nn.Module):
             self.agg1 = torch_geometric.nn.MeanAggregation()
             self.agg2 = torch_geometric.nn.MaxAggregation()
             self.agg3 = torch_geometric.nn.StdAggregation()
-            self.agg4 = torch_geometric.nn.AttentionalAggregation()
+            # self.agg4 = torch_geometric.nn.AttentionalAggregation()
             # ffn(self.embedding_dim, 1, self.width, self.act, self.dropout))
 
         self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
@@ -159,12 +159,12 @@ class TauEndToEndSimple(nn.Module):
         jet_encoded1 = self.act_obj(self.agg1(pf_encoded, jet_pf_features_batch))
         jet_encoded2 = self.act_obj(self.agg2(pf_encoded, jet_pf_features_batch))
         jet_encoded3 = self.act_obj(self.agg3(pf_encoded, jet_pf_features_batch))
-        jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
+        #jet_encoded4 = self.act_obj(self.agg4(pf_encoded, jet_pf_features_batch))
         #print('\n jet_encoded1 -->',jet_encoded1.shape)
 
 
         # get the list of per-jet features as a concat of
-        jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3, jet_encoded4], axis=-1)
+        jet_feats = torch.cat([jet_features_normed, jet_encoded1, jet_encoded2, jet_encoded3], axis=-1)
         #print('\n jet_feats -->', jet_feats.shape) # 1544 = 512 * 3 + 8
 
         # run a binary classification whether or not this jet is from a tau
@@ -299,7 +299,7 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         print('\nGen tau gecay mode MASK --- >>>>',true_istau_mask)
         true_istau = true_istau_mask.to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
-        weights = batch.weight
+        weights = torch.ones(len(batch.jet_features), dtype=torch.float32, device=dev)
 
         loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
         loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
@@ -376,7 +376,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
 
     def processJets(self, jets):
         ds = TauJetDataset()
-        data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
+        data_obj = Batch.from_data_list(ds.process_file_data(jets, filter_leptonic=False), follow_batch=["jet_pf_features"])
         #lisan
         pred_istau, pred_p4, pred_dm = self.model((data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch))
 
@@ -449,7 +449,6 @@ class MyIterableDataset(torch.utils.data.IterableDataset):
 
             # get jets from this file
             jets = self.ds.get(idx)
-
             # shuffle jets from the file
             random.shuffle(jets)
 
@@ -470,6 +469,8 @@ def main(cfg):
 
     ds_train = TauJetDataset("data/dataset_train")
     ds_val = TauJetDataset("data/dataset_validation")
+    assert(len(ds_train)>0)
+    assert(len(ds_val)>0)
 
     # load a part of the training set to memory to get feature standardization coefficients
     train_data = [ds_train.get(i) for i in range(min(10, len(ds_train)))]

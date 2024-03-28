@@ -19,7 +19,6 @@ from ParticleTransformerTauBuilder import ParticleTransformerTauBuilder
 from DeepTauBuilder import DeepTauBuilder
 from deeptauTraining import DeepTau
 
-
 def process_single_file(input_path: str, builder, output_dir) -> None:
     output_path = os.path.join(output_dir, os.path.basename(input_path))
     if not os.path.exists(output_path):
@@ -53,7 +52,8 @@ def build_taus(cfg: DictConfig) -> None:
        
     elif cfg.builder == "SimpleDNN":
          # lic copy model_best.pt path
-        pytorch_model = torch.load("/home/hardiveski/ml-tau-reco/outputs/2024-02-17/14-03-14/model_best.pt", map_location=torch.device("cpu"))
+        TAU_MODEL_FILE = os.environ["TAU_MODEL_FILE"]
+        pytorch_model = torch.load(TAU_MODEL_FILE, map_location=torch.device("cpu"))
         assert pytorch_model.__class__ == TauEndToEndSimple
         builder = SimpleDNNTauBuilder(pytorch_model)
     elif cfg.builder == "LorentzNet":
