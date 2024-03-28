@@ -86,6 +86,7 @@ class TauEndToEndSimple(nn.Module):
 
         self.num_jet_features = 8
         self.num_pf_features = 36
+        self.num_decaymodes = 16
 
         self.nn_pf_initialembedding = ffn(self.num_pf_features, self.embedding_dim, self.width, self.act, self.dropout)
 
@@ -103,6 +104,7 @@ class TauEndToEndSimple(nn.Module):
 
         self.nn_pred_istau = ffn(self.num_jet_features + 3 * self.embedding_dim, 2, self.width, self.act, self.dropout)
         self.nn_pred_p4 = ffn(self.num_jet_features + 3 * self.embedding_dim, 4, self.width, self.act, self.dropout)
+        self.nn_pred_dm = ffn(self.num_jet_features + 3 * self.embedding_dim, self.num_decaymodes, self.width, self.act, self.dropout)
 
     # forward function for training with pytorch geometric
     def forward_sparse(self, inputs):
@@ -130,8 +132,10 @@ class TauEndToEndSimple(nn.Module):
         # run a per-jet NN for visible energy prediction
         jet_p4 = jet_features[:, :4]
         pred_p4 = jet_p4 * self.nn_pred_p4(jet_feats)
+        
+        pred_dm = self.nn_pred_dm(jet_feats)
 
-        return pred_istau, pred_p4
+        return pred_istau, pred_p4, pred_dm
 
     # custom forward function for HLS4ML export, assuming a single 3D input
     def forward_3d(self, inputs):
@@ -195,8 +199,10 @@ def weighted_bce_with_logits(pred_istau, true_istau, weights):
 
 def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboard_writer):
     global ISTEP_GLOBAL
+    loss_tot = 0.0
     loss_cls_tot = 0.0
     loss_p4_tot = 0.0
+    loss_dm_tot = 0.0
 
     if is_train:
         model.train()
@@ -211,16 +217,32 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
     for ibatch, batch in enumerate(tqdm.tqdm(ds_loader, total=len(ds_loader))):
         optimizer.zero_grad()
         batch = batch.to(device=dev)
-        pred_istau, pred_p4 = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
+        pred_istau, pred_p4, pred_dm = model((batch.jet_features, batch.jet_pf_features, batch.jet_pf_features_batch))
         true_p4 = batch.gen_tau_p4
-        true_istau = (batch.gen_tau_decaymode != -1).to(dtype=torch.float32)
+        true_istau_mask = (batch.gen_tau_decaymode != -1) & (batch.gen_tau_decaymode != 16)
+        true_istau = true_istau_mask.to(dtype=torch.float32)
         pred_p4 = pred_p4 * true_istau.unsqueeze(-1)
-        weights = batch.weight
 
-        loss_p4 = 1e5 * weighted_huber_loss(pred_p4, true_p4, weights)
-        loss_cls = 1e7 * weighted_bce_with_logits(pred_istau, true_istau, weights)
+        # no pt/theta dependent reweighting in the new samples
+        #weights = batch.weight
+        weights = torch.ones_like(true_p4[..., 0])
 
-        loss = loss_cls + loss_p4
+        loss_p4 = weighted_huber_loss(pred_p4, true_p4, weights)
+        loss_cls = weighted_bce_with_logits(pred_istau, true_istau, weights)
+
+        #get the numerical decay mode values for the jets that actually were from a tau
+        true_dm_vals = batch.gen_tau_decaymode[true_istau_mask].to(torch.int64)
+
+        #convert decay mode values from 0...16 ints > to one-hot encoded vectors [0,0,0...,1,...,0] where for value N, the N-th bit is set.
+        true_dm_onehot = torch.nn.functional.one_hot(true_dm_vals, model.num_decaymodes).to(torch.float32)
+
+        #compute the loss between the predicted decay mode values and the true values, for the cases where the jet was really from tau 
+        loss_dm = torch.nn.functional.cross_entropy(pred_dm[true_istau_mask], true_dm_onehot)
+
+        #sum all loss components from binary classification, momentum regression and decay mode prediction
+        # loss = loss_cls + loss_p4 + loss_dm
+        loss = loss_p4 + loss_dm
+
         if is_train:
             loss.backward()
             optimizer.step()
@@ -231,15 +253,17 @@ def model_loop(model, ds_loader, optimizer, scheduler, is_train, dev, tensorboar
         else:
             class_true.append(true_istau.cpu().numpy())
             class_pred.append(torch.softmax(pred_istau, axis=-1)[:, 1].detach().cpu().numpy())
+        loss_tot += loss.detach().cpu().item()
         loss_cls_tot += loss_cls.detach().cpu().item()
         loss_p4_tot += loss_p4.detach().cpu().item()
+        loss_dm_tot += loss_dm.detach().cpu().item()
         nsteps += 1
         njets += batch.jet_features.shape[0]
         sys.stdout.flush()
     if not is_train:
         class_true = np.concatenate(class_true)
         class_pred = np.concatenate(class_pred)
-    return loss_cls_tot / njets, loss_p4_tot / njets, (class_true, class_pred)
+    return loss_tot / njets, loss_cls_tot / njets, loss_p4_tot / njets, loss_dm_tot / njets, (class_true, class_pred)
 
 
 def count_parameters(model):
@@ -261,12 +285,13 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
     def processJets(self, jets):
         ds = TauJetDataset()
         data_obj = Batch.from_data_list(ds.process_file_data(jets), follow_batch=["jet_pf_features"])
-        pred_istau, pred_p4 = self.model((data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch))
+        pred_istau, pred_p4, pred_dm = self.model((data_obj.jet_features, data_obj.jet_pf_features, data_obj.jet_pf_features_batch))
 
         pred_istau = torch.softmax(pred_istau, axis=-1)[:, 1]
         pred_istau = pred_istau.contiguous().detach().numpy()
         # to solve "ValueError: ndarray is not contiguous"
         pred_p4 = np.asfortranarray(pred_p4.detach().contiguous().numpy())
+        pred_dm_value = torch.argmax(pred_dm, axis=-1)
 
         njets = len(jets["reco_jet_p4s"]["x"])
         assert njets == len(pred_istau)
@@ -285,7 +310,6 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
 
         # dummy placeholders for now
         tauCharges = np.zeros(njets)
-        dmode = np.zeros(njets)
 
         # as a dummy placeholder, just return the first PFCand for each jet
         tau_cand_p4s = jets["reco_cand_p4s"][:, 0:1]
@@ -294,7 +318,7 @@ class SimpleDNNTauBuilder(BasicTauBuilder):
             "tauSigCand_p4s": tau_cand_p4s,
             "tauClassifier": pred_istau,
             "tau_charge": tauCharges,
-            "tau_decaymode": dmode,
+            "tau_decaymode": pred_dm_value,
         }
 
 
@@ -413,20 +437,21 @@ def main(cfg):
 
     best_loss = np.inf
     for iepoch in range(cfg.epochs):
-        loss_cls_train, loss_p4_train, _ = model_loop(
+        loss_train, loss_cls_train, loss_p4_train, loss_dm_train, _ = model_loop(
             model, ds_train_loader, optimizer, scheduler, True, dev, tensorboard_writer
         )
         tensorboard_writer.add_scalar("epoch/train_cls_loss", loss_cls_train, iepoch)
         tensorboard_writer.add_scalar("epoch/train_p4_loss", loss_p4_train, iepoch)
-        tensorboard_writer.add_scalar("epoch/train_loss", loss_cls_train + loss_p4_train, iepoch)
+        tensorboard_writer.add_scalar("epoch/train_dm_loss", loss_dm_train, iepoch)
+        tensorboard_writer.add_scalar("epoch/train_loss", loss_train, iepoch)
 
-        loss_cls_val, loss_p4_val, retvals = model_loop(
+        loss_val, loss_cls_val, loss_p4_val, loss_dm_val, retvals = model_loop(
             model, ds_val_loader, optimizer, scheduler, False, dev, tensorboard_writer
         )
-        loss_val = loss_cls_val + loss_p4_val
 
         tensorboard_writer.add_scalar("epoch/val_cls_loss", loss_cls_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_p4_loss", loss_p4_val, iepoch)
+        tensorboard_writer.add_scalar("epoch/val_dm_loss", loss_dm_val, iepoch)
         tensorboard_writer.add_scalar("epoch/val_loss", loss_val, iepoch)
 
         tensorboard_writer.add_scalar("epoch/lr", scheduler.get_last_lr()[0], iepoch)
@@ -437,8 +462,8 @@ def main(cfg):
         tensorboard_writer.add_scalar("epoch/fpr_at_tpr0p6", fpr[np.searchsorted(tpr, 0.6)], iepoch)
 
         print(
-            "epoch={} cls={:.4f}/{:.4f} p4={:.4f}/{:.4f}".format(
-                iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val
+            "epoch={} cls={:.4f}/{:.4f} p4={:.4f}/{:.4f} dm={:.4f}/{:.4f}".format(
+                iepoch, loss_cls_train, loss_cls_val, loss_p4_train, loss_p4_val, loss_dm_train, loss_dm_val
             )
         )
 
