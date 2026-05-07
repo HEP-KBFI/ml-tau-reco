@@ -239,11 +239,11 @@ class ParticleTransformerDataset(Dataset):
             num_bgr_files = 0
             restricted_filelist = []
             for file in filelist:
-                if "ZH_Htautau" in file:
+                if "zh" in file.lower():
                     if num_sig_files < max_num_files:
                         restricted_filelist.append(file)
                         num_sig_files += 1
-                elif "QCD" in file:
+                elif "qq" in file.lower() or "z" in file.lower():
                     if num_bgr_files < max_num_files:
                         restricted_filelist.append(file)
                         num_bgr_files += 1
@@ -281,14 +281,14 @@ class ParticleTransformerDataset(Dataset):
             )
             data_cand_pdgIds = data["reco_cand_pdg"]
             data_cand_qs = data["reco_cand_charge"]
-            data_cand_d0s = data["reco_cand_dxy_f2D"]
-            data_cand_d0errs = data["reco_cand_dxy_f2D_err"]
-            data_cand_dzs = data["reco_cand_dz_f2D"]
-            data_cand_dzerrs = data["reco_cand_dz_f2D_err"]
+            data_cand_d0s = data["reco_cand_dxy"]
+            data_cand_d0errs = data["reco_cand_dxy_err"]
+            data_cand_dzs = data["reco_cand_dz"]
+            data_cand_dzerrs = data["reco_cand_dz_err"]
 
             data_gen_tau_decaymodes = data["gen_jet_tau_decaymode"]
 
-            data_weights = data["weight"]
+            data_weights = data["weight"] if "weight" in data.fields else [1.0] * len(data)
 
             for idx in range(num_jets_in_file):
                 if idx > 0 and (idx % 10000) == 0:
