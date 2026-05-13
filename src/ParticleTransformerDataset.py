@@ -46,7 +46,8 @@ class ParticleTransformerDataset(Dataset):
         self.v_is_one_hot_encoded = None
 
         print("Indexing shards...")
-        for file in self.filelist:
+        for i, file in enumerate(self.filelist):
+            print(f"Indexing shard {i}/{len(self.filelist)}: {file}")
             # Standard load to get metadata
             data = torch.load(file, map_location="cpu")
             n = data["x"].size(0)
@@ -107,12 +108,12 @@ class ParticleTransformerDataset(Dataset):
         
         return (
             {
-                "v": data["v"][local_idx],
+                "v": data["v"][local_idx].clone(),
                 "v_is_one_hot_encoded": self.v_is_one_hot_encoded,
-                "x": data["x"][local_idx],
+                "x": data["x"][local_idx].clone(),
                 "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
-                "mask": data["mask"][local_idx],
+                "mask": data["mask"][local_idx].clone(),
             },
-            data["y"][local_idx],
-            data["weight"][local_idx],
+            data["y"][local_idx].clone(),
+            data["weight"][local_idx].clone(),
         )

@@ -57,7 +57,7 @@ def train_loop(
     class_pred_train = []
     weights_train = []
     model.train()
-    for idx_batch, (X, y, weight) in enumerate(dataloader_train):
+    for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=num_jets_train):
         # Compute prediction and loss
         if transform:
             X = transform(X)
@@ -258,6 +258,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         use_pdgId=use_pdgId,
         use_lifetime=use_lifetime,
         preselection=preselection,
+        cache_size=train_cfg.cache_size,
     )
     print("Finished building training dataset.")
     print(" current time:", datetime.datetime.now())
@@ -272,26 +273,30 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         use_pdgId=use_pdgId,
         use_lifetime=use_lifetime,
         preselection=preselection,
+        cache_size=train_cfg.cache_size,
     )
     print("Finished building validation dataset.")
     print(" current time:", datetime.datetime.now())
 
     dataloader_train = DataLoader(
-        dataset_train, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True
+        dataset_train, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=False
     )
     dataloader_validation = DataLoader(
-        dataset_validation, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=True
+        dataset_validation, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=False
     )
 
     transform = None
     if standardize_inputs:
+        dataloader_standardization = DataLoader(
+            dataset_train, batch_size=train_cfg.batch_size, num_workers=train_cfg.num_dataloader_workers, shuffle=False
+        )
         transform = FeatureStandardization(
             method=ParticleTransformer_cfg["method_FeatureStandardization"],
             features=["x", "v"],
             feature_dim=1,
             verbosity=train_cfg.verbosity,
         )
-        transform.compute_params(dataloader_train)
+        transform.compute_params(dataloader_standardization, max_jets=1000000)
         transform.save_params(ParticleTransformer_cfg["json_file_FeatureStandardization"])
 
     classweight_bgr = 1.0

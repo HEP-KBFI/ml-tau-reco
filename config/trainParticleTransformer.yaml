@@ -1,9 +1,10 @@
 model_file: ParticleTransformer_model.pt
 model_config_file: ParticleTransformer_cfg.json
 max_num_files: -1
-batch_size: 512
+batch_size: 1024
 num_epochs: 100
-num_dataloader_workers: 0
+num_dataloader_workers: 4
+cache_size: 1
 classweight_sig: 1
 classweight_bgr: 10
 use_class_weights: True

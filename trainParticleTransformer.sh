@@ -5,6 +5,7 @@
 #SBATCH -o slurm-%x-%j-%N.out
 
 cd /home/joosep/tau/ml-tau-reco
-
-# PyTorch training with the full shuffled dataset
-uv run python3 src/trainParticleTransformer.py num_dataloader_workers=0 max_num_files=-1
+uv run python3 src/trainParticleTransformer.py \
+    max_num_files=-1 \
+    num_dataloader_workers=4 \
+    cache_size=4
