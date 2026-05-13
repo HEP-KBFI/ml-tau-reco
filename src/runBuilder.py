@@ -54,7 +54,11 @@ def build_taus(cfg: DictConfig) -> None:
     elif cfg.builder == "LorentzNet":
         builder = LorentzNetTauBuilder(verbosity=cfg.verbosity)
     elif cfg.builder == "ParticleTransformer":
-        builder = ParticleTransformerTauBuilder(verbosity=cfg.verbosity)
+        builder = ParticleTransformerTauBuilder(
+            verbosity=cfg.verbosity, 
+            modelPath=cfg.get("model_path", None), 
+            transformPath=cfg.get("transform_path", None)
+        )
     elif cfg.builder == "DeepTau":
         model = torch.load(
             "/home/snandan/ml-tau-reco/outputs/2023-06-29/19-57-58/model_best_epoch_13.pt",  # fl2
@@ -101,4 +105,5 @@ def build_taus(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn", force=True)
     build_taus()

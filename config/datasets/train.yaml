@@ -1,5 +1,3 @@
 train:
   paths:
-    - ../data/qq_train.parquet
-    - ../data/zh_train.parquet
-    - ../data/z_train.parquet
+    - data/shuffled/shuffled_dataset_*.pt

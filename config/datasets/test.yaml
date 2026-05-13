@@ -1,5 +1,3 @@
 test:
   paths:
-    - ../data/qq_test.parquet
-    - ../data/zh_test.parquet
-    - ../data/z_test.parquet
+    - data/test_dataset_*.pt

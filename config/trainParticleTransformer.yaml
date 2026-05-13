@@ -1,14 +1,9 @@
 model_file: ParticleTransformer_model.pt
 model_config_file: ParticleTransformer_cfg.json
-max_num_files: 1
-#max_num_files: 1
+max_num_files: -1
 batch_size: 512
-#batch_size: 16
 num_epochs: 100
-#num_epochs: 10
-#num_dataloader_workers: 0
-num_dataloader_workers: 4
-#do_energy_regression: True
+num_dataloader_workers: 0
 classweight_sig: 1
 classweight_bgr: 10
 use_class_weights: True
@@ -17,6 +12,4 @@ use_focal_loss: True
 focal_loss_gamma: 2.0
 fast_optimizer: AdamW
 slow_optimizer: None
-#fast_optimizer: RAdam
-#slow_optimizer: Lookahead
 verbosity: 1

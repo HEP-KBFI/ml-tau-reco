@@ -6,5 +6,5 @@
 
 cd /home/joosep/tau/ml-tau-reco
 
-# PyTorch training
-uv run  python3 src/trainParticleTransformer.py
+# PyTorch training with the full shuffled dataset
+uv run python3 src/trainParticleTransformer.py num_dataloader_workers=0 max_num_files=-1

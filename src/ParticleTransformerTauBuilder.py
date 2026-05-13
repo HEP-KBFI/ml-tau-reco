@@ -14,19 +14,28 @@ from hpsAlgoTools import comp_angle3d, comp_deltaEta, comp_deltaTheta, comp_delt
 
 
 class ParticleTransformerTauBuilder(BasicTauBuilder):
-    def __init__(self, cfgFileName="./config/ParticleTransformer_cfg.json", verbosity=0):
+    def __init__(self, cfgFileName="./config/ParticleTransformer_cfg.json", verbosity=0, modelPath=None, transformPath=None):
         print("<ParticleTransformerTauBuilder::ParticleTransformerTauBuilder>:")
         super(BasicTauBuilder, self).__init__()
 
-        filepath = "/home/veelken/ml-tau-reco/data/"
-        # self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wLifetime_2023May30.pt")
-        self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wLifetime_2023Jun22.pt")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(" using device = %s" % self.device)
+
+        if modelPath:
+            self.filename_model = modelPath
+        else:
+            filepath = "/home/veelken/ml-tau-reco/data/"
+            self.filename_model = os.path.join(filepath, "ParticleTransformer_model_wLifetime_2023Jun22.pt")
         print(" filename_model = %s" % self.filename_model)
-        self.filename_transform = os.path.join(
-            # filepath, "ParticleTransformer_FeatureStandardization_wLifetime_2023May30.json"
-            filepath,
-            "ParticleTransformer_FeatureStandardization_wLifetime_2023Jun22.json",
-        )
+
+        if transformPath:
+            self.filename_transform = transformPath
+        else:
+            filepath = "/home/veelken/ml-tau-reco/data/"
+            self.filename_transform = os.path.join(
+                filepath,
+                "ParticleTransformer_FeatureStandardization_wLifetime_2023Jun22.json",
+            )
         print(" filename_transform = %s" % self.filename_transform)
 
         if os.path.isfile(cfgFileName):
@@ -79,6 +88,9 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
                 verbosity=self.verbosity,
             )
             self.transform.load_params(self.filename_transform)
+            for feature in self.transform.mean:
+                self.transform.mean[feature] = self.transform.mean[feature].to(self.device)
+                self.transform.one_over_sigma[feature] = self.transform.one_over_sigma[feature].to(self.device)
 
         self.model = ParticleTransformer(
             input_dim=self.input_dim,
@@ -89,7 +101,8 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             metric=metric,
             verbosity=verbosity,
         )
-        self.model.load_state_dict(torch.load(self.filename_model, map_location=torch.device("cpu")))
+        self.model.load_state_dict(torch.load(self.filename_model, map_location=self.device))
+        self.model.to(self.device)
         self.model.eval()
 
         self.verbosity = verbosity
@@ -165,10 +178,10 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
                 pred_mask = 0.0
             pred_mask_tensors.append(torch.tensor(pred_mask, dtype=torch.float32))
 
-        x_tensor = torch.stack(x_tensors, dim=0)
-        v_tensor = torch.stack(v_tensors, dim=0)
-        node_mask_tensor = torch.stack(node_mask_tensors, dim=0)
-        pred_mask_tensor = torch.stack(pred_mask_tensors, dim=0)
+        x_tensor = torch.stack(x_tensors, dim=0).to(self.device)
+        v_tensor = torch.stack(v_tensors, dim=0).to(self.device)
+        node_mask_tensor = torch.stack(node_mask_tensors, dim=0).to(self.device)
+        pred_mask_tensor = torch.stack(pred_mask_tensors, dim=0).to(self.device)
 
         if self.transform:
             X = {
@@ -193,11 +206,11 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             print("pred = ", pred)
             print("shape(pred_mask) = ", pred_mask_tensor.shape)
             print("pred_mask = ", pred_mask_tensor)
-        tauClassifier = pred[:, 1] * pred_mask_tensor
+        tauClassifier = (pred[:, 1] * pred_mask_tensor).detach().cpu().numpy()
         if self.verbosity >= 4:
             print("shape(tauClassifier) = ", tauClassifier.shape)
             print("tauClassifier = ", tauClassifier)
-        tauClassifier = list(tauClassifier.detach().numpy())
+        tauClassifier = list(tauClassifier)
         assert num_jets == len(tauClassifier)
 
         tau_p4s = vector.awk(

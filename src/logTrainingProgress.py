@@ -9,9 +9,12 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
     true_negative_rate = (np.logical_and(class_true == 0, class_pred == 0) * weights).sum() / weights_sum
     false_positive_rate = (np.logical_and(class_true == 0, class_pred == 1) * weights).sum() / weights_sum
 
-    precision = true_positive_rate / (true_positive_rate + false_positive_rate)
-    recall = true_positive_rate / (true_positive_rate + false_negative_rate)
-    F1_score = 2 * precision * recall / (precision + recall)
+    denom_precision = true_positive_rate + false_positive_rate
+    precision = true_positive_rate / denom_precision if denom_precision > 0 else 0.0
+    denom_recall = true_positive_rate + false_negative_rate
+    recall = true_positive_rate / denom_recall if denom_recall > 0 else 0.0
+    denom_f1 = precision + recall
+    F1_score = 2 * precision * recall / denom_f1 if denom_f1 > 0 else 0.0
 
     print("%s: Avg loss = %1.6f, accuracy = %1.2f%%" % (mode.capitalize(), loss, 100 * accuracy))
     print(
@@ -36,5 +39,10 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
     tensorboard.add_scalar("precision/%s" % mode, precision, global_step=idx_epoch)
     tensorboard.add_scalar("recall/%s" % mode, recall, global_step=idx_epoch)
     tensorboard.add_scalar("F1_score/%s" % mode, F1_score, global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_sig/%s" % mode, class_pred[class_true == 1], global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, class_pred[class_true == 0], global_step=idx_epoch)
+    
+    sig_preds = class_pred[class_true == 1]
+    if len(sig_preds) > 0:
+        tensorboard.add_histogram("tauClassifier_sig/%s" % mode, sig_preds, global_step=idx_epoch)
+    bgr_preds = class_pred[class_true == 0]
+    if len(bgr_preds) > 0:
+        tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, bgr_preds, global_step=idx_epoch)
