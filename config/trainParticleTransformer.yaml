@@ -13,4 +13,5 @@ use_focal_loss: True
 focal_loss_gamma: 2.0
 fast_optimizer: AdamW
 slow_optimizer: None
+clip_grad: 1.0
 verbosity: 1

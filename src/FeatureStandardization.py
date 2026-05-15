@@ -114,7 +114,7 @@ class FeatureStandardization:
             mean = x
             var = torch.sub(x2, x * x)
             sigma = torch.sqrt(var)
-            torch.clamp(sigma, min=1.0e-8, max=None)
+            sigma = torch.clamp(sigma, min=1.0e-8)
             one_over_sigma = torch.div(torch.tensor(1), sigma)
             if torch.isnan(one_over_sigma).sum().item() > 0.0:
                 raise RuntimeError("Failed to compute standard deviation, because <x^2> - <x>^2 is negative !!")
@@ -177,7 +177,7 @@ class FeatureStandardization:
 
             self.mean[feature] = median
             sigma = 0.5 * width
-            torch.clamp(sigma, min=1.0e-8, max=None)
+            sigma = torch.clamp(sigma, min=1.0e-8)
             one_over_sigma = torch.div(torch.tensor(1), sigma)
             self.one_over_sigma[feature] = one_over_sigma
 

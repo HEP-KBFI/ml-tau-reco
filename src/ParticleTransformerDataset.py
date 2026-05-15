@@ -49,7 +49,7 @@ class ParticleTransformerDataset(Dataset):
         for i, file in enumerate(self.filelist):
             print(f"Indexing shard {i}/{len(self.filelist)}: {file}")
             # Standard load to get metadata
-            data = torch.load(file, map_location="cpu")
+            data = torch.load(file, map_location="cpu", mmap=True)
             n = data["x"].size(0)
             self.shard_lengths.append(n)
             self.total_jets += n
@@ -85,7 +85,7 @@ class ParticleTransformerDataset(Dataset):
             del self.cache[oldest]
             gc.collect()
             
-        data = torch.load(file_path, map_location="cpu")
+        data = torch.load(file_path, map_location="cpu", mmap=True)
         # Ensure correct shapes
         if data["y"].dim() == 1:
             data["y"] = data["y"].unsqueeze(-1)

@@ -8,7 +8,9 @@ from omegaconf import DictConfig
 import os
 import psutil
 import subprocess
+import sys
 import yaml
+import tqdm
 
 import torch
 from torch import nn
@@ -47,6 +49,7 @@ def train_loop(
     optimizer,
     lr_scheduler,
     tensorboard,
+    clip_grad,
 ):
     num_jets_train = len(dataloader_train.dataset)
     loss_train = 0.0
@@ -57,16 +60,46 @@ def train_loop(
     class_pred_train = []
     weights_train = []
     model.train()
-    for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=num_jets_train):
+    for idx_batch, (X, y, weight) in enumerate(tqdm.tqdm(dataloader_train)):
+        # Check inputs for NaN/Inf BEFORE transform
+        for key in ["x", "v", "mask"]:
+            if torch.isnan(X[key]).any() or torch.isinf(X[key]).any():
+                print(f"\n[ERROR] NaN/Inf detected in raw input '{key}' at epoch {idx_epoch}, batch {idx_batch}")
+                # Find the sample index in batch
+                nan_mask = torch.isnan(X[key]) | torch.isinf(X[key])
+                sample_indices = nan_mask.any(dim=1).any(dim=1).nonzero(as_tuple=True)[0]
+                print(f"Sample indices with NaN/Inf in batch: {sample_indices.tolist()}")
+                for idx in sample_indices[:5]: # Print first 5 corrupted samples
+                    print(f"Sample {idx} {key}:", X[key][idx])
+                print("Aborting training.")
+                sys.exit(1)
+
         # Compute prediction and loss
         if transform:
             X = transform(X)
+        
         x = X["x"].to(device=dev)
         v = X["v"].to(device=dev)
         mask = X["mask"].to(device=dev)
         y = y.squeeze(dim=1).to(device=dev)
         weight = weight.squeeze(dim=1).to(device=dev)
+
+        # Check inputs for NaN/Inf AFTER transform
+        if torch.isnan(x).any() or torch.isinf(x).any() or torch.isnan(v).any() or torch.isinf(v).any():
+            print(f"\n[ERROR] NaN/Inf detected in transformed inputs at epoch {idx_epoch}, batch {idx_batch}")
+            if torch.isnan(x).any() or torch.isinf(x).any():
+                print("NaN/Inf in 'x' after transform")
+            if torch.isnan(v).any() or torch.isinf(v).any():
+                print("NaN/Inf in 'v' after transform")
+            print("Aborting training.")
+            sys.exit(1)
+
         pred = model(x, v, mask).to(device=dev)
+
+        if torch.isnan(pred).any() or torch.isinf(pred).any():
+            print(f"\n[ERROR] NaN/Inf detected in model predictions at epoch {idx_epoch}, batch {idx_batch}")
+            print("Aborting training.")
+            sys.exit(1)
 
         loss = None
         if use_per_jet_weights:
@@ -74,6 +107,15 @@ def train_loop(
             loss = loss * weight
         else:
             loss = loss_fn(pred, y)
+
+        if torch.isnan(loss).any() or torch.isinf(loss).any():
+            print(f"\n[ERROR] NaN/Inf detected in loss at epoch {idx_epoch}, batch {idx_batch}")
+            print("pred:", pred)
+            print("y:", y)
+            print("weight:", weight)
+            print("Aborting training.")
+            sys.exit(1)
+
         loss_train += loss.sum().item()
         loss_normalization_train += torch.flatten(loss).size(dim=0)
         accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
@@ -87,8 +129,26 @@ def train_loop(
         # Backpropagation
         optimizer.zero_grad()
         loss.mean().backward()
+
+        # Check gradients
+        is_bad_grad = False
+        for name, param in model.named_parameters():
+            if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
+                print(f"\n[WARNING] NaN/Inf detected in gradients of {name} at epoch {idx_epoch}, batch {idx_batch}")
+                is_bad_grad = True
+
+        # if is_bad_grad:
+        #     print(f"\n[WARNING] Skipping optimizer step for batch {idx_batch} due to bad gradients.")
+        #     continue
+
+        if clip_grad > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=clip_grad)
+
         optimizer.step()
         lr_scheduler.step()
+
+        # Log step loss
+        tensorboard.add_scalar("Loss/train_step", loss.mean().item(), idx_epoch * len(dataloader_train) + idx_batch)
 
         batchsize = pred.size(dim=0)
         num_jets_processed = min((idx_batch + 1) * batchsize, num_jets_train)
@@ -292,7 +352,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
         )
         transform = FeatureStandardization(
             method=ParticleTransformer_cfg["method_FeatureStandardization"],
-            features=["x", "v"],
+            features=["x"],
             feature_dim=1,
             verbosity=train_cfg.verbosity,
         )
@@ -356,6 +416,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
             optimizer,
             lr_scheduler,
             tensorboard,
+            train_cfg.clip_grad,
         )
         print(" lr = %1.3e" % lr_scheduler.get_last_lr()[0])
         # print(" lr = %1.3e" % get_lr(optimizer))

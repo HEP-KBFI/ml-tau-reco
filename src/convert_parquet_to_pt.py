@@ -68,8 +68,16 @@ def process_jet_chunk_vectorized(
     cand_p4s = cand_p4s[:, :max_cands]
 
     # 2. Compute basic features
+    # Use a small epsilon to avoid log(0) and eta(pt=0) = inf
+    safe_pt = np.maximum(cand_p4s.pt, 1e-8)
+    safe_energy = np.maximum(cand_p4s.energy, 1e-8)
+    safe_jet_pt = np.maximum(jet_p4s.pt, 1e-8)
+    safe_jet_energy = np.maximum(jet_p4s.energy, 1e-8)
+
     if metric_name == "eta-phi":
-        deta = np.abs(cand_p4s.eta - jet_p4s.eta)
+        # Vector's eta property can return inf for pt=0
+        cand_eta = ak.where(cand_p4s.pt > 0, cand_p4s.eta, 0.0)
+        deta = np.abs(cand_eta - jet_p4s.eta)
         dphi = np.abs((cand_p4s.phi - jet_p4s.phi + np.pi) % (2 * np.pi) - np.pi)
     elif metric_name == "theta-phi":
         deta = np.abs(cand_p4s.theta - jet_p4s.theta)
@@ -79,15 +87,16 @@ def process_jet_chunk_vectorized(
         # unit vectors dot product
         p_jet = np.sqrt(jet_p4s.x**2 + jet_p4s.y**2 + jet_p4s.z**2)
         p_cand = np.sqrt(cand_p4s.x**2 + cand_p4s.y**2 + cand_p4s.z**2)
-        dot = (jet_p4s.x * cand_p4s.x + jet_p4s.y * cand_p4s.y + jet_p4s.z * cand_p4s.z) / (p_jet * p_cand)
+        denom = p_jet * p_cand
+        dot = (jet_p4s.x * cand_p4s.x + jet_p4s.y * cand_p4s.y + jet_p4s.z * cand_p4s.z) / np.maximum(denom, 1e-8)
         dot = ak.where(dot > 1.0, 1.0, dot)
         dot = ak.where(dot < -1.0, -1.0, dot)
         dphi = np.arccos(dot)
 
-    logpt = np.log(cand_p4s.pt)
-    loge = np.log(cand_p4s.energy)
-    logptrel = np.log(cand_p4s.pt / jet_p4s.pt)
-    logerel = np.log(cand_p4s.energy / jet_p4s.energy)
+    logpt = np.log(safe_pt)
+    loge = np.log(safe_energy)
+    logptrel = np.log(safe_pt / safe_jet_pt)
+    logerel = np.log(safe_energy / safe_jet_energy)
 
     if metric_name != "angle3d":
         dR = np.sqrt(deta**2 + dphi**2)
@@ -95,6 +104,9 @@ def process_jet_chunk_vectorized(
         dR = dphi
 
     features = [deta, dphi, logpt, loge, logptrel, logerel, dR]
+
+    # Clean up any potential NaNs or Infs that slipped through
+    features = [ak.where(np.isnan(f) | np.isinf(f), 0.0, f) for f in features]
 
     # 3. PDG ID features
     if use_pdgId:
