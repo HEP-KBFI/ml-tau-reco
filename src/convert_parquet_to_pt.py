@@ -118,6 +118,7 @@ def process_jet_chunk_vectorized(
         features.append(ak.values_astype(pdgId == 22, np.float32))
         features.append(ak.values_astype(pdgId == 211, np.float32))
         features.append(ak.values_astype(pdgId == 130, np.float32))
+        features.append(ak.values_astype(pdgId == 2212, np.float32))
 
     # 4. Lifetime features
     if use_lifetime:
@@ -166,6 +167,10 @@ def process_jet_chunk_vectorized(
         ak.to_numpy(data_chunk.weight) if "weight" in data_chunk.fields else np.ones(len(data_chunk), dtype=np.float32)
     )
 
+    # 7. Jet kinematics for filtering flexibility
+    jet_pt = ak.to_numpy(jet_p4s.pt)
+    jet_theta = ak.to_numpy(jet_p4s.theta)
+
     # Return as tensors
     return (
         torch.tensor(x_tensor, dtype=torch.float32),
@@ -173,6 +178,8 @@ def process_jet_chunk_vectorized(
         torch.tensor(node_mask_tensor, dtype=torch.float32),
         torch.tensor(y, dtype=torch.long).unsqueeze(-1),
         torch.tensor(weights, dtype=torch.float32).unsqueeze(-1),
+        torch.tensor(jet_pt, dtype=torch.float32),
+        torch.tensor(jet_theta, dtype=torch.float32),
     )
 
 
@@ -195,7 +202,7 @@ def worker_fn(args):
         if len(data_rg) == 0:
             return None
 
-        # Apply preselection
+        # Apply preselection (if any provided at conversion time)
         jet_p4s = vector.awk(
             ak.zip(
                 {
@@ -286,6 +293,8 @@ def main():
     all_mask = []
     all_y = []
     all_weight = []
+    all_jet_pt = []
+    all_jet_theta = []
     current_jets_in_memory = 0
     output_count = 0
 
@@ -300,7 +309,7 @@ def main():
 
     x_is_oh = [False] * 7
     if args.use_pdgId:
-        x_is_oh.extend([False, True, True, True, True, True])
+        x_is_oh.extend([False, True, True, True, True, True, True])
     if args.use_lifetime:
         x_is_oh.extend([False, False, False, False])
     v_is_oh = [False, False, False, False]
@@ -317,6 +326,8 @@ def main():
             "mask": torch.cat(all_mask, dim=0),
             "y": torch.cat(all_y, dim=0),
             "weight": torch.cat(all_weight, dim=0),
+            "jet_pt": torch.cat(all_jet_pt, dim=0),
+            "jet_theta": torch.cat(all_jet_theta, dim=0),
             "x_is_one_hot_encoded": torch.tensor(x_is_oh, dtype=torch.bool),
             "v_is_one_hot_encoded": torch.tensor(v_is_oh, dtype=torch.bool),
         }
@@ -336,6 +347,8 @@ def main():
         all_mask.clear()
         all_y.clear()
         all_weight.clear()
+        all_jet_pt.clear()
+        all_jet_theta.clear()
         current_jets_in_memory = 0
 
     total_jets_to_process = 0
@@ -405,20 +418,30 @@ def main():
         for res in results_iter:
             if res is None:
                 continue
-            x_t, v_t, m_t, y_t, w_t = res
+            x_t, v_t, m_t, y_t, w_t, pt_t, theta_t = res
 
             # Truncate if we exceeded max_jets_per_file
             if jets_processed_in_file + len(x_t) > num_jets_to_process:
                 keep = num_jets_to_process - jets_processed_in_file
                 if keep <= 0:
                     break
-                x_t, v_t, m_t, y_t, w_t = x_t[:keep], v_t[:keep], m_t[:keep], y_t[:keep], w_t[:keep]
+                x_t, v_t, m_t, y_t, w_t, pt_t, theta_t = (
+                    x_t[:keep],
+                    v_t[:keep],
+                    m_t[:keep],
+                    y_t[:keep],
+                    w_t[:keep],
+                    pt_t[:keep],
+                    theta_t[:keep],
+                )
 
             all_x.append(x_t)
             all_v.append(v_t)
             all_mask.append(m_t)
             all_y.append(y_t)
             all_weight.append(w_t)
+            all_jet_pt.append(pt_t)
+            all_jet_theta.append(theta_t)
             current_jets_in_memory += len(x_t)
             jets_processed_in_file += len(x_t)
             pbar.update(len(x_t))

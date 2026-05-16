@@ -1,6 +1,7 @@
 model_file: ParticleTransformer_model.pt
 model_config_file: ParticleTransformer_cfg.json
 max_num_files: -1
+max_num_jets: -1
 batch_size: 1024
 num_epochs: 100
 num_dataloader_workers: 4

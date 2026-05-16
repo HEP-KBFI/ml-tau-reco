@@ -281,7 +281,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     use_lifetime = ParticleTransformer_cfg["use_lifetime"]
     input_dim = 7
     if use_pdgId:
-        input_dim += 6
+        input_dim += 7
     if use_lifetime:
         input_dim += 4
     standardize_inputs = ParticleTransformer_cfg["standardize_inputs"]
@@ -314,6 +314,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     dataset_train = ParticleTransformerDataset(
         filelist_train,
         max_num_files=train_cfg.max_num_files,
+        max_jets=train_cfg.max_num_jets,
         max_cands=max_cands,
         use_pdgId=use_pdgId,
         use_lifetime=use_lifetime,
@@ -328,6 +329,7 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
     dataset_validation = ParticleTransformerDataset(
         filelist_validation,
         max_num_files=train_cfg.max_num_files,
+        max_jets=train_cfg.max_num_jets,
         metric=metric,
         max_cands=max_cands,
         use_pdgId=use_pdgId,
@@ -439,6 +441,11 @@ def trainParticleTransformer(train_cfg: DictConfig) -> None:
             torch.save(model.state_dict(), best_model_file)
             print("Done.")
             min_loss_validation = loss_validation
+
+        # Save checkpoint at each epoch
+        checkpoint_file = train_cfg.model_file.replace(".pt", "_epoch_%i.pt" % idx_epoch)
+        print("Saving checkpoint to file %s" % checkpoint_file)
+        torch.save(model.state_dict(), checkpoint_file)
 
         print("System utilization:")
         process = psutil.Process(os.getpid())

@@ -56,7 +56,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         self.use_lifetime = self._builderConfig["use_lifetime"]
         self.input_dim = 7
         if self.use_pdgId:
-            self.input_dim += 6
+            self.input_dim += 7
         if self.use_lifetime:
             self.input_dim += 4
         metric = self._builderConfig["metric"]
@@ -83,7 +83,7 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
         if standardize_inputs:
             self.transform = FeatureStandardization(
                 method=self._builderConfig["method_FeatureStandardization"],
-                features=["x", "v"],
+                features=["x"],
                 feature_dim=1,
                 verbosity=self.verbosity,
             )
@@ -234,3 +234,88 @@ class ParticleTransformerTauBuilder(BasicTauBuilder):
             "tau_charge": tauCharges,
             "tau_decaymode": tau_decaymode,
         }
+
+
+if __name__ == "__main__":
+    import argparse
+    from torch.utils.data import DataLoader
+    from ParticleTransformerDataset import ParticleTransformerDataset
+    import tqdm
+
+    parser = argparse.ArgumentParser(description="Run ParticleTransformer inference on .pt dataset")
+    parser.add_argument("--config", type=str, default="./config/ParticleTransformer_cfg.json", help="Path to config file")
+    parser.add_argument("--model", type=str, default=None, help="Path to model file")
+    parser.add_argument("--transform", type=str, default=None, help="Path to transform file")
+    parser.add_argument("--input", type=str, required=True, help="Path to input .pt files (glob pattern)")
+    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size")
+    parser.add_argument("--verbosity", type=int, default=0, help="Verbosity level")
+    parser.add_argument("--output", type=str, default=None, help="Path to save inference results (.pt)")
+    args = parser.parse_args()
+
+    builder = ParticleTransformerTauBuilder(
+        cfgFileName=args.config, verbosity=args.verbosity, modelPath=args.model, transformPath=args.transform
+    )
+
+    print("Loading dataset from %s" % args.input)
+    import glob
+    input_files = sorted(glob.glob(args.input))
+    if len(input_files) == 0:
+        print("No input files found matching pattern: %s" % args.input)
+        exit(1)
+
+    # Get preselection from builder config
+    preselection = {
+        "min_jet_theta": builder.min_jet_theta,
+        "max_jet_theta": builder.max_jet_theta,
+        "min_jet_pt": builder.min_jet_pt,
+        "max_jet_pt": builder.max_jet_pt,
+    }
+
+    dataset = ParticleTransformerDataset(
+        input_files,
+        max_cands=builder.max_cands,
+        use_pdgId=builder.use_pdgId,
+        use_lifetime=builder.use_lifetime,
+        preselection=preselection,
+    )
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
+
+    print("Running inference on %i jets..." % len(dataset))
+    accuracy = 0.0
+    num_jets = 0
+    all_scores = []
+    all_labels = []
+    builder.model.eval()
+    with torch.no_grad():
+        for X, y, weight in tqdm.tqdm(dataloader):
+            # Move inputs to device before transform
+            for key in ["x", "v", "mask"]:
+                X[key] = X[key].to(device=builder.device)
+
+            if builder.transform:
+                X = builder.transform(X)
+
+            x = X["x"]
+            v = X["v"]
+            mask = X["mask"]
+            y = y.squeeze(dim=1).to(device=builder.device)
+
+            pred = builder.model(x, v, mask)
+            pred = torch.softmax(pred, dim=1)
+
+            scores = pred[:, 1]
+            all_scores.append(scores.cpu())
+            all_labels.append(y.cpu())
+
+            accuracy += (pred.argmax(dim=1) == y).type(torch.float32).sum().item()
+            num_jets += y.size(0)
+
+    print("Inference finished.")
+    if num_jets > 0:
+        print("Accuracy: %1.2f%%" % (100.0 * accuracy / num_jets))
+    else:
+        print("No jets processed.")
+
+    if args.output:
+        print("Saving results to %s" % args.output)
+        torch.save({"scores": torch.cat(all_scores), "labels": torch.cat(all_labels)}, args.output)

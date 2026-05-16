@@ -1,12 +1,12 @@
-import awkward as ak
-import math
-import vector
-
 import torch
 from torch.utils.data import Dataset
+import glob
+import os
+import bisect
+import gc
+import math
 from LGEB import psi
 from sklearn.preprocessing import OneHotEncoder
-
 
 def buildLorentzNetTensors(
     jet_constituent_p4s, jet_constituent_pdgIds, jet_constituent_qs, max_cands, add_beams, use_pdgId, pdgId_embedding
@@ -83,16 +83,21 @@ def read_cut(cuts, key):
     else:
         return -1.0
 
-
 class LorentzNetDataset(Dataset):
-    def __init__(self, filelist, max_num_files=-1, max_cands=50, add_beams=True, use_pdgId=False, preselection={}):
-
+    def __init__(self, filelist, max_num_files=-1, max_jets=-1, max_cands=50, add_beams=True, use_pdgId=False, preselection={}, cache_size=1, **kwargs):
+        """
+        Args:
+            filelist: List of .pt files or a single directory containing .pt files.
+            max_num_files: Maximum number of files to load.
+            max_jets: Maximum number of jets (entries) to load.
+            max_cands: Maximum number of constituents per jet.
+            add_beams: Whether to add beam particles.
+            use_pdgId: Whether to use PDG ID features.
+            preselection: Dict containing cuts (min_jet_pt, etc.)
+            cache_size: Number of shards to keep in memory.
+        """
         print("<LorentzNetDataset::LorentzNetDataset>:")
-        print(" #files = %i" % len(filelist))
-        print(" max_cands = %i" % max_cands)
-        print(" add_beams = %s" % add_beams)
-        print(" use_pdgId = %s" % use_pdgId)
-
+        
         self.min_jet_theta = read_cut(preselection, "min_jet_theta")
         self.max_jet_theta = read_cut(preselection, "max_jet_theta")
         self.min_jet_pt = read_cut(preselection, "min_jet_pt")
@@ -102,133 +107,192 @@ class LorentzNetDataset(Dataset):
         print(" min_jet_pt = %1.3f" % self.min_jet_pt)
         print(" max_jet_pt = %1.3f" % self.max_jet_pt)
 
-        if max_num_files != -1:
-            num_sig_files = 0
-            num_bgr_files = 0
-            restricted_filelist = []
-            for file in filelist:
-                if "ZH_Htautau" in file:
-                    if num_sig_files < max_num_files:
-                        restricted_filelist.append(file)
-                        num_sig_files += 1
-                elif "QCD" in file:
-                    if num_bgr_files < max_num_files:
-                        restricted_filelist.append(file)
-                        num_bgr_files += 1
-                else:
-                    raise RuntimeError("Failed to parse filename = '%s' !!" % file)
-            filelist = restricted_filelist
-            print("Restricting the size of the dataset to %i files." % len(filelist))
-
-        self.filelist = filelist
         self.max_cands = max_cands
         self.add_beams = add_beams
         self.use_pdgId = use_pdgId
-        self.pdgId_embedding = None
-        if self.use_pdgId:
-            self.pdgId_embedding = OneHotEncoder(handle_unknown="ignore", sparse_output=False).fit(
-                [[11], [13], [22], [130], [211], [2212]]
-            )
 
-        self.x_tensors = []
-        self.scalars_tensors = []
-        self.node_mask_tensors = []
-        self.y_tensors = []
-        self.weight_tensors = []
+        if isinstance(filelist, str):
+            if os.path.isdir(filelist):
+                filelist = sorted(glob.glob(os.path.join(filelist, "*.pt")))
+            else:
+                filelist = [filelist]
+        elif isinstance(filelist, (list, tuple)):
+            expanded_list = []
+            for f in filelist:
+                if os.path.isdir(f):
+                    expanded_list.extend(sorted(glob.glob(os.path.join(f, "*.pt"))))
+                elif "*" in f:
+                    expanded_list.extend(sorted(glob.glob(f)))
+                else:
+                    expanded_list.append(f)
+            filelist = expanded_list
 
-        self.num_jets = 0
-        for file in filelist:
-            print("Opening file %s" % file)
-            data = ak.from_parquet(file)
+        if max_num_files != -1 and len(filelist) > max_num_files:
+            filelist = filelist[:max_num_files]
+            print(f"Restricting to {len(filelist)} files.")
 
-            data_jet_p4s = data["reco_jet_p4s"]
-            jet_p4s = vector.awk(
-                ak.zip({"px": data_jet_p4s.x, "py": data_jet_p4s.y, "pz": data_jet_p4s.z, "mass": data_jet_p4s.tau})
-            )
-            num_jets_in_file = len(data_jet_p4s)
-            print("File %s contains %i entries." % (file, num_jets_in_file))
+        self.filelist = []
+        self.shard_lengths = []
+        self.cumulative_lengths = [0]
+        self.valid_indices = [] 
+        self.total_jets = 0
+        
+        self.x_is_one_hot_encoded = None
+        self.scalars_is_one_hot_encoded = None
 
-            data_cand_p4s = data["reco_cand_p4s"]
-            cand_p4s = vector.awk(
-                ak.zip({"px": data_cand_p4s.x, "py": data_cand_p4s.y, "pz": data_cand_p4s.z, "mass": data_cand_p4s.tau})
-            )
-            data_cand_pdgIds = data["reco_cand_pdg"]
-            data_cand_qs = data["reco_cand_charge"]
-
-            data_gen_tau_decaymodes = data["gen_jet_tau_decaymode"]
-
-            data_weights = data["weight"]
-
-            for idx in range(num_jets_in_file):
-                if idx > 0 and (idx % 10000) == 0:
-                    print(" Processing entry %i" % idx)
-
-                jet_p4 = jet_p4s[idx]
-                if not (
-                    (self.min_jet_theta < 0.0 or jet_p4.theta >= self.min_jet_theta)
-                    and (self.max_jet_theta < 0.0 or jet_p4.theta <= self.max_jet_theta)
-                    and (self.min_jet_pt < 0.0 or jet_p4.pt >= self.min_jet_pt)
-                    and (self.max_jet_pt < 0.0 or jet_p4.pt <= self.max_jet_pt)
-                ):
-                    continue
-
-                jet_constituent_p4s = cand_p4s[idx]
-                jet_constituent_pdgIds = data_cand_pdgIds[idx]
-                jet_constituent_qs = data_cand_qs[idx]
-                (
-                    x_tensor,
-                    x_is_one_hot_encoded,
-                    scalars_tensor,
-                    scalars_is_one_hot_encoded,
-                    node_mask_tensor,
-                ) = buildLorentzNetTensors(
-                    jet_constituent_p4s,
-                    jet_constituent_pdgIds,
-                    jet_constituent_qs,
-                    self.max_cands,
-                    self.add_beams,
-                    self.use_pdgId,
-                    self.pdgId_embedding,
+        print("Indexing shards...")
+        for i, file in enumerate(filelist):
+            if max_jets != -1 and self.total_jets >= max_jets:
+                break
+                
+            print(f"Indexing shard {i}/{len(filelist)}: {file}")
+            data = torch.load(file, map_location="cpu", mmap=True)
+            
+            if "jet_pt" in data and "jet_theta" in data:
+                jet_pt = data["jet_pt"]
+                jet_theta = data["jet_theta"]
+                
+                mask = (
+                    ((self.min_jet_theta < 0.0) | (jet_theta >= self.min_jet_theta))
+                    & ((self.max_jet_theta < 0.0) | (jet_theta <= self.max_jet_theta))
+                    & ((self.min_jet_pt < 0.0) | (jet_pt >= self.min_jet_pt))
+                    & ((self.max_jet_pt < 0.0) | (jet_pt <= self.max_jet_pt))
                 )
+                shard_valid_idx = torch.where(mask)[0]
+            else:
+                print(f" Warning: shard {file} does not contain jet kinematics. Skipping cuts.")
+                shard_valid_idx = torch.arange(data["x"].size(0))
 
-                y_tensor = torch.tensor([1 if data_gen_tau_decaymodes[idx] != -1 else 0], dtype=torch.long)
-                weight_tensor = torch.tensor([data_weights[idx]], dtype=torch.float32)
+            n = shard_valid_idx.size(0)
+            
+            if max_jets != -1 and (self.total_jets + n) > max_jets:
+                n = max_jets - self.total_jets
+                shard_valid_idx = shard_valid_idx[:n]
+                
+            self.filelist.append(file)
+            self.shard_lengths.append(n)
+            self.valid_indices.append(shard_valid_idx)
+            self.total_jets += n
+            self.cumulative_lengths.append(self.total_jets)
+            
+            if self.x_is_one_hot_encoded is None:
+                # LorentzNet x is (E, px, py, pz)
+                self.x_is_one_hot_encoded = torch.tensor([False, False, False, False], dtype=torch.bool)
+                if self.use_pdgId:
+                    # 6 one-hots + 1 charge
+                    self.scalars_is_one_hot_encoded = torch.tensor([True]*6 + [False], dtype=torch.bool)
+                else:
+                    # mass features
+                    self.scalars_is_one_hot_encoded = torch.tensor([False, False], dtype=torch.bool)
+            
+            del data
+            gc.collect()
 
-                self.x_tensors.append(x_tensor)
-                self.x_is_one_hot_encoded = torch.tensor(x_is_one_hot_encoded, dtype=torch.bool)
-                self.scalars_tensors.append(scalars_tensor)
-                self.scalars_is_one_hot_encoded = torch.tensor(scalars_is_one_hot_encoded, dtype=torch.bool)
-                self.node_mask_tensors.append(node_mask_tensor)
-                self.y_tensors.append(y_tensor)
-                self.weight_tensors.append(weight_tensor)
-
-                self.num_jets += 1
-
-            print("Closing file %s" % file)
-
-        print("Dataset contains %i entries." % self.num_jets)
-
-        assert len(self.x_tensors) == self.num_jets
-        assert len(self.scalars_tensors) == self.num_jets
-        assert len(self.node_mask_tensors) == self.num_jets
-        assert len(self.y_tensors) == self.num_jets
-        assert len(self.weight_tensors) == self.num_jets
+        self.cache_size = cache_size
+        self.cache = {} 
+        self.cache_order = [] 
+        
+        print(f"Dataset contains {self.total_jets} entries in {len(self.filelist)} shards.")
 
     def __len__(self):
-        return self.num_jets
+        return self.total_jets
+
+    def _load_shard(self, shard_idx):
+        file_path = self.filelist[shard_idx]
+        if file_path in self.cache:
+            self.cache_order.remove(file_path)
+            self.cache_order.append(file_path)
+            return self.cache[file_path]
+        
+        if len(self.cache) >= self.cache_size:
+            oldest = self.cache_order.pop(0)
+            del self.cache[oldest]
+            gc.collect()
+            
+        data = torch.load(file_path, map_location="cpu", mmap=True)
+        if data["y"].dim() == 1:
+            data["y"] = data["y"].unsqueeze(-1)
+        if data["weight"].dim() == 1:
+            data["weight"] = data["weight"].unsqueeze(-1)
+            
+        self.cache[file_path] = data
+        self.cache_order.append(file_path)
+        return data
 
     def __getitem__(self, idx):
-        if idx < self.num_jets:
-            return (
-                {
-                    "x": self.x_tensors[idx],
-                    "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
-                    "scalars": self.scalars_tensors[idx],
-                    "scalars_is_one_hot_encoded": self.scalars_is_one_hot_encoded,
-                    "mask": self.node_mask_tensors[idx],
-                },
-                self.y_tensors[idx],
-                self.weight_tensors[idx],
-            )
+        if idx < 0 or idx >= self.total_jets:
+            raise IndexError(f"Index {idx} out of range")
+            
+        shard_idx = bisect.bisect_right(self.cumulative_lengths, idx) - 1
+        shard_offset = idx - self.cumulative_lengths[shard_idx]
+        local_idx = self.valid_indices[shard_idx][shard_offset].item()
+        
+        data = self._load_shard(shard_idx)
+        
+        # LorentzNet features reconstruction
+        # data["v"] is (P, 4) with (px, py, pz, E) - Wait, in shards it is (4, P)
+        v = data["v"][local_idx]
+        v = v.permute(1, 0) # (P, 4)
+        x_tensor = v[:, [3, 0, 1, 2]] # (P, 4) rearranged to (E, px, py, pz)
+        
+        node_mask = data["mask"][local_idx] # (1, P)
+        # LorentzNet wants node_mask as (P, 1)
+        node_mask = node_mask.permute(1, 0)
+
+        scalars_tensor = None
+        if self.use_pdgId:
+            # data["x"] has: index 7=charge, 8-13=one-hots
+            feat_x = data["x"][local_idx] # (C, P)
+            # LorentzNet wants (P, C)
+            feat_x = feat_x.permute(1, 0)
+            one_hots = feat_x[:, 8:14] # (P, 6)
+            charge = feat_x[:, 7:8] # (P, 1)
+            scalars_tensor = torch.cat([one_hots, charge], dim=1)
         else:
-            raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))
+            # Recompute mass-based scalars if needed
+            # In old code it was psi(mass)
+            from LGEB import psi
+            # mass^2 = E^2 - px^2 - py^2 - pz^2
+            mass_sq = x_tensor[:, 0]**2 - x_tensor[:, 1]**2 - x_tensor[:, 2]**2 - x_tensor[:, 3]**2
+            mass = torch.sqrt(torch.clamp(mass_sq, min=0.0))
+            scalars_tensor = psi(mass).unsqueeze(-1)
+            # Pad to 2 scalars as in old code
+            scalars_tensor = torch.nn.functional.pad(scalars_tensor, (0, 1), "constant", 0.0)
+
+        if self.add_beams:
+            beam_mass = 1.0
+            beam1_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, +1.0]
+            beam2_p4 = [math.sqrt(1 + beam_mass**2), 0.0, 0.0, -1.0]
+            x_beams = torch.tensor([beam1_p4, beam2_p4], dtype=torch.float32)
+            x_tensor = torch.cat([x_beams, x_tensor], dim=0)
+
+            if self.use_pdgId:
+                # Beams are protons (2212)
+                # Protons one-hot in our scheme is index 13 (6th one-hot)
+                # indices: 0:11, 1:13, 2:22, 3:211, 4:130, 5:2212
+                proton_oh = [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+                scalars_beams = torch.tensor([
+                    proton_oh + [+1.0], # beam 1
+                    proton_oh + [-1.0]  # beam 2
+                ], dtype=torch.float32)
+                scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
+            else:
+                from LGEB import psi
+                scalars_beams = psi(torch.tensor([beam_mass, beam_mass], dtype=torch.float32)).unsqueeze(-1)
+                scalars_beams = torch.nn.functional.pad(scalars_beams, (1, 0), "constant", 0.0)
+                scalars_tensor = torch.cat([scalars_beams, scalars_tensor], dim=0)
+
+            node_mask_beams = torch.ones(2, 1, dtype=torch.float32)
+            node_mask = torch.cat([node_mask_beams, node_mask], dim=0)
+
+        return (
+            {
+                "x": x_tensor,
+                "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
+                "scalars": scalars_tensor,
+                "scalars_is_one_hot_encoded": self.scalars_is_one_hot_encoded,
+                "mask": node_mask,
+            },
+            data["y"][local_idx].clone(),
+            data["weight"][local_idx].clone(),
+        )

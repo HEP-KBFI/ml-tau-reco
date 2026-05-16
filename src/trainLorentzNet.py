@@ -293,6 +293,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     dataset_train = LorentzNetDataset(
         filelist_train,
         max_num_files=train_cfg.max_num_files,
+        max_jets=train_cfg.max_num_jets,
         max_cands=max_cands,
         add_beams=add_beams,
         use_pdgId=use_pdgId,
@@ -306,6 +307,7 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
     dataset_validation = LorentzNetDataset(
         filelist_validation,
         max_num_files=train_cfg.max_num_files,
+        max_jets=train_cfg.max_num_jets,
         max_cands=max_cands,
         add_beams=add_beams,
         use_pdgId=use_pdgId,
@@ -398,6 +400,11 @@ def trainLorentzNet(train_cfg: DictConfig) -> None:
             torch.save(model.state_dict(), best_model_file)
             print("Done.")
             min_loss_validation = loss_validation
+
+        # Save checkpoint at each epoch
+        checkpoint_file = train_cfg.model_file.replace(".pt", "_epoch_%i.pt" % idx_epoch)
+        print("Saving checkpoint to file %s" % checkpoint_file)
+        torch.save(model.state_dict(), checkpoint_file)
 
         print("System utilization:")
         process = psutil.Process(os.getpid())
